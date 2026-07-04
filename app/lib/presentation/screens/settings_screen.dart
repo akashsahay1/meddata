@@ -2,15 +2,52 @@ import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/backup_service.dart';
+import '../../services/device_id.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import 'upgrade_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  int _versionTaps = 0;
+  bool _devUnlocked = false;
+  String _deviceId = '…';
+
+  @override
+  void initState() {
+    super.initState();
+    DeviceId.get().then((String id) {
+      if (mounted) setState(() => _deviceId = id);
+    });
+  }
+
+  void _onVersionTap() {
+    if (_devUnlocked) return;
+    _versionTaps++;
+    if (_versionTaps >= 7) {
+      setState(() => _devUnlocked = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Developer / testing options enabled')),
+      );
+    } else if (_versionTaps >= 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(milliseconds: 700),
+          content: Text('${7 - _versionTaps} taps to developer options'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +114,9 @@ class SettingsScreen extends StatelessWidget {
           const Divider(height: 1),
           _header('Account'),
           ListTile(
-            leading: Icon(
-                s.isPremium ? Icons.verified_outlined : Icons.workspace_premium_outlined),
+            leading: Icon(s.isPremium
+                ? Icons.verified_outlined
+                : Icons.workspace_premium_outlined),
             title: Text(s.isPremium ? 'Premium active' : 'Upgrade to Premium'),
             subtitle: Text(s.isPremium
                 ? 'All features unlocked'
@@ -87,12 +125,38 @@ class SettingsScreen extends StatelessWidget {
               MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
             ),
           ),
+          if (_devUnlocked) ...<Widget>[
+            const Divider(height: 1),
+            _header('Developer / Testing'),
+            SwitchListTile(
+              secondary: const Icon(Icons.workspace_premium_outlined),
+              title: const Text('Test premium unlock'),
+              subtitle: const Text(
+                  'Unlocks all premium features locally for testing '
+                  '(bypasses Google Play).'),
+              value: s.isPremium,
+              onChanged: (bool v) => s.setPremium(v),
+            ),
+            ListTile(
+              leading: const Icon(Icons.perm_device_information_outlined),
+              title: const Text('Device ID'),
+              subtitle: Text(_deviceId),
+              trailing: const Icon(Icons.copy, size: 18),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: _deviceId));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Device ID copied')),
+                );
+              },
+            ),
+          ],
           const Divider(height: 1),
           _header('About'),
-          const ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('Medicine Stock & Expiry Tracker'),
-            subtitle: Text('Version 1.0.0'),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Meddata — Medicine Stock & Expiry Tracker'),
+            subtitle: const Text('Version 1.0.0'),
+            onTap: _onVersionTap,
           ),
           const SizedBox(height: 24),
         ],
@@ -129,9 +193,8 @@ class SettingsScreen extends StatelessWidget {
           children: ThemeMode.values
               .map((ThemeMode m) => ListTile(
                     title: Text(_themeLabel(m)),
-                    trailing: s.themeMode == m
-                        ? const Icon(Icons.check)
-                        : null,
+                    trailing:
+                        s.themeMode == m ? const Icon(Icons.check) : null,
                     onTap: () => Navigator.of(ctx).pop(m),
                   ))
               .toList(),
@@ -151,9 +214,8 @@ class SettingsScreen extends StatelessWidget {
           children: options
               .map((int d) => ListTile(
                     title: Text('$d days before expiry'),
-                    trailing: s.warningDays == d
-                        ? const Icon(Icons.check)
-                        : null,
+                    trailing:
+                        s.warningDays == d ? const Icon(Icons.check) : null,
                     onTap: () => Navigator.of(ctx).pop(d),
                   ))
               .toList(),

@@ -61,9 +61,13 @@ class _UpgradeScreenState extends State<UpgradeScreen> {
       if (product != null) {
         await billing.buy(product);
       } else {
-        // Store product not available (e.g. not configured yet / debug).
+        // Store product not available — this is expected until the app is
+        // published to Google Play with the subscription products configured
+        // and opened via a licensed-tester account. (For testing premium
+        // features now, use Settings → tap version 7× → Test premium unlock.)
         _showMessage(
-            'Subscriptions are not available on this device right now.');
+            'Google Play subscriptions become available once the app is '
+            'published with these products. See Settings for test options.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);

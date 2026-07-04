@@ -28,7 +28,7 @@ class AdminPanelSmokeTest extends TestCase
     {
         $this->get('/admin/login')
             ->assertStatus(200)
-            ->assertSee('Medicine Stock Admin');
+            ->assertSee('Meddata');
     }
 
     public function test_all_resource_index_pages_render(): void

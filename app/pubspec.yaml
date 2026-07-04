@@ -47,11 +47,28 @@ dependencies:
   # Backend communication (Laravel API).
   http: ^1.2.2
 
+  # Runtime permissions (camera for barcode scan).
+  permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+
+# App launcher icon (monochrome B&W logo).
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/meddata_logo.png"
+  min_sdk_android: 23
+  remove_alpha_ios: true
+  # Android adaptive icon: white background (B&W theme), logo as foreground.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/meddata_logo.png"
 
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/images/
