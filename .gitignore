@@ -1,0 +1,16 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Claude Code local harness/session files
+.claude/
+
+# Safety nets (nested app/ and backend/ .gitignore also cover these)
+**/.env
+**/vendor/
+**/node_modules/
+app/build/
+app/.dart_tool/
