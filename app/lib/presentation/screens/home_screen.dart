@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/constants.dart';
 import '../../data/models/medicine.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
@@ -220,58 +219,51 @@ class _Dashboard extends StatelessWidget {
             ),
           ],
         ),
-        if (!settings.isPremium) ...<Widget>[
+        if (!settings.isPremium && settings.isTrialActive) ...<Widget>[
           const SizedBox(height: 10),
-          _FreeTierBar(count: mp.totalCount, onUpgrade: onUpgrade),
+          _TrialBanner(daysLeft: settings.trialDaysLeft, onUpgrade: onUpgrade),
         ],
       ],
     );
   }
 }
 
-class _FreeTierBar extends StatelessWidget {
-  final int count;
+class _TrialBanner extends StatelessWidget {
+  final int daysLeft;
   final VoidCallback onUpgrade;
-  const _FreeTierBar({required this.count, required this.onUpgrade});
+  const _TrialBanner({required this.daysLeft, required this.onUpgrade});
 
   @override
   Widget build(BuildContext context) {
-    final int limit = AppConstants.freeTierMedicineLimit;
-    final double frac = (count / limit).clamp(0, 1).toDouble();
     final Color fg = Theme.of(context).colorScheme.onSurface;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: fg),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Text('Free plan — $count / $limit medicines',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              const Spacer(),
-              GestureDetector(
-                onTap: onUpgrade,
-                child: Text('UPGRADE',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        decoration: TextDecoration.underline,
-                        color: fg)),
+    return InkWell(
+      onTap: onUpgrade,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: fg),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: <Widget>[
+            const Icon(Icons.timelapse, size: 18),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                daysLeft <= 1
+                    ? 'Free trial: last day — subscribe to keep access'
+                    : 'Free trial: $daysLeft days left',
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: frac,
-              minHeight: 8,
             ),
-          ),
-        ],
+            Text('SUBSCRIBE',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    decoration: TextDecoration.underline,
+                    color: fg)),
+          ],
+        ),
       ),
     );
   }

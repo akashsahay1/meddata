@@ -41,4 +41,9 @@ return [
         'package_name' => env('GOOGLE_PLAY_PACKAGE', 'com.medstock.med_stock'),
     ],
 
+    'razorpay' => [
+        'key_id' => env('RAZORPAY_KEY_ID'),
+        'key_secret' => env('RAZORPAY_KEY_SECRET'),
+    ],
+
 ];

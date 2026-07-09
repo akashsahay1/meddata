@@ -10,9 +10,15 @@
 -keepattributes Signature
 -keepattributes *Annotation*
 
-# Keep Google Play Billing / in_app_purchase.
--keep class com.android.billingclient.** { *; }
--dontwarn com.android.billingclient.**
+# Razorpay payments — keep SDK classes and annotations (per Razorpay docs).
+-keep class com.razorpay.** { *; }
+-keep class proguard.annotation.** { *; }
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-dontwarn com.razorpay.**
+-optimizations !method/inlining/*
+-keepclasseswithmembers class * {
+    public void onPayment*(...);
+}
 
 # WorkManager (background expiry checks).
 -keep class androidx.work.** { *; }

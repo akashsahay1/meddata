@@ -87,6 +87,14 @@ Check off tasks as you go (`[x]`). Each phase maps to `PROJECT_PLAN.md` § 10. K
 ---
 
 ## Progress log (update each session)
+- 2026-07-09 — Alok ji's changes (docs/ALOK_CHANGES.md): removed Google Play Billing; added
+  **7-day trial → full app lock**, **Razorpay** gateway, **coupons** (percentage/flat). App:
+  razorpay_flutter, SettingsService.hasAccess, LockScreen, SubscribeView (plans from backend +
+  coupon + Razorpay checkout, dev-mode test-pay). Backend: coupons (+ admin Generate codes),
+  payments log, RazorpayService, endpoints device/trial · coupon/validate · order/create ·
+  payment/verify; 17 tests pass. Verified end-to-end (trial 7d, WELCOME20 20% → ₹799.2, order
+  dev fallback). App label Meddata + colored launcher icon regenerated. Both build clean.
+
 - 2026-07-04 — Created v2 docs (build prompt, plan, tasks, subscription plans).
 - 2026-07-04 — Built the app end-to-end (Phases 0–5 in code): Flutter 3.44 project; monochrome
   theme (light/dark); SQLite DB + migrations; medicine/supplier/movement models & repos; Home

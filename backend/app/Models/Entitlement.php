@@ -10,16 +10,25 @@ class Entitlement extends Model
     protected $fillable = [
         'device_id', 'plan_id', 'product_id', 'status',
         'purchase_token', 'expiry_time', 'is_premium',
+        'trial_started_at', 'trial_ends_at', 'source',
+        'razorpay_payment_id', 'razorpay_order_id', 'coupon_id',
     ];
 
     protected $casts = [
         'expiry_time' => 'datetime',
         'is_premium' => 'boolean',
+        'trial_started_at' => 'datetime',
+        'trial_ends_at' => 'datetime',
     ];
 
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function coupon(): BelongsTo
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     /** Recompute premium/status from the expiry date. */
@@ -37,5 +46,27 @@ class Entitlement extends Model
             $this->status = 'expired';
             $this->is_premium = false;
         }
+    }
+
+    /** Whether this entitlement is an active PAID subscription (not trial). */
+    public function isActivePaid(): bool
+    {
+        if ($this->status !== 'active') {
+            return false;
+        }
+        if ($this->product_id && str_contains($this->product_id, 'lifetime')) {
+            return true;
+        }
+        if (is_null($this->expiry_time)) {
+            // Active with no expiry from a paid source counts as lifetime.
+            return in_array($this->source, ['razorpay', 'manual', 'coupon'], true);
+        }
+        return $this->expiry_time->isFuture();
+    }
+
+    /** Whether the free trial window is still open. */
+    public function isTrialActive(): bool
+    {
+        return $this->trial_ends_at && $this->trial_ends_at->isFuture();
     }
 }

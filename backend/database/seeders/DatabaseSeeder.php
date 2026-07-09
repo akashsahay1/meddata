@@ -92,10 +92,25 @@ class DatabaseSeeder extends Seeder
             ['key' => 'support_email', 'value' => 'akash.sahay1@gmail.com', 'type' => 'string', 'label' => 'Support email', 'group' => 'general'],
             ['key' => 'maintenance_mode', 'value' => '0', 'type' => 'bool', 'label' => 'Maintenance mode', 'group' => 'general'],
             ['key' => 'force_update', 'value' => '0', 'type' => 'bool', 'label' => 'Force app update', 'group' => 'general'],
+            // ---- Custom subscriptions (Razorpay + trial) ----
+            ['key' => 'trial_days', 'value' => '7', 'type' => 'int', 'label' => 'Free trial length (days)', 'group' => 'subscriptions'],
+            ['key' => 'razorpay_key_id', 'value' => '', 'type' => 'string', 'label' => 'Razorpay Key ID (public)', 'group' => 'subscriptions'],
+            ['key' => 'razorpay_key_secret', 'value' => '', 'type' => 'string', 'label' => 'Razorpay Key Secret', 'group' => 'subscriptions'],
         ];
 
         foreach ($settings as $s) {
-            AppSetting::updateOrCreate(['key' => $s['key']], $s);
+            // Idempotent: keep any admin-entered value, only backfill missing keys.
+            AppSetting::firstOrCreate(['key' => $s['key']], $s);
+        }
+
+        // ---- Sample coupons (admin-editable) ----
+        $coupons = [
+            ['code' => 'WELCOME20', 'type' => 'percentage', 'value' => 20, 'is_active' => true],
+            ['code' => 'FLAT100', 'type' => 'flat', 'value' => 100, 'is_active' => true],
+        ];
+
+        foreach ($coupons as $c) {
+            \App\Models\Coupon::updateOrCreate(['code' => $c['code']], $c);
         }
 
         // ---- Demo data for the management backend (customers / stores / medicines) ----

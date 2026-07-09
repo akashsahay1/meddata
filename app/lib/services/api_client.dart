@@ -53,26 +53,56 @@ class ApiClient {
     return null;
   }
 
-  /// Remote config: free-tier limit, warning days, and plan list for paywall.
+  /// Remote config: trial_days, razorpay_key_id, and plan list for the paywall.
   Future<Map<String, dynamic>?> fetchConfig() => _get('/config');
 
-  /// Current entitlement for a device.
+  /// Current entitlement for a device (premium = paid OR trial active).
   Future<Map<String, dynamic>?> fetchEntitlement(String deviceId) =>
       _get('/entitlement', query: <String, String>{'device_id': deviceId});
 
-  /// Verify a Google Play purchase token server-side.
-  Future<Map<String, dynamic>?> verifyPurchase({
-    required String deviceId,
-    required String productId,
-    required String purchaseToken,
+  /// Register / fetch the 7-day free trial for a device (idempotent).
+  Future<Map<String, dynamic>?> registerTrial(String deviceId) =>
+      _post('/device/trial', <String, dynamic>{'device_id': deviceId});
+
+  /// Validate a coupon code against a plan → discount + final amount.
+  Future<Map<String, dynamic>?> validateCoupon({
+    required String code,
+    required int planId,
   }) =>
-      _post('/purchase/verify', <String, dynamic>{
-        'device_id': deviceId,
-        'product_id': productId,
-        'purchase_token': purchaseToken,
+      _post('/coupon/validate', <String, dynamic>{
+        'code': code,
+        'plan_id': planId,
       });
 
-  /// Register an anonymous device (no login needed for free users).
-  Future<Map<String, dynamic>?> registerDevice(String deviceId) =>
-      _post('/register-device', <String, dynamic>{'device_id': deviceId});
+  /// Create a Razorpay order for a plan (with optional coupon).
+  Future<Map<String, dynamic>?> createOrder({
+    required String deviceId,
+    required int planId,
+    String? couponCode,
+  }) =>
+      _post('/order/create', <String, dynamic>{
+        'device_id': deviceId,
+        'plan_id': planId,
+        if (couponCode != null && couponCode.isNotEmpty)
+          'coupon_code': couponCode,
+      });
+
+  /// Verify a completed Razorpay payment and activate the subscription.
+  Future<Map<String, dynamic>?> verifyPayment({
+    required String deviceId,
+    required int planId,
+    required String orderId,
+    required String paymentId,
+    required String signature,
+    String? couponCode,
+  }) =>
+      _post('/payment/verify', <String, dynamic>{
+        'device_id': deviceId,
+        'plan_id': planId,
+        'razorpay_order_id': orderId,
+        'razorpay_payment_id': paymentId,
+        'razorpay_signature': signature,
+        if (couponCode != null && couponCode.isNotEmpty)
+          'coupon_code': couponCode,
+      });
 }

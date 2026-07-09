@@ -6,13 +6,14 @@ import 'package:provider/single_child_widget.dart';
 import 'l10n/app_localizations.dart';
 
 import 'services/background_worker.dart';
-import 'services/billing_service.dart';
 import 'services/device_id.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
+import 'services/subscription_service.dart';
 import 'state/medicine_provider.dart';
 import 'theme/app_theme.dart';
 import 'presentation/screens/home_screen.dart';
+import 'presentation/screens/lock_screen.dart';
 import 'presentation/screens/onboarding_screen.dart';
 
 Future<void> main() async {
@@ -21,20 +22,29 @@ Future<void> main() async {
   final SettingsService settings = SettingsService();
   await settings.init();
 
+  // Start the 7-day trial locally on first launch so it works even offline.
+  // The backend is the source of truth and reconciles on refresh().
+  if (settings.trialEndsAt == null && !settings.isPremium) {
+    await settings.setTrialEndsAt(
+      DateTime.now().add(const Duration(days: 7)),
+    );
+  }
+
   await NotificationService.instance.init();
   await BackgroundWorker.init();
 
   final String deviceId = await DeviceId.get();
-  final BillingService billing = BillingService(settings, deviceId);
-  // Fire and forget — billing/entitlement reconcile in the background.
-  _startBackgroundServices(billing, settings);
+  final SubscriptionService subscription =
+      SubscriptionService(settings, deviceId);
+  _startBackgroundServices(subscription, settings);
 
-  runApp(MedStockApp(settings: settings, billing: billing));
+  runApp(MedStockApp(settings: settings, subscription: subscription));
 }
 
 /// Kick off background services without blocking first paint.
-void _startBackgroundServices(BillingService billing, SettingsService settings) {
-  billing.init();
+void _startBackgroundServices(
+    SubscriptionService subscription, SettingsService settings) {
+  subscription.refresh();
   BackgroundWorker.scheduleDailyDigest(
     warningDays: settings.warningDays,
     notifExpiry: settings.notifExpiry,
@@ -45,29 +55,30 @@ void _startBackgroundServices(BillingService billing, SettingsService settings) 
 
 class MedStockApp extends StatelessWidget {
   final SettingsService settings;
-  final BillingService billing;
-  const MedStockApp({super.key, required this.settings, required this.billing});
+  final SubscriptionService subscription;
+  const MedStockApp(
+      {super.key, required this.settings, required this.subscription});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: <SingleChildWidget>[
         ChangeNotifierProvider<SettingsService>.value(value: settings),
-        Provider<BillingService>.value(value: billing),
+        ChangeNotifierProvider<SubscriptionService>.value(value: subscription),
         ChangeNotifierProvider<MedicineProvider>(
           create: (_) => MedicineProvider()..load(),
         ),
       ],
       child: Consumer<SettingsService>(
         builder: (BuildContext context, SettingsService s, _) {
-          // Keep the medicine provider's derived state in sync with settings.
+          // During trial or paid, the app has full access → unlimited medicines.
           final MedicineProvider mp =
               Provider.of<MedicineProvider>(context, listen: false);
           mp.warningDays = s.warningDays;
-          mp.isPremium = s.isPremium;
+          mp.isPremium = s.hasAccess;
 
           return MaterialApp(
-            title: 'Medicine Stock & Expiry Tracker',
+            title: 'Meddata — Medicine Stock & Expiry Tracker',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
@@ -80,10 +91,24 @@ class MedStockApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            home: s.onboarded ? const HomeScreen() : const OnboardingScreen(),
+            home: const _RootGate(),
           );
         },
       ),
     );
+  }
+}
+
+/// Decides what the user sees: onboarding → trial/paid app → or the lock
+/// paywall once the trial has ended with no active subscription.
+class _RootGate extends StatelessWidget {
+  const _RootGate();
+
+  @override
+  Widget build(BuildContext context) {
+    final SettingsService s = context.watch<SettingsService>();
+    if (!s.onboarded) return const OnboardingScreen();
+    if (!s.hasAccess) return const LockScreen();
+    return const HomeScreen();
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/settings_service.dart';
-import 'home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -37,10 +36,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   void _finish() {
+    // _RootGate rebuilds and routes to Home (trial active) or the paywall.
     context.read<SettingsService>().setOnboarded(true);
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-    );
   }
 
   @override

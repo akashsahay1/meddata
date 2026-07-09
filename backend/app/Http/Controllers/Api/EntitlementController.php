@@ -22,18 +22,44 @@ class EntitlementController extends Controller
             ->first();
 
         if (! $ent) {
-            return response()->json(['premium' => false, 'status' => 'expired']);
+            return response()->json([
+                'premium' => false,
+                'status' => 'expired',
+                'source' => null,
+                'trial_ends_at' => null,
+                'days_left' => 0,
+                'expiry_time' => null,
+                'product_id' => null,
+            ]);
         }
 
-        // Re-evaluate against the clock (covers expiry since last write).
+        // Re-evaluate the paid subscription against the clock.
         $ent->refreshStatus();
         $ent->save();
 
+        $paidActive = $ent->isActivePaid();
+        $trialActive = $ent->isTrialActive();
+        $premium = $paidActive || $trialActive;
+
+        // days_left: from paid subscription if active, else from the trial window.
+        $daysLeft = 0;
+        if ($paidActive && $ent->expiry_time) {
+            $daysLeft = (int) ceil(now()->diffInDays($ent->expiry_time, false));
+        } elseif ($trialActive) {
+            $daysLeft = (int) ceil(now()->diffInDays($ent->trial_ends_at, false));
+        }
+
+        $status = $premium ? 'active' : 'expired';
+        $source = $paidActive ? ($ent->source ?: 'razorpay') : ($trialActive ? 'trial' : $ent->source);
+
         return response()->json([
-            'premium' => $ent->is_premium,
-            'status' => $ent->status,
-            'product_id' => $ent->product_id,
+            'premium' => $premium,
+            'status' => $status,
+            'source' => $source,
+            'trial_ends_at' => optional($ent->trial_ends_at)->toIso8601String(),
+            'days_left' => max(0, $daysLeft),
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
+            'product_id' => $ent->product_id,
         ]);
     }
 }

@@ -45,6 +45,8 @@ class AdminPanelSmokeTest extends TestCase
             '/admin/app-settings',
             '/admin/backups',
             '/admin/purchase-logs',
+            '/admin/coupons',
+            '/admin/payments',
             '/admin/users',
         ];
 
@@ -66,6 +68,7 @@ class AdminPanelSmokeTest extends TestCase
             '/admin/app-settings/create',
             '/admin/backups/create',
             '/admin/purchase-logs/create',
+            '/admin/coupons/create',
             '/admin/users/create',
         ];
 

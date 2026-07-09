@@ -33,8 +33,8 @@ dependencies:
   timezone: ^0.10.0
   workmanager: ^0.9.0+3
 
-  # Billing (subscriptions).
-  in_app_purchase: ^3.2.0
+  # Payments (Razorpay — replaces Google Play Billing per requirements).
+  razorpay_flutter: ^1.3.7
 
   # Enhancements.
   mobile_scanner: ^5.2.3
@@ -56,14 +56,14 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
 
-# App launcher icon (monochrome B&W logo).
+# App launcher icon (Meddata colored logo).
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/meddata_logo.png"
   min_sdk_android: 23
   remove_alpha_ios: true
-  # Android adaptive icon: white background (B&W theme), logo as foreground.
+  # Android adaptive icon: logo as foreground on a white background layer.
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/meddata_logo.png"
 

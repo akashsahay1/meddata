@@ -18,10 +18,13 @@ class ConfigController extends Controller
             'low_stock_default' => (int) AppSetting::get('low_stock_default', 10),
             'support_email' => AppSetting::get('support_email', 'support@example.com'),
             'maintenance' => (bool) AppSetting::get('maintenance_mode', false),
+            'trial_days' => (int) AppSetting::get('trial_days', 7),
+            'razorpay_key_id' => (string) AppSetting::get('razorpay_key_id', ''),
             'plans' => Plan::where('is_active', true)
                 ->orderBy('sort_order')
                 ->get()
                 ->map(fn (Plan $p) => [
+                    'id' => $p->id,
                     'product_id' => $p->product_id,
                     'name' => $p->name,
                     'price' => (float) $p->price,
