@@ -6,8 +6,8 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use App\Filament\Pages\Dashboard;
 use Filament\Navigation\NavigationGroup;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -35,8 +35,12 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('')
             ->login()
+            ->loginRouteSlug('/')
+            // '/' is the login form, so send authenticated users to '/dashboard'
+            // instead of the panel root (avoids a post-login redirect loop).
+            ->homeUrl(fn (): string => Dashboard::getUrl())
             ->brandName('Meddata')
             ->brandLogo(asset('images/meddata_logo.png'))
             ->brandLogoHeight('2.2rem')
