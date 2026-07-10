@@ -87,6 +87,14 @@ Check off tasks as you go (`[x]`). Each phase maps to `PROJECT_PLAN.md` § 10. K
 ---
 
 ## Progress log (update each session)
+- 2026-07-09 — Email auth (Alok): **no Sanctum** — custom Bearer token (api_tokens SHA-256 hash +
+  AuthenticateApiToken middleware). App: AuthService, Login/Signup/Forgot-password screens (6-digit
+  reset code), gate onboarding→login→access→home, Settings logout, payment calls carry the token so
+  the subscription ties to the user account. Backend: /api/v1/auth/{register,login,logout,me,
+  forgot-password,reset-password}; entitlement.user_id; forgot returns dev_code in debug. 27 backend
+  tests pass; verified E2E (register→trial 7d, login, wrong-pw 422, me 401 w/o token, forgot→code,
+  reset→login with new pw 200). App builds clean.
+
 - 2026-07-09 — Alok ji's changes (docs/ALOK_CHANGES.md): removed Google Play Billing; added
   **7-day trial → full app lock**, **Razorpay** gateway, **coupons** (percentage/flat). App:
   razorpay_flutter, SettingsService.hasAccess, LockScreen, SubscribeView (plans from backend +

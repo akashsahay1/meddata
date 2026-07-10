@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApiToken;
 use App\Models\Coupon;
 use App\Models\Entitlement;
 use App\Models\Payment;
 use App\Models\Plan;
+use App\Models\User;
 use App\Services\RazorpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -128,6 +130,12 @@ class PaymentController extends Controller
             'razorpay_order_id' => $data['razorpay_order_id'],
             'coupon_id' => $coupon?->id,
         ]);
+
+        // Associate with the authenticated user when a valid Bearer token is present.
+        if ($user = $this->tokenUser($request)) {
+            $ent->user_id = $user->id;
+        }
+
         $ent->save();
 
         return response()->json([
@@ -135,6 +143,17 @@ class PaymentController extends Controller
             'status' => 'active',
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
         ]);
+    }
+
+    /** Resolve the user from a Bearer token if one is present (optional auth). */
+    private function tokenUser(Request $request): ?User
+    {
+        $plain = $request->bearerToken();
+        if (! $plain) {
+            return null;
+        }
+
+        return ApiToken::where('token', ApiToken::hashToken($plain))->first()?->user;
     }
 
     /**

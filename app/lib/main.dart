@@ -5,6 +5,7 @@ import 'package:provider/single_child_widget.dart';
 
 import 'l10n/app_localizations.dart';
 
+import 'services/auth_service.dart';
 import 'services/background_worker.dart';
 import 'services/device_id.dart';
 import 'services/notification_service.dart';
@@ -12,6 +13,7 @@ import 'services/settings_service.dart';
 import 'services/subscription_service.dart';
 import 'state/medicine_provider.dart';
 import 'theme/app_theme.dart';
+import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/lock_screen.dart';
 import 'presentation/screens/onboarding_screen.dart';
@@ -22,29 +24,29 @@ Future<void> main() async {
   final SettingsService settings = SettingsService();
   await settings.init();
 
-  // Start the 7-day trial locally on first launch so it works even offline.
-  // The backend is the source of truth and reconciles on refresh().
-  if (settings.trialEndsAt == null && !settings.isPremium) {
-    await settings.setTrialEndsAt(
-      DateTime.now().add(const Duration(days: 7)),
-    );
-  }
+  final String deviceId = await DeviceId.get();
+
+  final AuthService auth = AuthService(settings, deviceId);
+  await auth.init();
 
   await NotificationService.instance.init();
   await BackgroundWorker.init();
 
-  final String deviceId = await DeviceId.get();
   final SubscriptionService subscription =
       SubscriptionService(settings, deviceId);
-  _startBackgroundServices(subscription, settings);
+  _startBackgroundServices(auth, settings);
 
-  runApp(MedStockApp(settings: settings, subscription: subscription));
+  runApp(MedStockApp(
+    settings: settings,
+    auth: auth,
+    subscription: subscription,
+  ));
 }
 
 /// Kick off background services without blocking first paint.
-void _startBackgroundServices(
-    SubscriptionService subscription, SettingsService settings) {
-  subscription.refresh();
+void _startBackgroundServices(AuthService auth, SettingsService settings) {
+  // If already logged in, sync the user's entitlement (premium/trial).
+  if (auth.isLoggedIn) auth.refreshMe();
   BackgroundWorker.scheduleDailyDigest(
     warningDays: settings.warningDays,
     notifExpiry: settings.notifExpiry,
@@ -55,15 +57,21 @@ void _startBackgroundServices(
 
 class MedStockApp extends StatelessWidget {
   final SettingsService settings;
+  final AuthService auth;
   final SubscriptionService subscription;
-  const MedStockApp(
-      {super.key, required this.settings, required this.subscription});
+  const MedStockApp({
+    super.key,
+    required this.settings,
+    required this.auth,
+    required this.subscription,
+  });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: <SingleChildWidget>[
         ChangeNotifierProvider<SettingsService>.value(value: settings),
+        ChangeNotifierProvider<AuthService>.value(value: auth),
         ChangeNotifierProvider<SubscriptionService>.value(value: subscription),
         ChangeNotifierProvider<MedicineProvider>(
           create: (_) => MedicineProvider()..load(),
@@ -99,7 +107,7 @@ class MedStockApp extends StatelessWidget {
   }
 }
 
-/// Decides what the user sees: onboarding → trial/paid app → or the lock
+/// Routing gate: onboarding → login/signup → trial/paid app → or the lock
 /// paywall once the trial has ended with no active subscription.
 class _RootGate extends StatelessWidget {
   const _RootGate();
@@ -107,7 +115,9 @@ class _RootGate extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final SettingsService s = context.watch<SettingsService>();
+    final AuthService auth = context.watch<AuthService>();
     if (!s.onboarded) return const OnboardingScreen();
+    if (!auth.isLoggedIn) return const LoginScreen();
     if (!s.hasAccess) return const LockScreen();
     return const HomeScreen();
   }

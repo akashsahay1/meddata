@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
@@ -28,4 +29,15 @@ Route::prefix('v1')->group(function () {
 
     Route::post('backup', [BackupController::class, 'store']);
     Route::get('backup/latest', [BackupController::class, 'latest']);
+
+    // Email auth (custom Bearer token, no Sanctum)
+    Route::post('auth/register', [AuthController::class, 'register']);
+    Route::post('auth/login', [AuthController::class, 'login']);
+    Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('auth/reset-password', [AuthController::class, 'resetPassword']);
+
+    Route::middleware('auth.token')->group(function () {
+        Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::get('auth/me', [AuthController::class, 'me']);
+    });
 });

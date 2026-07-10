@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Entitlement extends Model
 {
     protected $fillable = [
-        'device_id', 'plan_id', 'product_id', 'status',
+        'device_id', 'user_id', 'plan_id', 'product_id', 'status',
         'purchase_token', 'expiry_time', 'is_premium',
         'trial_started_at', 'trial_ends_at', 'source',
         'razorpay_payment_id', 'razorpay_order_id', 'coupon_id',
@@ -20,6 +20,11 @@ class Entitlement extends Model
         'trial_started_at' => 'datetime',
         'trial_ends_at' => 'datetime',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function plan(): BelongsTo
     {

@@ -9,10 +9,13 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
-#[Fillable(['name', 'email', 'password', 'is_admin'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'is_admin'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
@@ -37,5 +40,33 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->is_admin === true;
+    }
+
+    /** All bearer tokens issued to this user. */
+    public function tokens(): HasMany
+    {
+        return $this->hasMany(ApiToken::class);
+    }
+
+    /** The user's current entitlement (latest by id). */
+    public function entitlement(): HasOne
+    {
+        return $this->hasOne(Entitlement::class)->latestOfMany();
+    }
+
+    /**
+     * Issue a new bearer token for this user.
+     * Stores only the SHA-256 hash; returns the PLAINTEXT token once.
+     */
+    public function issueToken(string $name = 'app'): string
+    {
+        $plain = Str::random(64);
+
+        $this->tokens()->create([
+            'token' => ApiToken::hashToken($plain),
+            'name' => $name,
+        ]);
+
+        return $plain;
     }
 }

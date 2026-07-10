@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/auth_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/device_id.dart';
 import '../../services/settings_service.dart';
@@ -113,6 +114,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(height: 1),
           _header('Account'),
+          Builder(builder: (BuildContext context) {
+            final AuthService auth = context.watch<AuthService>();
+            return ListTile(
+              leading: const Icon(Icons.account_circle_outlined),
+              title: Text(auth.name?.isNotEmpty == true
+                  ? auth.name!
+                  : (auth.email ?? 'Signed in')),
+              subtitle: auth.email != null ? Text(auth.email!) : null,
+            );
+          }),
           ListTile(
             leading: Icon(s.isPremium
                 ? Icons.verified_outlined
@@ -124,6 +135,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Log out'),
+            onTap: () => _confirmLogout(context),
           ),
           if (_devUnlocked) ...<Widget>[
             const Divider(height: 1),
@@ -223,6 +239,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (days != null) await s.setWarningDays(days);
+  }
+
+  Future<void> _confirmLogout(BuildContext context) async {
+    final bool ok = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext ctx) => AlertDialog(
+            title: const Text('Log out?'),
+            content: const Text(
+                'You will need to log in again to use the app. Your data stays '
+                'safe on this device.'),
+            actions: <Widget>[
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Log out')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !context.mounted) return;
+    await context.read<AuthService>().logout();
+    // The root gate rebuilds to the login screen automatically.
+    if (context.mounted) Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
   }
 
   Future<void> _exportJson(BuildContext context) async {

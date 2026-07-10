@@ -59,9 +59,13 @@ class SubscriptionService extends ChangeNotifier {
   Future<Map<String, dynamic>?> validateCoupon(String code, int planId) =>
       _api.validateCoupon(code: code, planId: planId);
 
-  Future<Map<String, dynamic>?> createOrder(int planId, String? couponCode) =>
+  Future<Map<String, dynamic>?> createOrder(int planId, String? couponCode,
+          {String? token}) =>
       _api.createOrder(
-          deviceId: deviceId, planId: planId, couponCode: couponCode);
+          deviceId: deviceId,
+          planId: planId,
+          couponCode: couponCode,
+          token: token);
 
   /// Verify a completed Razorpay payment; on success caches premium locally.
   Future<bool> verifyPayment({
@@ -70,6 +74,7 @@ class SubscriptionService extends ChangeNotifier {
     required String paymentId,
     required String signature,
     String? couponCode,
+    String? token,
   }) async {
     final Map<String, dynamic>? res = await _api.verifyPayment(
       deviceId: deviceId,
@@ -78,6 +83,7 @@ class SubscriptionService extends ChangeNotifier {
       paymentId: paymentId,
       signature: signature,
       couponCode: couponCode,
+      token: token,
     );
     final bool ok = (res?['premium'] as bool?) ?? false;
     if (ok) {

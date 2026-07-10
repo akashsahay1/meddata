@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApiToken;
 use App\Models\Entitlement;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,11 @@ class EntitlementController extends Controller
             ]);
         }
 
+        // Associate with the authenticated user when a valid Bearer token is present.
+        if (($user = $this->tokenUser($request)) && is_null($ent->user_id)) {
+            $ent->user_id = $user->id;
+        }
+
         // Re-evaluate the paid subscription against the clock.
         $ent->refreshStatus();
         $ent->save();
@@ -60,6 +66,18 @@ class EntitlementController extends Controller
             'days_left' => max(0, $daysLeft),
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
             'product_id' => $ent->product_id,
+            'user_id' => $ent->user_id,
         ]);
+    }
+
+    /** Resolve the user from a Bearer token if one is present (optional auth). */
+    private function tokenUser(Request $request): ?\App\Models\User
+    {
+        $plain = $request->bearerToken();
+        if (! $plain) {
+            return null;
+        }
+
+        return ApiToken::where('token', ApiToken::hashToken($plain))->first()?->user;
     }
 }

@@ -18,16 +18,47 @@ class ApiClient {
   Duration get _timeout => const Duration(seconds: 8);
 
   Future<Map<String, dynamic>?> _get(String path,
-      {Map<String, String>? query}) async {
+      {Map<String, String>? query, String? token}) async {
     try {
       final Uri uri =
           Uri.parse('$baseUrl$path').replace(queryParameters: query);
-      final http.Response res = await _http.get(uri).timeout(_timeout);
+      final http.Response res = await _http.get(uri, headers: <String, String>{
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      }).timeout(_timeout);
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
       }
     } catch (_) {}
     return null;
+  }
+
+  /// POST that also returns the HTTP status so auth flows can distinguish
+  /// invalid-credentials (422/401) from network failure (null).
+  Future<({int status, Map<String, dynamic>? body})> postResult(
+      String path, Map<String, dynamic> body,
+      {String? token}) async {
+    try {
+      final Uri uri = Uri.parse('$baseUrl$path');
+      final http.Response res = await _http
+          .post(
+            uri,
+            headers: <String, String>{
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
   }
 
   Future<Map<String, dynamic>?> _post(
@@ -64,6 +95,55 @@ class ApiClient {
   Future<Map<String, dynamic>?> registerTrial(String deviceId) =>
       _post('/device/trial', <String, dynamic>{'device_id': deviceId});
 
+  // ---- Auth (custom Bearer token) ----
+
+  Future<({int status, Map<String, dynamic>? body})> register({
+    required String name,
+    required String email,
+    required String password,
+    String? phone,
+    String? deviceId,
+  }) =>
+      postResult('/auth/register', <String, dynamic>{
+        'name': name,
+        'email': email,
+        'password': password,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        'device_id': ?deviceId,
+      });
+
+  Future<({int status, Map<String, dynamic>? body})> login({
+    required String email,
+    required String password,
+    String? deviceId,
+  }) =>
+      postResult('/auth/login', <String, dynamic>{
+        'email': email,
+        'password': password,
+        'device_id': ?deviceId,
+      });
+
+  Future<void> logout(String token) => _post('/auth/logout', <String, dynamic>{},
+      token: token);
+
+  Future<Map<String, dynamic>?> me(String token) =>
+      _get('/auth/me', token: token);
+
+  Future<({int status, Map<String, dynamic>? body})> forgotPassword(
+          String email) =>
+      postResult('/auth/forgot-password', <String, dynamic>{'email': email});
+
+  Future<({int status, Map<String, dynamic>? body})> resetPassword({
+    required String email,
+    required String code,
+    required String password,
+  }) =>
+      postResult('/auth/reset-password', <String, dynamic>{
+        'email': email,
+        'code': code,
+        'password': password,
+      });
+
   /// Validate a coupon code against a plan → discount + final amount.
   Future<Map<String, dynamic>?> validateCoupon({
     required String code,
@@ -79,13 +159,14 @@ class ApiClient {
     required String deviceId,
     required int planId,
     String? couponCode,
+    String? token,
   }) =>
       _post('/order/create', <String, dynamic>{
         'device_id': deviceId,
         'plan_id': planId,
         if (couponCode != null && couponCode.isNotEmpty)
           'coupon_code': couponCode,
-      });
+      }, token: token);
 
   /// Verify a completed Razorpay payment and activate the subscription.
   Future<Map<String, dynamic>?> verifyPayment({
@@ -95,6 +176,7 @@ class ApiClient {
     required String paymentId,
     required String signature,
     String? couponCode,
+    String? token,
   }) =>
       _post('/payment/verify', <String, dynamic>{
         'device_id': deviceId,
@@ -104,5 +186,5 @@ class ApiClient {
         'razorpay_signature': signature,
         if (couponCode != null && couponCode.isNotEmpty)
           'coupon_code': couponCode,
-      });
+      }, token: token);
 }

@@ -4,6 +4,7 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../core/formatters.dart';
 import '../../data/models/subscription_plan.dart';
+import '../../services/auth_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/subscription_service.dart';
 
@@ -95,9 +96,10 @@ class _SubscribeViewState extends State<SubscribeView> {
     if (plan == null) return;
     setState(() => _busy = true);
     final SubscriptionService sub = context.read<SubscriptionService>();
+    final String? token = context.read<AuthService>().token;
 
     final Map<String, dynamic>? order =
-        await sub.createOrder(plan.id, _couponApplied);
+        await sub.createOrder(plan.id, _couponApplied, token: token);
     if (!mounted) return;
     if (order == null) {
       setState(() => _busy = false);
@@ -119,10 +121,13 @@ class _SubscribeViewState extends State<SubscribeView> {
         paymentId: 'pay_dev_${DateTime.now().millisecondsSinceEpoch}',
         signature: 'dev',
         couponCode: _couponApplied,
+        token: token,
       );
       if (!mounted) return;
       setState(() => _busy = false);
       if (ok) {
+        await context.read<AuthService>().refreshMe();
+        if (!mounted) return;
         _snack('Payment successful (test mode). Premium unlocked.');
         widget.onUnlocked?.call();
       } else {
@@ -152,16 +157,20 @@ class _SubscribeViewState extends State<SubscribeView> {
     final SubscriptionPlan? plan = _selected;
     if (plan == null) return;
     final SubscriptionService sub = context.read<SubscriptionService>();
+    final String? token = context.read<AuthService>().token;
     final bool ok = await sub.verifyPayment(
       planId: plan.id,
       orderId: r.orderId ?? '',
       paymentId: r.paymentId ?? '',
       signature: r.signature ?? '',
       couponCode: _couponApplied,
+      token: token,
     );
     if (!mounted) return;
     setState(() => _busy = false);
     if (ok) {
+      await context.read<AuthService>().refreshMe();
+      if (!mounted) return;
       _snack('Payment successful. Premium unlocked.');
       widget.onUnlocked?.call();
     } else {
