@@ -21,6 +21,13 @@ class NotificationService {
   static const String _channelId = 'med_stock_alerts';
   static const String _channelName = 'Stock & Expiry Alerts';
 
+  /// Stable id for the daily digest notification so it can be updated and
+  /// cancelled deterministically.
+  static const int _digestNotificationId = 1001;
+
+  /// Local time of day (24h) at which the repeating daily digest fires.
+  static const int _digestHour = 9;
+
   Future<void> init() async {
     if (_ready) return;
     tzdata.initializeTimeZones();
@@ -78,20 +85,19 @@ class NotificationService {
     );
   }
 
-  /// Runs the digest: counts expiring/expired/low-stock and posts one summary.
-  Future<void> runDailyDigest({
-    int warningDays = 30,
-    bool notifyExpiry = true,
-    bool notifyLowStock = true,
+  /// Builds the digest body from the current medicine list, or null when there
+  /// is nothing worth reporting under the given preferences.
+  Future<String?> _buildDigestBody({
+    required int warningDays,
+    required bool notifyExpiry,
+    required bool notifyLowStock,
   }) async {
-    await init();
     final MedicineRepository repo = MedicineRepository();
     final List<Medicine> all = await repo.getAll();
 
     int expired = 0, expiring = 0, low = 0;
     for (final Medicine m in all) {
-      final MedicineStatus s =
-          MedicineStatus.of(m, warningDays: warningDays);
+      final MedicineStatus s = MedicineStatus.of(m, warningDays: warningDays);
       if (s.isExpired) {
         expired++;
       } else if (s.isExpiring) {
@@ -104,13 +110,84 @@ class NotificationService {
     if (notifyExpiry && expired > 0) parts.add('$expired expired');
     if (notifyExpiry && expiring > 0) parts.add('$expiring expiring soon');
     if (notifyLowStock && low > 0) parts.add('$low low on stock');
-    if (parts.isEmpty) return;
+    if (parts.isEmpty) return null;
 
-    await showNow(
-      1001,
-      'Medicine Stock Alert',
-      'You have ${parts.join(', ')}. Tap to review.',
+    return 'You have ${parts.join(', ')}. Tap to review.';
+  }
+
+  /// Computes the next occurrence of the digest hour in local time.
+  tz.TZDateTime _nextDigestTime() {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    tz.TZDateTime scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      _digestHour,
     );
+    if (!scheduled.isAfter(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  /// Runs the digest now: counts expiring/expired/low-stock and posts one
+  /// summary immediately.
+  Future<void> runDailyDigest({
+    int warningDays = 30,
+    bool notifyExpiry = true,
+    bool notifyLowStock = true,
+  }) async {
+    await init();
+    final String? body = await _buildDigestBody(
+      warningDays: warningDays,
+      notifyExpiry: notifyExpiry,
+      notifyLowStock: notifyLowStock,
+    );
+    if (body == null) return;
+    await showNow(_digestNotificationId, 'Medicine Stock Alert', body);
+  }
+
+  /// Schedules a daily repeating digest notification at a fixed local time.
+  ///
+  /// Without background execution the body is a snapshot recomputed each time
+  /// this is called (i.e. on app launch). It cancels any prior digest first,
+  /// then schedules a repeating notification only when there is something to
+  /// report.
+  Future<void> scheduleDailyDigest({
+    int warningDays = 30,
+    bool notifyExpiry = true,
+    bool notifyLowStock = true,
+  }) async {
+    await init();
+    await _plugin.cancel(id: _digestNotificationId);
+
+    final String? body = await _buildDigestBody(
+      warningDays: warningDays,
+      notifyExpiry: notifyExpiry,
+      notifyLowStock: notifyLowStock,
+    );
+    if (body == null) return;
+
+    try {
+      await _plugin.zonedSchedule(
+        id: _digestNotificationId,
+        title: 'Medicine Stock Alert',
+        body: body,
+        scheduledDate: _nextDigestTime(),
+        notificationDetails: _details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+    } catch (e) {
+      debugPrint('scheduleDailyDigest failed: $e');
+    }
+  }
+
+  /// Cancels the repeating daily digest notification.
+  Future<void> cancelDailyDigest() async {
+    await init();
+    await _plugin.cancel(id: _digestNotificationId);
   }
 
   /// Schedules a reminder for a single medicine's expiry window.

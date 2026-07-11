@@ -63,14 +63,13 @@ Future<void> _startBackgroundServices(
   }
 
   try {
-    await BackgroundWorker.init();
     await BackgroundWorker.scheduleDailyDigest(
       warningDays: settings.warningDays,
       notifExpiry: settings.notifExpiry,
       notifLowStock: settings.notifLowStock,
     );
   } catch (e) {
-    debugPrint('Background worker init skipped: $e');
+    debugPrint('Daily digest scheduling skipped: $e');
   }
 }
 

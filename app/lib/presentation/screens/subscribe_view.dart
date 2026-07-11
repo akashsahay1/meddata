@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../core/formatters.dart';
 import '../../data/models/subscription_plan.dart';
@@ -9,6 +8,7 @@ import '../../services/settings_service.dart';
 import '../../services/subscription_service.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'razorpay_checkout_screen.dart';
 
 /// The subscribe / paywall content: plans from the backend, coupon apply, and
 /// Razorpay checkout. Shared by the (dismissible) UpgradeScreen and the
@@ -23,7 +23,6 @@ class SubscribeView extends StatefulWidget {
 
 class _SubscribeViewState extends State<SubscribeView> {
   final TextEditingController _coupon = TextEditingController();
-  late final Razorpay _razorpay;
 
   List<SubscriptionPlan> _plans = <SubscriptionPlan>[];
   bool _loading = true;
@@ -46,16 +45,11 @@ class _SubscribeViewState extends State<SubscribeView> {
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
     _loadPlans();
   }
 
   @override
   void dispose() {
-    _razorpay.clear();
     _coupon.dispose();
     super.dispose();
   }
@@ -148,33 +142,34 @@ class _SubscribeViewState extends State<SubscribeView> {
       return;
     }
 
-    try {
-      _razorpay.open(<String, dynamic>{
-        'key': keyId,
-        'order_id': orderId,
-        'amount': amountPaise,
-        'currency': 'INR',
-        'name': 'Meddata',
-        'description': plan.name,
-        'prefill': <String, dynamic>{'contact': '', 'email': ''},
-        'theme': <String, dynamic>{'color': '#0E4D4A'},
-      });
-    } catch (e) {
-      setState(() => _busy = false);
-      _snack('Could not open checkout: $e');
-    }
-  }
+    // Real keys: open Razorpay Standard Checkout inside a WebView. It pops a
+    // {paymentId, orderId, signature} map on success, or null when the payment
+    // failed / the modal was dismissed / the user closed the screen.
+    final Map<String, String>? result =
+        await Navigator.of(context).push<Map<String, String>>(
+      MaterialPageRoute<Map<String, String>>(
+        builder: (BuildContext context) => RazorpayCheckoutScreen(
+          keyId: keyId,
+          orderId: orderId,
+          amountPaise: amountPaise,
+          description: plan.name,
+          prefillEmail: context.read<AuthService>().email ?? '',
+        ),
+      ),
+    );
+    if (!mounted) return;
 
-  Future<void> _onPaymentSuccess(PaymentSuccessResponse r) async {
-    final SubscriptionPlan? plan = _selected;
-    if (plan == null) return;
-    final SubscriptionService sub = context.read<SubscriptionService>();
-    final String? token = context.read<AuthService>().token;
+    if (result == null) {
+      setState(() => _busy = false);
+      _snack('Payment cancelled. You have not been charged.');
+      return;
+    }
+
     final bool ok = await sub.verifyPayment(
       planId: plan.id,
-      orderId: r.orderId ?? '',
-      paymentId: r.paymentId ?? '',
-      signature: r.signature ?? '',
+      orderId: result['orderId'] ?? orderId,
+      paymentId: result['paymentId'] ?? '',
+      signature: result['signature'] ?? '',
       couponCode: _couponApplied,
       token: token,
     );
@@ -188,16 +183,6 @@ class _SubscribeViewState extends State<SubscribeView> {
     } else {
       _snack('Payment could not be verified. If money was deducted, contact support.');
     }
-  }
-
-  void _onPaymentError(PaymentFailureResponse r) {
-    if (!mounted) return;
-    setState(() => _busy = false);
-    _snack('Payment failed: ${r.message ?? 'cancelled'}');
-  }
-
-  void _onExternalWallet(ExternalWalletResponse r) {
-    _snack('Selected wallet: ${r.walletName ?? ''}');
   }
 
   void _snack(String msg) {

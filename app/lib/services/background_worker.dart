@@ -1,53 +1,30 @@
-import 'package:workmanager/workmanager.dart';
-
 import 'notification_service.dart';
 
-const String kDailyDigestTask = 'med_stock_daily_digest';
-
-/// Entry point invoked by WorkManager in a background isolate.
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((String task, Map<String, dynamic>? input) async {
-    if (task == kDailyDigestTask) {
-      final int warningDays = (input?['warningDays'] as int?) ?? 30;
-      final bool notifExpiry = (input?['notifExpiry'] as bool?) ?? true;
-      final bool notifLow = (input?['notifLowStock'] as bool?) ?? true;
-      await NotificationService.instance.runDailyDigest(
-        warningDays: warningDays,
-        notifyExpiry: notifExpiry,
-        notifyLowStock: notifLow,
-      );
-    }
-    return true;
-  });
-}
-
-/// Configures the periodic daily background check.
+/// Thin facade over [NotificationService] for the daily digest.
+///
+/// The digest is delivered by a repeating local notification scheduled through
+/// flutter_local_notifications; there is no background isolate anymore.
 class BackgroundWorker {
-  static Future<void> init() async {
-    await Workmanager().initialize(callbackDispatcher);
-  }
+  const BackgroundWorker._();
 
+  /// Retained for call-site compatibility. Notification setup happens in
+  /// [NotificationService.init], so there is nothing to do here.
+  static Future<void> init() async {}
+
+  /// Schedules the repeating daily digest notification.
   static Future<void> scheduleDailyDigest({
     required int warningDays,
     required bool notifExpiry,
     required bool notifLowStock,
   }) async {
-    await Workmanager().registerPeriodicTask(
-      kDailyDigestTask,
-      kDailyDigestTask,
-      frequency: const Duration(hours: 24),
-      initialDelay: const Duration(minutes: 30),
-      existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-      constraints: Constraints(networkType: NetworkType.notRequired),
-      inputData: <String, dynamic>{
-        'warningDays': warningDays,
-        'notifExpiry': notifExpiry,
-        'notifLowStock': notifLowStock,
-      },
+    await NotificationService.instance.scheduleDailyDigest(
+      warningDays: warningDays,
+      notifyExpiry: notifExpiry,
+      notifyLowStock: notifLowStock,
     );
   }
 
+  /// Cancels the repeating daily digest notification.
   static Future<void> cancel() async =>
-      Workmanager().cancelByUniqueName(kDailyDigestTask);
+      NotificationService.instance.cancelDailyDigest();
 }
