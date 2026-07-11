@@ -7,6 +7,7 @@ import '../../data/models/stock_movement.dart';
 import '../../domain/medicine_status.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
+import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'add_edit_medicine_screen.dart';
 
@@ -22,6 +23,7 @@ class MedicineDetailScreen extends StatelessWidget {
 
     if (m == null) {
       return const Scaffold(
+        backgroundColor: AppColors.canvas,
         body: Center(child: Text('Medicine not found')),
       );
     }
@@ -30,49 +32,46 @@ class MedicineDetailScreen extends StatelessWidget {
     final String cur = settings.currency;
 
     return Scaffold(
+      backgroundColor: AppColors.canvas,
       appBar: AppBar(
-        title: const Text('Details'),
+        backgroundColor: AppColors.canvas,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Details',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.ink,
+            letterSpacing: -0.2,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: AppColors.ink),
         actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => Navigator.of(context).push(
+          _AppBarAction(
+            icon: Icons.edit_outlined,
+            onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => AddEditMedicineScreen(existing: med),
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _delete(context, med),
+          _AppBarAction(
+            icon: Icons.delete_outline,
+            color: AppColors.statusRed,
+            onTap: () => _delete(context, med),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 4, 18, 32),
         children: <Widget>[
-          Text(med.name,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          if (med.brand.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(med.brand, style: const TextStyle(fontSize: 15)),
-            ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: <Widget>[
-              StatusChip.forExpiry(status),
-              if (med.quantity == 0)
-                StatusChip.outOfStock()
-              else if (status.isLowStock)
-                StatusChip.lowStock(),
-            ],
-          ),
-          const SizedBox(height: 20),
+          _HeaderCard(medicine: med, status: status),
+          const SizedBox(height: 16),
           _QuantityCard(medicine: med),
           const SizedBox(height: 16),
-          _infoCard(context, <List<String>>[
+          _infoCard(<List<String>>[
             <String>['Quantity', '${med.quantity} ${med.unit}'],
             <String>['Low-stock alert at', '${med.lowStockThreshold}'],
             <String>['Expiry date', Fmt.date(med.expiryDate)],
@@ -108,6 +107,8 @@ class MedicineDetailScreen extends StatelessWidget {
                   onPressed: () => Navigator.of(ctx).pop(false),
                   child: const Text('Cancel')),
               TextButton(
+                  style: TextButton.styleFrom(
+                      foregroundColor: AppColors.statusRed),
                   onPressed: () => Navigator.of(ctx).pop(true),
                   child: const Text('Delete')),
             ],
@@ -130,31 +131,160 @@ class MedicineDetailScreen extends StatelessWidget {
     }
   }
 
-  Widget _infoCard(BuildContext context, List<List<String>> rows) {
+  Widget _infoCard(List<List<String>> rows) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.onSurface),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.card),
       ),
       child: Column(
         children: <Widget>[
           for (int i = 0; i < rows.length; i++) ...<Widget>[
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   SizedBox(
                     width: 140,
-                    child: Text(rows[i][0],
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    child: Text(
+                      rows[i][0],
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
                   ),
-                  Expanded(child: Text(rows[i][1])),
+                  Expanded(
+                    child: Text(
+                      rows[i][1],
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            if (i != rows.length - 1) const Divider(height: 1),
+            if (i != rows.length - 1)
+              const Divider(height: 1, thickness: 1, color: AppColors.divider),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AppBarAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color color;
+  const _AppBarAction({
+    required this.icon,
+    required this.onTap,
+    this.color = AppColors.ink,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(11),
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(icon, size: 19, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final Medicine medicine;
+  final MedicineStatus status;
+  const _HeaderCard({required this.medicine, required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> subParts = <String>[
+      if (medicine.brand.isNotEmpty) medicine.brand,
+      if (medicine.category.isNotEmpty) medicine.category,
+    ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.cardLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              InitialsAvatar(
+                text: initialsOf(medicine.name),
+                size: 56,
+                color: AppColors.green,
+                bg: AppColors.canvas,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      medicine.name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.ink,
+                        letterSpacing: -0.3,
+                        height: 1.1,
+                      ),
+                    ),
+                    if (subParts.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          subParts.join(' · '),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              StatusChip.forExpiry(status),
+              if (medicine.quantity == 0)
+                StatusChip.outOfStock()
+              else if (status.isLowStock)
+                StatusChip.lowStock(),
+            ],
+          ),
         ],
       ),
     );
@@ -168,49 +298,78 @@ class _QuantityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.read<MedicineProvider>();
-    final Color fg = Theme.of(context).colorScheme.onSurface;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       decoration: BoxDecoration(
-        border: Border.all(color: fg),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.card,
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(AppRadii.card),
       ),
       child: Row(
         children: <Widget>[
-          _roundBtn(context, Icons.remove, () {
-            mp.adjustQuantity(medicine.id, -1, StockReason.sell);
-          }),
+          _stepBtn(
+            icon: Icons.remove,
+            filled: false,
+            onTap: () =>
+                mp.adjustQuantity(medicine.id, -1, StockReason.sell),
+          ),
           Expanded(
             child: Column(
               children: <Widget>[
-                Text('${medicine.quantity}',
-                    style: const TextStyle(
-                        fontSize: 32, fontWeight: FontWeight.w800)),
-                Text(medicine.unit, style: const TextStyle(fontSize: 12)),
+                Text(
+                  '${medicine.quantity}',
+                  style: const TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.ink,
+                    letterSpacing: -0.5,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'in stock (${medicine.unit})',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                  ),
+                ),
               ],
             ),
           ),
-          _roundBtn(context, Icons.add, () {
-            mp.adjustQuantity(medicine.id, 1, StockReason.restock);
-          }),
+          _stepBtn(
+            icon: Icons.add,
+            filled: true,
+            onTap: () =>
+                mp.adjustQuantity(medicine.id, 1, StockReason.restock),
+          ),
         ],
       ),
     );
   }
 
-  Widget _roundBtn(BuildContext context, IconData icon, VoidCallback onTap) {
-    final Color fg = Theme.of(context).colorScheme.onSurface;
+  Widget _stepBtn({
+    required IconData icon,
+    required bool filled,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
-      customBorder: const CircleBorder(),
+      borderRadius: BorderRadius.circular(AppRadii.input),
       child: Container(
-        width: 48,
-        height: 48,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
-          border: Border.all(color: fg, width: 2),
-          shape: BoxShape.circle,
+          color: filled ? AppColors.orange : AppColors.canvas,
+          border: filled ? null : Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(AppRadii.input),
         ),
-        child: Icon(icon),
+        child: Icon(
+          icon,
+          size: 24,
+          color: filled ? Colors.white : AppColors.green,
+        ),
       ),
     );
   }
@@ -229,35 +388,27 @@ class _MovementHistory extends StatelessWidget {
           AsyncSnapshot<List<StockMovement>> snapshot) {
         final List<StockMovement> moves = snapshot.data ?? <StockMovement>[];
         if (moves.isEmpty) return const SizedBox.shrink();
+        final int shown = moves.length < 20 ? moves.length : 20;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text('Stock history',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            const SectionHeader(title: 'Stock history'),
+            const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
-                border:
-                    Border.all(color: Theme.of(context).colorScheme.onSurface),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.card,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(AppRadii.card),
               ),
               child: Column(
                 children: <Widget>[
-                  for (int i = 0; i < moves.length && i < 20; i++) ...<Widget>[
-                    ListTile(
-                      dense: true,
-                      leading: Icon(
-                        moves[i].change >= 0 ? Icons.add : Icons.remove,
-                        size: 18,
-                      ),
-                      title: Text(
-                        '${moves[i].change >= 0 ? '+' : ''}${moves[i].change} · ${moves[i].reason.name}',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      trailing: Text(Fmt.dateShort(moves[i].createdAt)),
-                    ),
-                    if (i != moves.length - 1 && i < 19)
-                      const Divider(height: 1),
+                  for (int i = 0; i < shown; i++) ...<Widget>[
+                    _movementRow(moves[i]),
+                    if (i != shown - 1)
+                      const Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppColors.divider),
                   ],
                 ],
               ),
@@ -265,6 +416,56 @@ class _MovementHistory extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _movementRow(StockMovement move) {
+    final bool up = move.change >= 0;
+    final Color accent = up ? AppColors.statusGreen : AppColors.statusRed;
+    final Color accentBg = up ? AppColors.statusGreenBg : AppColors.statusRedBg;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: <Widget>[
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: accentBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              up ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 17,
+              color: accent,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  '${up ? '+' : ''}${move.change} ${move.reason.name}',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            Fmt.dateShort(move.createdAt),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

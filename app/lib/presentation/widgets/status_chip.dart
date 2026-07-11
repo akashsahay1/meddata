@@ -1,82 +1,85 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/medicine_status.dart';
+import '../../theme/app_theme.dart';
+import 'ui_kit.dart';
 
-/// A monochrome status pill. Distinction is by border style + icon + weight,
-/// never by color. Expired = filled (inverted), Expiring = solid border,
-/// Low stock = dashed-look via double border, OK = subtle.
+// Re-export the shared kit so files importing status_chip.dart also get the
+// new widgets (StatusPill, MedicineTile, etc.).
+export 'ui_kit.dart';
+
+/// Maps a computed [MedicineStatus] (+ quantity) to the right colored pill.
+StatusPill medicineStatusPill(MedicineStatus s, int quantity) {
+  if (s.isExpired) return StatusPill.danger('Expired');
+  if (s.isExpiring) return StatusPill.danger('Expiring');
+  if (quantity == 0) return StatusPill.danger('Out of stock');
+  if (s.isLowStock) return StatusPill.low();
+  return StatusPill.inStock();
+}
+
+/// Backwards-compatible status label. Now rendered as a colored [StatusPill]
+/// per the new design; the old {label, icon, emphasized, bold} API is kept so
+/// existing call sites keep compiling.
 class StatusChip extends StatelessWidget {
   final String label;
   final IconData icon;
-  final bool emphasized; // inverted fill for the most urgent state
+  final bool emphasized;
   final bool bold;
+  final Color color;
+  final Color bg;
 
   const StatusChip({
     super.key,
     required this.label,
-    required this.icon,
+    this.icon = Icons.circle,
     this.emphasized = false,
     this.bold = true,
+    this.color = AppColors.statusGreen,
+    this.bg = AppColors.statusGreenBg,
   });
 
   factory StatusChip.forExpiry(MedicineStatus s) {
     switch (s.expiryState) {
       case ExpiryState.expired:
-        return StatusChip(
-          label: s.expiryLabel,
+        return const StatusChip(
+          label: 'Expired',
           icon: Icons.error_outline,
-          emphasized: true,
+          color: AppColors.statusRed,
+          bg: AppColors.statusRedBg,
         );
       case ExpiryState.expiring:
-        return StatusChip(label: s.expiryLabel, icon: Icons.schedule);
+        return const StatusChip(
+          label: 'Expiring',
+          icon: Icons.schedule,
+          color: AppColors.statusRed,
+          bg: AppColors.statusRedBg,
+        );
       case ExpiryState.ok:
-        return StatusChip(
-          label: 'OK',
+        return const StatusChip(
+          label: 'In stock',
           icon: Icons.check_circle_outline,
-          bold: false,
+          color: AppColors.statusGreen,
+          bg: AppColors.statusGreenBg,
         );
     }
   }
 
   static Widget lowStock() => const StatusChip(
-        label: 'LOW STOCK',
+        label: 'Low',
         icon: Icons.inventory_2_outlined,
+        color: AppColors.statusAmber,
+        bg: AppColors.statusAmberBg,
       );
 
   static Widget outOfStock() => const StatusChip(
-        label: 'OUT OF STOCK',
+        label: 'Out of stock',
         icon: Icons.remove_shopping_cart_outlined,
-        emphasized: true,
+        color: AppColors.statusRed,
+        bg: AppColors.statusRedBg,
       );
 
   @override
   Widget build(BuildContext context) {
-    final Color fg = Theme.of(context).colorScheme.onSurface;
-    final Color bg = Theme.of(context).colorScheme.surface;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: emphasized ? fg : bg,
-        border: Border.all(color: fg, width: emphasized ? 1 : 1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 13, color: emphasized ? bg : fg),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              letterSpacing: 0.3,
-              height: 1,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
-              color: emphasized ? bg : fg,
-            ),
-          ),
-        ],
-      ),
-    );
+    return StatusPill(text: label, color: color, bg: bg);
   }
 }

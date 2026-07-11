@@ -72,3 +72,8 @@ flutter:
   generate: true
   assets:
     - assets/images/
+
+  fonts:
+    - family: GoogleSansFlex
+      fonts:
+        - asset: assets/fonts/GoogleSansFlex-Variable.ttf

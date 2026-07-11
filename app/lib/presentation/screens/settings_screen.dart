@@ -10,6 +10,8 @@ import '../../services/backup_service.dart';
 import '../../services/device_id.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
+import '../../theme/app_theme.dart';
+import '../widgets/ui_kit.dart';
 import 'upgrade_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -20,6 +22,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const Color _chevron = Color(0xFFB4C4C1);
+  static const Color _rowLine = Color(0xFFF2F5F4);
+
   int _versionTaps = 0;
   bool _devUnlocked = false;
   String _deviceId = '…';
@@ -53,126 +58,140 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final SettingsService s = context.watch<SettingsService>();
+    final AuthService auth = context.watch<AuthService>();
+    final double topInset = MediaQuery.of(context).padding.top;
+
+    final String displayName = auth.name?.isNotEmpty == true
+        ? auth.name!
+        : (auth.email ?? 'Signed in');
+    final String? displayEmail =
+        auth.name?.isNotEmpty == true ? auth.email : null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      backgroundColor: AppColors.canvas,
       body: ListView(
+        padding: EdgeInsets.zero,
         children: <Widget>[
-          _header('Appearance'),
-          ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
-            title: const Text('Theme'),
-            subtitle: Text(_themeLabel(s.themeMode)),
-            onTap: () => _pickTheme(context, s),
+          _header(displayName, displayEmail, topInset),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            child: _planCard(context, s),
           ),
-          const Divider(height: 1),
-          _header('Alerts'),
-          ListTile(
-            leading: const Icon(Icons.schedule),
-            title: const Text('Expiry warning window'),
-            subtitle: Text('${s.warningDays} days before expiry'),
-            onTap: () => _pickWarningDays(context, s),
-          ),
-          ListTile(
-            leading: const Icon(Icons.access_time),
-            title: const Text('Daily reminder time'),
-            subtitle: Text(s.reminderTime.format(context)),
-            onTap: () async {
-              final TimeOfDay? t = await showTimePicker(
-                  context: context, initialTime: s.reminderTime);
-              if (t != null) await s.setReminderTime(t);
-            },
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.event_busy_outlined),
-            title: const Text('Expiry notifications'),
-            value: s.notifExpiry,
-            onChanged: s.setNotifExpiry,
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.inventory_2_outlined),
-            title: const Text('Low-stock notifications'),
-            value: s.notifLowStock,
-            onChanged: s.setNotifLowStock,
-          ),
-          const Divider(height: 1),
-          _header('Data'),
-          ListTile(
-            leading: const Icon(Icons.file_upload_outlined),
-            title: const Text('Export backup (JSON)'),
-            onTap: () => _exportJson(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.table_view_outlined),
-            title: const Text('Export as CSV'),
-            onTap: () => _exportCsv(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Import from file (JSON / CSV)'),
-            onTap: () => _import(context),
-          ),
-          const Divider(height: 1),
-          _header('Account'),
-          Builder(builder: (BuildContext context) {
-            final AuthService auth = context.watch<AuthService>();
-            return ListTile(
-              leading: const Icon(Icons.account_circle_outlined),
-              title: Text(auth.name?.isNotEmpty == true
-                  ? auth.name!
-                  : (auth.email ?? 'Signed in')),
-              subtitle: auth.email != null ? Text(auth.email!) : null,
-            );
-          }),
-          ListTile(
-            leading: Icon(s.isPremium
-                ? Icons.verified_outlined
-                : Icons.workspace_premium_outlined),
-            title: Text(s.isPremium ? 'Premium active' : 'Upgrade to Premium'),
-            subtitle: Text(s.isPremium
-                ? 'All features unlocked'
-                : 'Unlimited medicines & more'),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+
+          // Appearance
+          _sectionLabel('Appearance'),
+          _menuCard(<Widget>[
+            _menuRow(
+              icon: Icons.brightness_6_outlined,
+              label: 'Theme',
+              value: _themeLabel(s.themeMode),
+              onTap: () => _pickTheme(context, s),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Log out'),
-            onTap: () => _confirmLogout(context),
-          ),
-          if (_devUnlocked) ...<Widget>[
-            const Divider(height: 1),
-            _header('Developer / Testing'),
-            SwitchListTile(
-              secondary: const Icon(Icons.workspace_premium_outlined),
-              title: const Text('Test premium unlock'),
-              subtitle: const Text(
-                  'Unlocks all premium features locally for testing '
-                  '(bypasses Google Play).'),
-              value: s.isPremium,
-              onChanged: (bool v) => s.setPremium(v),
+          ]),
+
+          // Alerts
+          _sectionLabel('Alerts'),
+          _menuCard(<Widget>[
+            _menuRow(
+              icon: Icons.schedule,
+              label: 'Expiry warning window',
+              value: '${s.warningDays} days',
+              onTap: () => _pickWarningDays(context, s),
             ),
-            ListTile(
-              leading: const Icon(Icons.perm_device_information_outlined),
-              title: const Text('Device ID'),
-              subtitle: Text(_deviceId),
-              trailing: const Icon(Icons.copy, size: 18),
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: _deviceId));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Device ID copied')),
-                );
+            _menuRow(
+              icon: Icons.access_time,
+              label: 'Daily reminder time',
+              value: s.reminderTime.format(context),
+              onTap: () async {
+                final TimeOfDay? t = await showTimePicker(
+                    context: context, initialTime: s.reminderTime);
+                if (t != null) await s.setReminderTime(t);
               },
             ),
+            _switchRow(
+              icon: Icons.event_busy_outlined,
+              label: 'Expiry notifications',
+              value: s.notifExpiry,
+              onChanged: s.setNotifExpiry,
+            ),
+            _switchRow(
+              icon: Icons.inventory_2_outlined,
+              label: 'Low-stock notifications',
+              value: s.notifLowStock,
+              onChanged: s.setNotifLowStock,
+            ),
+          ]),
+
+          // Data
+          _sectionLabel('Data'),
+          _menuCard(<Widget>[
+            _menuRow(
+              icon: Icons.file_upload_outlined,
+              label: 'Export backup (JSON)',
+              onTap: () => _exportJson(context),
+            ),
+            _menuRow(
+              icon: Icons.table_view_outlined,
+              label: 'Export as CSV',
+              onTap: () => _exportCsv(context),
+            ),
+            _menuRow(
+              icon: Icons.file_download_outlined,
+              label: 'Import from file (JSON / CSV)',
+              onTap: () => _import(context),
+            ),
+          ]),
+
+          if (_devUnlocked) ...<Widget>[
+            _sectionLabel('Developer / Testing'),
+            _menuCard(<Widget>[
+              _switchRow(
+                icon: Icons.workspace_premium_outlined,
+                label: 'Test premium unlock',
+                value: s.isPremium,
+                onChanged: (bool v) => s.setPremium(v),
+              ),
+              _menuRow(
+                icon: Icons.perm_device_information_outlined,
+                label: 'Device ID',
+                value: _deviceId,
+                trailing: const Icon(Icons.copy, size: 18, color: AppColors.muted),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: _deviceId));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Device ID copied')),
+                  );
+                },
+              ),
+            ]),
           ],
-          const Divider(height: 1),
-          _header('About'),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Meddata — Medicine Stock & Expiry Tracker'),
-            subtitle: const Text('Version 1.0.0'),
-            onTap: _onVersionTap,
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
+            child: SecondaryButton(
+              label: 'Log out',
+              icon: Icons.logout,
+              onPressed: () => _confirmLogout(context),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+          Center(
+            child: GestureDetector(
+              onTap: _onVersionTap,
+              behavior: HitTestBehavior.opaque,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'Meddata v1.0.0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF9BAAA7),
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 24),
         ],
@@ -180,14 +199,308 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _header(String text) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(
-                fontSize: 12,
+  // --- Green profile header -------------------------------------------------
+
+  Widget _header(String name, String? email, double topInset) {
+    return Container(
+      width: double.infinity,
+      color: AppColors.green,
+      padding: EdgeInsets.fromLTRB(22, topInset + 24, 22, 30),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Container(
+            width: 64,
+            height: 64,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.greenMid,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              initialsOf(name),
+              style: const TextStyle(
+                fontSize: 22,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 0.6)),
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                    color: Colors.white,
+                  ),
+                ),
+                if (email != null && email.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onDarkMuted,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Dark-green trial / premium card -------------------------------------
+
+  Widget _planCard(BuildContext context, SettingsService s) {
+    final bool premium = s.isPremium;
+    final int daysLeft = s.trialDaysLeft;
+
+    final String eyebrow = premium ? 'Meddata Pro' : 'Free trial';
+    final String headline = premium
+        ? 'Premium active'
+        : (daysLeft > 0 ? '$daysLeft days left' : 'Trial ended');
+    final String sub = premium
+        ? 'All features unlocked'
+        : 'Then choose a plan to keep alerts on';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.greenDarkest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      eyebrow.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: AppColors.onDarkFaint,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      headline,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      sub,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onDarkMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(
+                  premium ? Icons.verified_outlined : Icons.shield_outlined,
+                  size: 22,
+                  color: AppColors.orange,
+                ),
+              ),
+            ],
+          ),
+          if (!premium) ...<Widget>[
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+                ),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(46),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                ),
+                child: const Text('Upgrade to Pro'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --- Menu building blocks -------------------------------------------------
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
+        child: Text(
+          text.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+            color: AppColors.muted,
+          ),
+        ),
       );
+
+  Widget _menuCard(List<Widget> rows) {
+    final List<Widget> children = <Widget>[];
+    for (int i = 0; i < rows.length; i++) {
+      children.add(rows[i]);
+      if (i != rows.length - 1) {
+        children.add(const Divider(
+          height: 1,
+          thickness: 1,
+          indent: 62,
+          color: _rowLine,
+        ));
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(color: AppColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: children),
+      ),
+    );
+  }
+
+  Widget _menuRow({
+    required IconData icon,
+    required String label,
+    String? value,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: <Widget>[
+              _iconChip(icon),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              if (value != null)
+                Flexible(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 6),
+              trailing ??
+                  const Icon(Icons.chevron_right, size: 20, color: _chevron),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _switchRow({
+    required IconData icon,
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Row(
+        children: <Widget>[
+          _iconChip(icon),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.ink,
+              ),
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconChip(IconData icon) => Container(
+        width: 34,
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.canvas,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: AppColors.green),
+      );
+
+  // --- Preserved logic ------------------------------------------------------
 
   String _themeLabel(ThemeMode m) {
     switch (m) {

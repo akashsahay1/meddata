@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Shared header for the auth screens (monochrome).
+import '../../../theme/app_theme.dart';
+import '../../widgets/ui_kit.dart';
+
+/// Shared header for the auth screens: Meddata brand mark + wordmark, a bold
+/// title and a muted subtitle, in the green/orange design language.
 class AuthHeader extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -8,26 +12,45 @@ class AuthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fg = Theme.of(context).colorScheme.onSurface;
     return Column(
       children: <Widget>[
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            border: Border.all(color: fg, width: 2),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Icon(Icons.medical_services_outlined, size: 34),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const BrandMark(size: 40),
+            const SizedBox(width: 12),
+            Text(
+              'Meddata',
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.6,
+                color: AppColors.green,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text(title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 28),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.6,
+            color: AppColors.ink,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: fg)),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.muted,
+          ),
+        ),
       ],
     );
   }

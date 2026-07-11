@@ -14,8 +14,8 @@ import 'services/subscription_service.dart';
 import 'state/medicine_provider.dart';
 import 'theme/app_theme.dart';
 import 'presentation/screens/auth/login_screen.dart';
-import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/lock_screen.dart';
+import 'presentation/screens/main_shell.dart';
 import 'presentation/screens/onboarding_screen.dart';
 
 Future<void> main() async {
@@ -122,6 +122,6 @@ class _RootGate extends StatelessWidget {
     if (!s.onboarded) return const OnboardingScreen();
     if (!auth.isLoggedIn) return const LoginScreen();
     if (!s.hasAccess) return const LockScreen();
-    return const HomeScreen();
+    return const MainShell();
   }
 }

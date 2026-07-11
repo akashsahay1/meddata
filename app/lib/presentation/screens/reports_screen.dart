@@ -8,6 +8,8 @@ import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
+import '../../theme/app_theme.dart';
+import '../widgets/ui_kit.dart';
 import 'upgrade_screen.dart';
 
 class ReportsScreen extends StatelessWidget {
@@ -33,6 +35,9 @@ class ReportsScreen extends StatelessWidget {
     final Map<String, int> byCategory = _byCategory(mp.visibleAllForAlerts);
     final int maxCat =
         byCategory.values.fold(0, (int a, int b) => a > b ? a : b);
+    final Color amber = mp.lowStockCount > 0 ? AppColors.statusAmber : AppColors.muted;
+    final Color expSoon = mp.expiringCount > 0 ? AppColors.statusRed : AppColors.muted;
+    final Color expired = mp.expiredCount > 0 ? AppColors.statusRed : AppColors.muted;
 
     return Scaffold(
       appBar: AppBar(
@@ -43,37 +48,103 @@ class ReportsScreen extends StatelessWidget {
             tooltip: 'Export PDF',
             onPressed: () => _exportPdf(context, mp, cur),
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
         children: <Widget>[
-          _statRow(context, <List<String>>[
-            <String>['Total medicines', '${mp.totalCount}'],
-            <String>['Stock value', Fmt.money(mp.totalStockValue, symbol: cur)],
-          ]),
+          const SectionHeader(title: 'Overview'),
           const SizedBox(height: 12),
-          _statRow(context, <List<String>>[
-            <String>['Expiring soon', '${mp.expiringCount}'],
-            <String>['Expired', '${mp.expiredCount}'],
-          ]),
-          const SizedBox(height: 12),
-          _statRow(context, <List<String>>[
-            <String>['Low stock', '${mp.lowStockCount}'],
-            <String>[
-              'Expired value',
-              Fmt.money(_expiredValue(mp), symbol: cur)
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: StatCard(
+                  label: 'Total medicines',
+                  value: '${mp.totalCount}',
+                  sub: '${byCategory.length} categories',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'Stock value',
+                  value: Fmt.money(mp.totalStockValue, symbol: cur),
+                ),
+              ),
             ],
-          ]),
-          const SizedBox(height: 24),
-          const Text('Medicines by category',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          ),
           const SizedBox(height: 12),
-          if (byCategory.isEmpty)
-            const Text('No category data yet.')
-          else
-            ...byCategory.entries.map((MapEntry<String, int> e) =>
-                _BarRow(label: e.key, value: e.value, max: maxCat)),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: StatCard(
+                  label: 'Expiring soon',
+                  value: '${mp.expiringCount}',
+                  sub: 'Needs attention',
+                  subColor: expSoon,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'Expired',
+                  value: '${mp.expiredCount}',
+                  sub: 'Remove from stock',
+                  subColor: expired,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: StatCard(
+                  label: 'Low stock',
+                  value: '${mp.lowStockCount}',
+                  sub: 'Reorder soon',
+                  subColor: amber,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: StatCard(
+                  label: 'Expired value',
+                  value: Fmt.money(_expiredValue(mp), symbol: cur),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 26),
+          const SectionHeader(title: 'Medicines by category'),
+          const SizedBox(height: 14),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppRadii.card),
+              border: Border.all(color: AppColors.border),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+            child: byCategory.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text(
+                      'No category data yet.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  )
+                : Column(
+                    children: <Widget>[
+                      for (final MapEntry<String, int> e in byCategory.entries)
+                        _BarRow(label: e.key, value: e.value, max: maxCat),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
@@ -97,36 +168,6 @@ class ReportsScreen extends StatelessWidget {
       if (mp.statusOf(m).isExpired) v += m.stockValue;
     }
     return v;
-  }
-
-  Widget _statRow(BuildContext context, List<List<String>> stats) {
-    return Row(
-      children: <Widget>[
-        for (int i = 0; i < stats.length; i++) ...<Widget>[
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                border:
-                    Border.all(color: Theme.of(context).colorScheme.onSurface),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(stats[i][1],
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(stats[i][0], style: const TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-          ),
-          if (i != stats.length - 1) const SizedBox(width: 12),
-        ],
-      ],
-    );
   }
 
   Future<void> _exportPdf(
@@ -171,39 +212,53 @@ class _BarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color fg = Theme.of(context).colorScheme.onSurface;
     final double frac = max == 0 ? 0 : value / max;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
               Expanded(
-                  child: Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600))),
-              Text('$value', style: const TextStyle(fontWeight: FontWeight.w700)),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ),
+              Text(
+                '$value',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.green,
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          // Monochrome bar: black fill on bordered track.
+          const SizedBox(height: 7),
+          // Green fill on a soft canvas track.
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints c) => Container(
-              height: 14,
+              height: 10,
               decoration: BoxDecoration(
-                border: Border.all(color: fg),
-                borderRadius: BorderRadius.circular(3),
+                color: AppColors.canvas,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Container(
-                  width: (c.maxWidth - 2) * frac,
+                  width: c.maxWidth * frac,
+                  height: 10,
                   decoration: BoxDecoration(
-                    color: fg,
-                    borderRadius: BorderRadius.circular(2),
+                    color: AppColors.green,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
                 ),
               ),
@@ -223,22 +278,50 @@ class _PremiumLock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(Icons.lock_outline, size: 56),
-            const SizedBox(height: 16),
-            const Text('Reports are a Premium feature',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            Container(
+              width: 76,
+              height: 76,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.statusAmberBg,
+                borderRadius: BorderRadius.circular(AppRadii.cardLg),
+              ),
+              child: const Icon(Icons.lock_outline,
+                  size: 34, color: AppColors.statusAmber),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Reports are a Premium feature',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.3,
+                color: AppColors.ink,
+              ),
+            ),
+            const SizedBox(height: 10),
             const Text(
               'Upgrade to see stock value, expiry trends, category breakdowns '
               'and export PDF reports.',
               textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
+                color: AppColors.muted,
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: onUpgrade, child: const Text('Upgrade')),
+            const SizedBox(height: 24),
+            PrimaryButton(
+              label: 'Upgrade to Premium',
+              icon: Icons.workspace_premium_outlined,
+              onPressed: onUpgrade,
+            ),
           ],
         ),
       ),

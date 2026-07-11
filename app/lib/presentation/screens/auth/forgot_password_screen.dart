@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../services/auth_service.dart';
+import '../../../theme/app_theme.dart';
+import '../../widgets/ui_kit.dart';
 import 'auth_widgets.dart';
 
 /// Two-step reset: 1) enter email → get a 6-digit code, 2) enter code + new
@@ -73,87 +76,216 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
+      backgroundColor: AppColors.canvas,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                const AuthHeader(
-                  title: 'Forgot password',
-                  subtitle: 'We will email you a 6-digit reset code',
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _email,
-                  enabled: !_codeSent,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.mail_outline),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  AuthHeader(
+                    title: 'Forgot password',
+                    subtitle: _codeSent
+                        ? 'Enter the code we emailed you and pick a new password'
+                        : 'We will email you a 6-digit reset code',
                   ),
-                  validator: AuthValidators.email,
-                ),
-                if (_codeSent) ...<Widget>[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _code,
-                    keyboardType: TextInputType.number,
-                    maxLength: 6,
-                    decoration: const InputDecoration(
-                      labelText: '6-digit code',
-                      prefixIcon: Icon(Icons.pin_outlined),
-                      counterText: '',
+                  const SizedBox(height: 30),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(AppRadii.cardLg),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x140A302E),
+                          blurRadius: 24,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    validator: (String? v) =>
-                        (v == null || v.trim().length != 6)
-                            ? 'Enter the 6-digit code'
-                            : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        LabeledField(
+                          label: 'Email',
+                          hint: 'you@example.com',
+                          controller: _email,
+                          enabled: !_codeSent,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: AuthValidators.email,
+                        ),
+                        if (_codeSent) ...<Widget>[
+                          const SizedBox(height: 16),
+                          _LabeledCodeField(controller: _code),
+                          const SizedBox(height: 16),
+                          _PasswordField(
+                            controller: _password,
+                            obscure: _obscure,
+                            onToggle: () =>
+                                setState(() => _obscure = !_obscure),
+                          ),
+                        ],
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed:
+                              _busy ? null : (_codeSent ? _reset : _sendCode),
+                          child: _busy
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  ),
+                                )
+                              : Text(_codeSent
+                                  ? 'Reset password'
+                                  : 'Send reset code'),
+                        ),
+                        if (_codeSent) ...<Widget>[
+                          const SizedBox(height: 4),
+                          Center(
+                            child: TextButton(
+                              onPressed: _busy ? null : _sendCode,
+                              child: const Text('Resend code'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _password,
-                    obscureText: _obscure,
-                    decoration: InputDecoration(
-                      labelText: 'New password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Text(
+                        'Back to log in',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.orange,
+                        ),
                       ),
                     ),
-                    validator: AuthValidators.password,
                   ),
                 ],
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _busy ? null : (_codeSent ? _reset : _sendCode),
-                  child: _busy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(_codeSent ? 'Reset password' : 'Send reset code'),
-                ),
-                if (_codeSent) ...<Widget>[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: TextButton(
-                      onPressed: _busy ? null : _sendCode,
-                      child: const Text('Resend code'),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The 6-digit reset code, styled to match [LabeledField] but with a numeric
+/// keyboard and a 6-character cap.
+class _LabeledCodeField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _LabeledCodeField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.only(bottom: 7, left: 2),
+          child: Text(
+            '6-digit code',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          inputFormatters: <TextInputFormatter>[
+            FilteringTextInputFormatter.digitsOnly,
+          ],
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 6,
+            color: AppColors.ink,
+          ),
+          decoration: const InputDecoration(
+            hintText: '000000',
+            counterText: '',
+          ),
+          validator: (String? v) => (v == null || v.trim().length != 6)
+              ? 'Enter the 6-digit code'
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// A labeled new-password field with a show/hide toggle, matching
+/// [LabeledField]'s look while adding obscure-text handling that the kit widget
+/// does not expose.
+class _PasswordField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
+
+  const _PasswordField({
+    required this.controller,
+    required this.obscure,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Padding(
+          padding: EdgeInsets.only(bottom: 7, left: 2),
+          child: Text(
+            'New password',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          obscureText: obscure,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+          decoration: InputDecoration(
+            hintText: 'At least 6 characters',
+            suffixIcon: IconButton(
+              icon: Icon(
+                obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                color: AppColors.muted,
+                size: 20,
+              ),
+              onPressed: onToggle,
+            ),
+          ),
+          validator: AuthValidators.password,
+        ),
+      ],
     );
   }
 }

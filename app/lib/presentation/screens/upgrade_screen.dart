@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/settings_service.dart';
+import '../../theme/app_theme.dart';
+import '../widgets/ui_kit.dart';
 import 'subscribe_view.dart';
 
 /// Dismissible subscribe screen (opened from Settings / Home). When the trial
@@ -13,52 +15,202 @@ class UpgradeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final SettingsService s = context.watch<SettingsService>();
 
-    if (s.isPremium) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Subscription')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const <Widget>[
-                Icon(Icons.verified_outlined, size: 64),
-                SizedBox(height: 16),
-                Text('You are Premium',
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                SizedBox(height: 8),
-                Text('Unlimited medicines and all premium features are '
-                    'unlocked. Thank you!'),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    if (s.isPremium) return const _PremiumConfirmation();
+
+    final String trialLine = s.isTrialActive
+        ? (s.trialDaysLeft <= 1
+            ? 'Keep expiry and low-stock alerts running after your trial ends.'
+            : 'Keep expiry and low-stock alerts running after your '
+                '${s.trialDaysLeft}-day trial.')
+        : 'Keep expiry and low-stock alerts running, unlock everything.';
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Subscription'),
-        bottom: s.isTrialActive
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(28),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(bottom: 8),
-                  alignment: Alignment.center,
-                  child: Text(
-                    s.trialDaysLeft <= 1
-                        ? 'Free trial: last day'
-                        : 'Free trial: ${s.trialDaysLeft} days left',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+      backgroundColor: AppColors.canvas,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: <Widget>[
+            // ---- Header: back button + centered title ---------------------
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Row(
+                children: <Widget>[
+                  _BackButton(onTap: () => Navigator.of(context).maybePop()),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
+              child: Column(
+                children: <Widget>[
+                  const Text(
+                    'Unlock Meddata Pro',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.5,
+                      color: AppColors.ink,
+                    ),
                   ),
-                ),
-              )
-            : null,
+                  const SizedBox(height: 8),
+                  Text(
+                    trialLine,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.muted,
+                      height: 1.35,
+                    ),
+                  ),
+                  if (s.isTrialActive) ...<Widget>[
+                    const SizedBox(height: 14),
+                    _TrialPill(daysLeft: s.trialDaysLeft),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            // ---- Plans / coupon / CTA (logic-owning SubscribeView) --------
+            Expanded(
+              child: SubscribeView(
+                onUnlocked: () => Navigator.of(context).maybePop(),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: SubscribeView(
-        onUnlocked: () => Navigator.of(context).maybePop(),
+    );
+  }
+}
+
+/// White rounded-square back button matching the design header.
+class _BackButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(11),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Icon(Icons.chevron_left, size: 22, color: AppColors.ink),
+      ),
+    );
+  }
+}
+
+/// Amber trial countdown pill.
+class _TrialPill extends StatelessWidget {
+  final int daysLeft;
+  const _TrialPill({required this.daysLeft});
+
+  @override
+  Widget build(BuildContext context) {
+    final String label = daysLeft <= 1
+        ? 'Free trial: last day'
+        : 'Free trial: $daysLeft days left';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.statusAmberBg,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.schedule, size: 15, color: AppColors.statusAmber),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.statusAmber,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the user is already Premium.
+class _PremiumConfirmation extends StatelessWidget {
+  const _PremiumConfirmation();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      appBar: AppBar(title: const Text('Subscription')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const BrandMark(size: 64),
+              const SizedBox(height: 20),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.statusGreenBg,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Icon(Icons.verified_rounded,
+                        size: 16, color: AppColors.statusGreen),
+                    SizedBox(width: 6),
+                    Text(
+                      'PRO ACTIVE',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.4,
+                        color: AppColors.statusGreen,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'You are Premium',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                  color: AppColors.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Unlimited medicines and all premium features are '
+                'unlocked. Thank you!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.muted,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
