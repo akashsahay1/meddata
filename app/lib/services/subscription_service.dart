@@ -16,20 +16,31 @@ class SubscriptionService extends ChangeNotifier {
   String razorpayKeyId = '';
   int trialDays = 7;
 
+  /// Supplies the current auth Bearer token. The trial/entitlement endpoints
+  /// are user-scoped now, so they require a token; wired from AuthService in
+  /// main.dart. Returns null when the user is not logged in.
+  String? Function()? tokenProvider;
+
   SubscriptionService(this._settings, this.deviceId, [ApiClient? api])
       : _api = api ?? ApiClient();
 
   /// Register/refresh the trial and pull the current entitlement, then cache it.
   Future<void> refresh() async {
-    // 1) Ensure the trial exists (idempotent — first call starts the 7 days).
-    final Map<String, dynamic>? trial = await _api.registerTrial(deviceId);
+    final String? token = tokenProvider?.call();
+    // These endpoints require authentication; nothing to sync when logged out.
+    if (token == null || token.isEmpty) return;
+
+    // 1) Ensure the user's one-time trial (idempotent, server-enforced).
+    final Map<String, dynamic>? trial =
+        await _api.registerTrial(deviceId, token: token);
     if (trial != null) {
       final DateTime? ends = _parseDate(trial['trial_ends_at']);
       if (ends != null) await _settings.setTrialEndsAt(ends);
     }
 
     // 2) Entitlement = paid OR trial active (backend decides).
-    final Map<String, dynamic>? ent = await _api.fetchEntitlement(deviceId);
+    final Map<String, dynamic>? ent =
+        await _api.fetchEntitlement(deviceId, token: token);
     if (ent != null) {
       final bool paid = (ent['source'] as String?) == 'razorpay' ||
           (ent['source'] as String?) == 'manual' ||
@@ -57,7 +68,8 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>?> validateCoupon(String code, int planId) =>
-      _api.validateCoupon(code: code, planId: planId);
+      _api.validateCoupon(
+          code: code, planId: planId, token: tokenProvider?.call());
 
   Future<Map<String, dynamic>?> createOrder(int planId, String? couponCode,
           {String? token}) =>

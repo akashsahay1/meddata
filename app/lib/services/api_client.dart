@@ -5,11 +5,14 @@ import 'package:http/http.dart' as http;
 /// Thin client for the Laravel backend. Every call is best-effort: the app
 /// stays fully functional offline, so callers must handle null/failure.
 class ApiClient {
-  /// Base URL of the Laravel API served by Herd.
-  /// Android emulator reaches the host machine via 10.0.2.2.
+  /// Base URL of the Laravel API.
+  /// TEMP (dev): points at `php artisan serve` on the Mac's LAN IP so a physical
+  /// iPhone on the same Wi-Fi can reach it. Herd's `.test` URL only resolves on
+  /// the host machine; `127.0.0.1` on a real device means the phone itself.
+  /// Android emulator reaches the host via 10.0.2.2 instead.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://med-stock-api.test/api/v1',
+    defaultValue: 'http://192.168.29.220:8000/api/v1',
   );
 
   final http.Client _http;
@@ -87,13 +90,19 @@ class ApiClient {
   /// Remote config: trial_days, razorpay_key_id, and plan list for the paywall.
   Future<Map<String, dynamic>?> fetchConfig() => _get('/config');
 
-  /// Current entitlement for a device (premium = paid OR trial active).
-  Future<Map<String, dynamic>?> fetchEntitlement(String deviceId) =>
-      _get('/entitlement', query: <String, String>{'device_id': deviceId});
+  /// Current entitlement for the authenticated user (premium = paid OR trial).
+  /// Requires a Bearer token; device_id is sent for reference only.
+  Future<Map<String, dynamic>?> fetchEntitlement(String deviceId,
+          {String? token}) =>
+      _get('/entitlement',
+          query: <String, String>{'device_id': deviceId}, token: token);
 
-  /// Register / fetch the 7-day free trial for a device (idempotent).
-  Future<Map<String, dynamic>?> registerTrial(String deviceId) =>
-      _post('/device/trial', <String, dynamic>{'device_id': deviceId});
+  /// Ensure the authenticated user's one-time free trial (idempotent).
+  /// Requires a Bearer token.
+  Future<Map<String, dynamic>?> registerTrial(String deviceId,
+          {String? token}) =>
+      _post('/device/trial', <String, dynamic>{'device_id': deviceId},
+          token: token);
 
   // ---- Auth (custom Bearer token) ----
 
@@ -148,11 +157,12 @@ class ApiClient {
   Future<Map<String, dynamic>?> validateCoupon({
     required String code,
     required int planId,
+    String? token,
   }) =>
       _post('/coupon/validate', <String, dynamic>{
         'code': code,
         'plan_id': planId,
-      });
+      }, token: token);
 
   /// Create a Razorpay order for a plan (with optional coupon).
   Future<Map<String, dynamic>?> createOrder({

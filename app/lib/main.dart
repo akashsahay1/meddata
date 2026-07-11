@@ -34,6 +34,9 @@ Future<void> main() async {
 
   final SubscriptionService subscription =
       SubscriptionService(settings, deviceId);
+  // The trial/entitlement/coupon endpoints are user-scoped and require the
+  // auth token; supply it from AuthService.
+  subscription.tokenProvider = () => auth.token;
   _startBackgroundServices(auth, settings);
 
   runApp(MedStockApp(
