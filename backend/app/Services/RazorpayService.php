@@ -75,7 +75,10 @@ class RazorpayService
     public function verifySignature(string $orderId, string $paymentId, string $signature): bool
     {
         if (! $this->keysConfigured()) {
-            return true; // dev fallback
+            // Fail CLOSED in production: without keys we cannot verify a real
+            // payment, so never grant premium. Only local/testing may bypass
+            // so the flow stays exercisable without a Razorpay account.
+            return ! app()->environment('production');
         }
 
         $expected = hash_hmac('sha256', $orderId . '|' . $paymentId, $this->keySecret());

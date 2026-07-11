@@ -4,32 +4,53 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Backup;
-use App\Models\Entitlement;
+use App\Models\User;
+use App\Services\EntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class BackupController extends Controller
 {
-    /** Upload an encrypted backup blob (premium only). */
+    /**
+     * Max encoded blob size, kept comfortably under PHP's post_max_size (2 MB
+     * here) so oversized uploads are rejected cleanly by validation instead of
+     * being silently dropped by PHP. 1.5 MB of base64 is ample for a medicine
+     * list backup.
+     */
+    private const MAX_BLOB_CHARS = 1_500_000;
+
+    public function __construct(private readonly EntitlementService $entitlements)
+    {
+    }
+
+    /**
+     * POST /backup (auth.token, premium only)
+     * Upload an encrypted backup blob for the authenticated user. Previously
+     * this authorized on a client-supplied device_id, so anyone could read or
+     * overwrite another device's backup; it is now strictly user-scoped.
+     */
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'device_id' => ['required', 'string'],
-            'blob' => ['required', 'string'],          // base64 / encrypted payload
-            'medicine_count' => ['nullable', 'integer'],
+            'device_id' => ['nullable', 'string', 'max:255'],
+            'blob' => ['required', 'string', 'max:' . self::MAX_BLOB_CHARS],
+            'medicine_count' => ['nullable', 'integer', 'min:0'],
         ]);
 
-        if (! $this->isPremium($data['device_id'])) {
+        $user = $request->user();
+
+        if (! $this->isPremium($user)) {
             return response()->json(['error' => 'premium_required'], 403);
         }
 
-        $path = "backups/{$data['device_id']}/latest.bin";
-        Storage::put($path, base64_decode($data['blob']) ?: $data['blob']);
+        $path = "backups/user-{$user->id}/latest.bin";
+        Storage::put($path, base64_decode($data['blob'], true) ?: $data['blob']);
 
         $backup = Backup::updateOrCreate(
-            ['device_id' => $data['device_id']],
+            ['user_id' => $user->id],
             [
+                'device_id' => $data['device_id'] ?? ('user-' . $user->id),
                 'path' => $path,
                 'size' => Storage::size($path),
                 'medicine_count' => $data['medicine_count'] ?? 0,
@@ -43,15 +64,19 @@ class BackupController extends Controller
         ]);
     }
 
-    /** Fetch the latest backup blob for a device (premium only). */
+    /**
+     * GET /backup/latest (auth.token, premium only)
+     * Fetch the latest backup blob for the authenticated user.
+     */
     public function latest(Request $request): JsonResponse
     {
-        $deviceId = (string) $request->query('device_id', '');
-        if (! $this->isPremium($deviceId)) {
+        $user = $request->user();
+
+        if (! $this->isPremium($user)) {
             return response()->json(['error' => 'premium_required'], 403);
         }
 
-        $backup = Backup::where('device_id', $deviceId)->latest('id')->first();
+        $backup = Backup::where('user_id', $user->id)->latest('id')->first();
         if (! $backup || ! Storage::exists($backup->path)) {
             return response()->json(['error' => 'not_found'], 404);
         }
@@ -63,16 +88,11 @@ class BackupController extends Controller
         ]);
     }
 
-    private function isPremium(string $deviceId): bool
+    private function isPremium(User $user): bool
     {
-        if ($deviceId === '') {
-            return false;
-        }
-        $ent = Entitlement::where('device_id', $deviceId)->latest('id')->first();
-        if (! $ent) {
-            return false;
-        }
+        $ent = $this->entitlements->forUser($user);
         $ent->refreshStatus();
-        return $ent->is_premium;
+
+        return $ent->isActivePaid() || $ent->isTrialActive();
     }
 }

@@ -3,60 +3,77 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\AdminNewUserMail;
+use App\Mail\PasswordResetMail;
+use App\Mail\WelcomeMail;
 use App\Models\ApiToken;
 use App\Models\AppSetting;
-use App\Models\Entitlement;
 use App\Models\User;
+use App\Services\EntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    /** Reset code lifetime and the max number of verification attempts allowed. */
+    private const RESET_TTL_MINUTES = 15;
+    private const RESET_MAX_ATTEMPTS = 5;
+
+    public function __construct(private readonly EntitlementService $entitlements)
+    {
+    }
+
     /**
      * POST /auth/register
-     * Create an app user, ensure a 7-day trial entitlement, issue a token.
+     * Create an app user, ensure a one-time trial entitlement, issue a token.
      */
     public function register(Request $request): JsonResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', Password::min(8)],
             'phone' => ['nullable', 'string', 'max:32'],
-            'device_id' => ['nullable', 'string'],
+            'device_id' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'phone' => $data['phone'] ?? null,
-            'password' => Hash::make($data['password']),
-            'is_admin' => false,
-        ]);
+        // is_admin is intentionally NOT taken from input; new API users are never admins.
+        $user = new User();
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->phone = $data['phone'] ?? null;
+        $user->password = Hash::make($data['password']);
+        $user->is_admin = false;
+        $user->save();
 
-        $ent = $this->linkOrCreateEntitlement($user, $data['device_id'] ?? null);
+        $ent = $this->entitlements->ensureTrial($user, $data['device_id'] ?? null);
+        $payload = $this->entitlements->payload($ent);
         $token = $user->issueToken('app');
+
+        $this->sendWelcomeEmails($user, $payload);
 
         return response()->json([
             'token' => $token,
             'user' => $this->userPayload($user),
-            'entitlement' => $this->entitlementPayload($ent),
+            'entitlement' => $payload,
         ], 201);
     }
 
     /**
      * POST /auth/login
-     * Verify credentials, optionally link a device entitlement, issue a token.
+     * Verify credentials, ensure the (one-time) trial, issue a token.
      */
     public function login(Request $request): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'device_id' => ['nullable', 'string'],
+            'device_id' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = User::where('email', $data['email'])->first();
@@ -65,13 +82,13 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 422);
         }
 
-        $ent = $this->linkOrCreateEntitlement($user, $data['device_id'] ?? null);
+        $ent = $this->entitlements->ensureTrial($user, $data['device_id'] ?? null);
         $token = $user->issueToken('app');
 
         return response()->json([
             'token' => $token,
             'user' => $this->userPayload($user),
-            'entitlement' => $this->entitlementPayload($ent),
+            'entitlement' => $this->entitlements->payload($ent),
         ]);
     }
 
@@ -91,24 +108,71 @@ class AuthController extends Controller
 
     /**
      * GET /auth/me (auth.token)
-     * Return the authenticated user + recomputed entitlement.
+     * Return the authenticated user + current entitlement.
      */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
-        $ent = Entitlement::where('user_id', $user->id)->orderByDesc('id')->first();
+        $ent = $this->entitlements->forUser($user);
 
         return response()->json([
             'user' => $this->userPayload($user),
-            'entitlement' => $this->entitlementPayload($ent),
+            'entitlement' => $this->entitlements->payload($ent),
         ]);
+    }
+
+    /**
+     * PATCH /auth/profile (auth.token)
+     * Update the authenticated user's name and/or email.
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'email' => ['sometimes', 'required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
+        ]);
+
+        $user->fill($data);
+        $user->save();
+
+        return response()->json(['ok' => true, 'user' => $this->userPayload($user)]);
+    }
+
+    /**
+     * POST /auth/change-password (auth.token)
+     * Change the password for a logged-in user; requires the current password.
+     * Revokes all other tokens so other sessions are logged out.
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', Password::min(8), 'different:current_password'],
+        ]);
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->update(['password' => Hash::make($data['password'])]);
+
+        // Keep the current token, drop the rest.
+        $current = $request->attributes->get('api_token');
+        $user->tokens()->when($current instanceof ApiToken, fn ($q) => $q->where('id', '!=', $current->id))->delete();
+
+        return response()->json(['ok' => true]);
     }
 
     /**
      * POST /auth/forgot-password
      * Always returns a generic message. When a user exists, store a 6-digit
-     * code (15 min TTL) and "email" it (log mailer in local). In debug mode
-     * the code is echoed back as dev_code for testing without a mail server.
+     * code (15 min TTL, attempt-capped) and email it. The code is only ever
+     * echoed back (dev_code) in the local environment for testing.
      */
     public function forgotPassword(Request $request): JsonResponse
     {
@@ -132,19 +196,16 @@ class AuthController extends Controller
         DB::table('password_reset_codes')->insert([
             'email' => $data['email'],
             'code' => $code,
-            'expires_at' => now()->addMinutes(15),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(self::RESET_TTL_MINUTES),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        Mail::raw(
-            "Your Meddata password reset code is: {$code}\nIt expires in 15 minutes.",
-            function ($message) use ($data) {
-                $message->to($data['email'])->subject('Meddata password reset code');
-            }
-        );
+        $this->safeMail(fn () => Mail::to($data['email'])->send(new PasswordResetMail($code, self::RESET_TTL_MINUTES)));
 
-        if (config('app.debug')) {
+        // Only expose the code in local dev, never in staging/production.
+        if (app()->environment('local')) {
             $generic['dev_code'] = $code;
         }
 
@@ -153,25 +214,39 @@ class AuthController extends Controller
 
     /**
      * POST /auth/reset-password
-     * Verify a non-expired code, set the new password, revoke tokens.
+     * Verify a non-expired, attempt-capped code, set the new password, revoke tokens.
      */
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
             'email' => ['required', 'email'],
             'code' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:6'],
+            'password' => ['required', 'string', Password::min(8)],
         ]);
 
         $row = DB::table('password_reset_codes')
             ->where('email', $data['email'])
-            ->where('code', $data['code'])
             ->where('expires_at', '>', now())
             ->first();
 
-        $user = User::where('email', $data['email'])->first();
+        // No active code, or too many wrong guesses already: fail closed.
+        if (! $row || $row->attempts >= self::RESET_MAX_ATTEMPTS) {
+            return response()->json(['message' => 'Invalid or expired code'], 422);
+        }
 
-        if (! $row || ! $user) {
+        if (! hash_equals((string) $row->code, (string) $data['code'])) {
+            DB::table('password_reset_codes')->where('id', $row->id)->increment('attempts');
+
+            // Burn the code once the attempt ceiling is reached.
+            if ($row->attempts + 1 >= self::RESET_MAX_ATTEMPTS) {
+                DB::table('password_reset_codes')->where('id', $row->id)->delete();
+            }
+
+            return response()->json(['message' => 'Invalid or expired code'], 422);
+        }
+
+        $user = User::where('email', $data['email'])->first();
+        if (! $user) {
             return response()->json(['message' => 'Invalid or expired code'], 422);
         }
 
@@ -185,40 +260,6 @@ class AuthController extends Controller
 
     /* ---------------- helpers ---------------- */
 
-    /**
-     * Link the given device's entitlement to the user (or create/find one),
-     * and start a 7-day trial when the user has none yet.
-     */
-    private function linkOrCreateEntitlement(User $user, ?string $deviceId): Entitlement
-    {
-        $existing = Entitlement::where('user_id', $user->id)->orderByDesc('id')->first();
-
-        if ($deviceId) {
-            $ent = Entitlement::firstOrNew(['device_id' => $deviceId]);
-            $ent->user_id = $user->id;
-        } else {
-            // No device: reuse the user's entitlement or create one with a
-            // synthetic, namespaced device_id (column is NOT NULL).
-            $ent = $existing ?: new Entitlement(['device_id' => 'user-' . $user->id]);
-            $ent->user_id = $user->id;
-        }
-
-        $userHasTrial = $existing && $existing->trial_started_at;
-
-        if (is_null($ent->trial_started_at) && ! $userHasTrial && ! $ent->isActivePaid()) {
-            $trialDays = (int) AppSetting::get('trial_days', 7);
-            $ent->trial_started_at = now();
-            $ent->trial_ends_at = now()->addDays($trialDays);
-            if (is_null($ent->source)) {
-                $ent->source = 'trial';
-            }
-        }
-
-        $ent->save();
-
-        return $ent;
-    }
-
     private function userPayload(User $user): array
     {
         return [
@@ -229,46 +270,24 @@ class AuthController extends Controller
         ];
     }
 
-    /** Same shape as EntitlementController@show. */
-    private function entitlementPayload(?Entitlement $ent): array
+    /** Send the customer welcome email and notify the admin (best-effort). */
+    private function sendWelcomeEmails(User $user, array $entitlement): void
     {
-        if (! $ent) {
-            return [
-                'premium' => false,
-                'status' => 'expired',
-                'source' => null,
-                'trial_ends_at' => null,
-                'days_left' => 0,
-                'expiry_time' => null,
-                'product_id' => null,
-            ];
+        $this->safeMail(fn () => Mail::to($user->email)->send(new WelcomeMail($user, $entitlement)));
+
+        $admin = AppSetting::get('support_email');
+        if ($admin) {
+            $this->safeMail(fn () => Mail::to($admin)->send(new AdminNewUserMail($user)));
         }
+    }
 
-        $ent->refreshStatus();
-        $ent->save();
-
-        $paidActive = $ent->isActivePaid();
-        $trialActive = $ent->isTrialActive();
-        $premium = $paidActive || $trialActive;
-
-        $daysLeft = 0;
-        if ($paidActive && $ent->expiry_time) {
-            $daysLeft = (int) ceil(now()->diffInDays($ent->expiry_time, false));
-        } elseif ($trialActive) {
-            $daysLeft = (int) ceil(now()->diffInDays($ent->trial_ends_at, false));
+    /** Run a mail closure without letting a mail failure break the request. */
+    private function safeMail(callable $fn): void
+    {
+        try {
+            $fn();
+        } catch (\Throwable $e) {
+            Log::warning('Mail send failed: ' . $e->getMessage());
         }
-
-        $status = $premium ? 'active' : 'expired';
-        $source = $paidActive ? ($ent->source ?: 'razorpay') : ($trialActive ? 'trial' : $ent->source);
-
-        return [
-            'premium' => $premium,
-            'status' => $status,
-            'source' => $source,
-            'trial_ends_at' => optional($ent->trial_ends_at)->toIso8601String(),
-            'days_left' => max(0, $daysLeft),
-            'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
-            'product_id' => $ent->product_id,
-        ];
     }
 }

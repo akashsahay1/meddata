@@ -27,6 +27,12 @@ class GooglePlayVerifier
             return $this->verifyWithGoogle($productId, $purchaseToken);
         }
 
+        // Fail CLOSED in production: without service-account credentials we
+        // cannot verify a real purchase, so never grant premium.
+        if (app()->environment('production')) {
+            return ['valid' => false, 'expiry' => null, 'status' => 'unverified'];
+        }
+
         // Local-dev fallback: accept the purchase and grant an expiry based on
         // the plan period so the app can be tested without Play credentials.
         return [

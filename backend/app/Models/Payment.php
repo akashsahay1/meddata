@@ -8,13 +8,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Payment extends Model
 {
     protected $fillable = [
-        'device_id', 'plan_id', 'coupon_id', 'amount', 'currency',
+        'device_id', 'user_id', 'plan_id', 'coupon_id', 'amount', 'currency',
         'razorpay_order_id', 'razorpay_payment_id', 'status',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function plan(): BelongsTo
     {
