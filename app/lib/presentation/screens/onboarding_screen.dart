@@ -17,21 +17,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   static const List<_Slide> _slides = <_Slide>[
     _Slide(
-      icon: Icons.medication_outlined,
+      image: 'assets/images/onboarding_stock.png',
       title: 'Track every medicine',
-      body: 'Add your stock once and keep quantities, batches and prices in '
+      body:
+          'Add your stock once and keep quantities, batches and prices in '
           'one place, works fully offline.',
     ),
     _Slide(
-      icon: Icons.notifications_none,
+      image: 'assets/images/onboarding_alerts.png',
       title: 'Never miss an expiry',
-      body: 'Get reminders before medicines expire and when stock runs low, '
+      body:
+          'Get reminders before medicines expire and when stock runs low, '
           'so you avoid losses.',
     ),
     _Slide(
-      icon: Icons.search,
+      image: 'assets/images/onboarding_search.png',
       title: 'Find & update fast',
-      body: 'Search by name, batch or barcode and update stock in seconds. '
+      body:
+          'Search by name, batch or barcode and update stock in seconds. '
           'Simple, clean, made for busy homes and small stores.',
     ),
   ];
@@ -97,19 +100,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             color: active
                                 ? AppColors.orange
                                 : Colors.white.withValues(alpha: 0.14),
-                            borderRadius:
-                                BorderRadius.circular(AppRadii.pill),
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
                         );
                       }),
                     ),
                     const SizedBox(height: 26),
                     SizedBox(
-                      width: double.infinity,
+                      width: 220,
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(AppRadii.button),
+                          borderRadius: BorderRadius.circular(AppRadii.button),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
                               color: AppColors.orange.withValues(alpha: 0.4),
@@ -133,11 +134,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             backgroundColor: AppColors.orange,
                             foregroundColor: Colors.white,
                             elevation: 0,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.button),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.button,
+                              ),
                             ),
                           ),
                           child: Text(
@@ -162,10 +163,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 }
 
 class _Slide {
-  final IconData icon;
+  final String image;
   final String title;
   final String body;
-  const _Slide({required this.icon, required this.title, required this.body});
+  const _Slide({required this.image, required this.title, required this.body});
 
   Widget build(BuildContext context) {
     return Padding(
@@ -173,23 +174,13 @@ class _Slide {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          Container(
-            width: 184,
-            height: 184,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              shape: BoxShape.circle,
-            ),
-            alignment: Alignment.center,
-            child: Container(
-              width: 128,
-              height: 128,
-              decoration: BoxDecoration(
-                color: AppColors.green,
-                borderRadius: BorderRadius.circular(34),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 56, color: AppColors.orange),
+          SizedBox(
+            width: 230,
+            height: 230,
+            child: Image.asset(
+              image,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
             ),
           ),
           const SizedBox(height: 38),

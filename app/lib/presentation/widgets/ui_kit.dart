@@ -21,22 +21,22 @@ class StatusPill extends StatelessWidget {
 
   /// Convenience constructors for the three canonical states.
   factory StatusPill.inStock([String text = 'In stock']) => StatusPill(
-        text: text,
-        color: AppColors.statusGreen,
-        bg: AppColors.statusGreenBg,
-      );
+    text: text,
+    color: AppColors.statusGreen,
+    bg: AppColors.statusGreenBg,
+  );
 
   factory StatusPill.low([String text = 'Low']) => StatusPill(
-        text: text,
-        color: AppColors.statusAmber,
-        bg: AppColors.statusAmberBg,
-      );
+    text: text,
+    color: AppColors.statusAmber,
+    bg: AppColors.statusAmberBg,
+  );
 
   factory StatusPill.danger(String text) => StatusPill(
-        text: text,
-        color: AppColors.statusRed,
-        bg: AppColors.statusRedBg,
-      );
+    text: text,
+    color: AppColors.statusRed,
+    bg: AppColors.statusRedBg,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -413,6 +413,10 @@ class AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Soft, accent-tinted border (design: amber #F3D9C6 / red #F4CCCE), i.e. the
+    // status hue blended lightly over the white card. No left stripe.
+    final Color softBorder =
+        Color.alphaBlend(color.withValues(alpha: 0.30), AppColors.card);
     return Material(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.card),
@@ -423,12 +427,7 @@ class AlertCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border(
-              left: BorderSide(color: color, width: 3),
-              top: BorderSide(color: AppColors.border),
-              right: BorderSide(color: AppColors.border),
-              bottom: BorderSide(color: AppColors.border),
-            ),
+            border: Border.all(color: softBorder),
           ),
           padding: const EdgeInsets.all(15),
           child: Column(
@@ -573,10 +572,7 @@ class LabeledField extends StatelessWidget {
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
           ),
-          decoration: InputDecoration(
-            hintText: hint,
-            suffixIcon: suffixIcon,
-          ),
+          decoration: InputDecoration(hintText: hint, suffixIcon: suffixIcon),
         ),
       ],
     );
@@ -600,14 +596,11 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ButtonStyle? style =
-        expand ? null : ElevatedButton.styleFrom(minimumSize: const Size(0, 54));
+    final ButtonStyle? style = expand
+        ? null
+        : ElevatedButton.styleFrom(minimumSize: const Size(0, 54));
     final Widget button = icon == null
-        ? ElevatedButton(
-            onPressed: onPressed,
-            style: style,
-            child: Text(label),
-          )
+        ? ElevatedButton(onPressed: onPressed, style: style, child: Text(label))
         : ElevatedButton.icon(
             onPressed: onPressed,
             style: style,
@@ -635,14 +628,11 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ButtonStyle? style =
-        expand ? null : OutlinedButton.styleFrom(minimumSize: const Size(0, 54));
+    final ButtonStyle? style = expand
+        ? null
+        : OutlinedButton.styleFrom(minimumSize: const Size(0, 54));
     final Widget button = icon == null
-        ? OutlinedButton(
-            onPressed: onPressed,
-            style: style,
-            child: Text(label),
-          )
+        ? OutlinedButton(onPressed: onPressed, style: style, child: Text(label))
         : OutlinedButton.icon(
             onPressed: onPressed,
             style: style,
