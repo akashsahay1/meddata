@@ -111,8 +111,8 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
             MobileScanner(
               controller: _controller!,
               onDetect: _onDetect,
-              errorBuilder: (BuildContext context, MobileScannerException error,
-                  Widget? child) {
+              errorBuilder:
+                  (BuildContext context, MobileScannerException error) {
                 return _PermMessage(
                   icon: Icons.videocam_off_outlined,
                   title: 'Camera error',

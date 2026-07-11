@@ -35,7 +35,7 @@ class NotificationService {
     const DarwinInitializationSettings ios = DarwinInitializationSettings();
     const InitializationSettings settings =
         InitializationSettings(android: android, iOS: ios);
-    await _plugin.initialize(settings);
+    await _plugin.initialize(settings: settings);
     _ready = true;
   }
 
@@ -70,7 +70,12 @@ class NotificationService {
 
   Future<void> showNow(int id, String title, String body) async {
     await init();
-    await _plugin.show(id, title, body, _details);
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: _details,
+    );
   }
 
   /// Runs the digest: counts expiring/expired/low-stock and posts one summary.
@@ -117,14 +122,13 @@ class NotificationService {
     final tz.TZDateTime when = tz.TZDateTime.from(target, tz.local);
     try {
       await _plugin.zonedSchedule(
-        m.id.hashCode & 0x7fffffff,
-        'Expiry approaching',
-        '${m.name} expires on ${m.expiryDate.day}/${m.expiryDate.month}/${m.expiryDate.year}.',
-        when,
-        _details,
+        id: m.id.hashCode & 0x7fffffff,
+        title: 'Expiry approaching',
+        body:
+            '${m.name} expires on ${m.expiryDate.day}/${m.expiryDate.month}/${m.expiryDate.year}.',
+        scheduledDate: when,
+        notificationDetails: _details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('scheduleExpiryReminder failed: $e');

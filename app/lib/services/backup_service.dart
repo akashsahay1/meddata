@@ -39,16 +39,17 @@ class BackupService {
             DateFormat('yyyy-MM-dd').format(m.expiryDate),
           ]),
     ];
-    final String csv = const ListToCsvConverter().convert(rows);
+    final String csvContent = Csv().encode(rows);
     final Directory dir = await getTemporaryDirectory();
     final String stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
     final File file = await _fileIn(dir.path, 'med_stock_$stamp.csv');
-    await file.writeAsString(csv);
+    await file.writeAsString(csvContent);
     return file;
   }
 
   Future<void> share(File file, {String text = 'Medicine stock backup'}) async {
-    await Share.shareXFiles(<XFile>[XFile(file.path)], text: text);
+    await SharePlus.instance
+        .share(ShareParams(files: <XFile>[XFile(file.path)], text: text));
   }
 
   /// Restore from a JSON backup file (replaces existing data).
@@ -70,8 +71,7 @@ class BackupService {
   /// required; other columns optional). Appends to existing data.
   Future<int> importCsv(File file) async {
     final String content = await file.readAsString();
-    final List<List<dynamic>> rows =
-        const CsvToListConverter().convert(content);
+    final List<List<dynamic>> rows = Csv().decode(content);
     if (rows.isEmpty) return 0;
     int count = 0;
     final DateFormat df = DateFormat('yyyy-MM-dd');
