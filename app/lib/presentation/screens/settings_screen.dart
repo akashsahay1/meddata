@@ -78,6 +78,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: _planCard(context, s),
           ),
 
+          // Account
+          _sectionLabel('Account'),
+          _menuCard(<Widget>[
+            _menuRow(
+              icon: Icons.person_outline,
+              label: 'Edit profile',
+              onTap: () => _editProfile(context, auth),
+            ),
+            _menuRow(
+              icon: Icons.lock_outline,
+              label: 'Change password',
+              onTap: () => _changePassword(context),
+            ),
+          ]),
+
           // Appearance
           _sectionLabel('Appearance'),
           _menuCard(<Widget>[
@@ -125,11 +140,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // Data
           _sectionLabel('Data'),
           _menuCard(<Widget>[
-            _menuRow(
-              icon: Icons.file_upload_outlined,
-              label: 'Export backup (JSON)',
-              onTap: () => _exportJson(context),
-            ),
             _menuRow(
               icon: Icons.table_view_outlined,
               label: 'Export as CSV',
@@ -579,16 +589,135 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (context.mounted) Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
   }
 
-  Future<void> _exportJson(BuildContext context) async {
-    final BackupService b = BackupService();
-    final File f = await b.exportJson();
-    await b.share(f);
-  }
-
   Future<void> _exportCsv(BuildContext context) async {
     final BackupService b = BackupService();
     final File f = await b.exportCsv();
     await b.share(f, text: 'Medicine stock (CSV)');
+  }
+
+  Future<void> _editProfile(BuildContext context, AuthService auth) async {
+    final TextEditingController nameCtrl =
+        TextEditingController(text: auth.name ?? '');
+    final TextEditingController emailCtrl =
+        TextEditingController(text: auth.email ?? '');
+    final bool? save = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Edit profile'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            TextField(
+              controller: nameCtrl,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (save != true || !context.mounted) return;
+    final String name = nameCtrl.text.trim();
+    final String email = emailCtrl.text.trim();
+    if (name.isEmpty || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name and email cannot be empty')),
+      );
+      return;
+    }
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final String? error = await context
+        .read<AuthService>()
+        .updateProfile(name: name, email: email);
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? 'Profile updated')),
+    );
+  }
+
+  Future<void> _changePassword(BuildContext context) async {
+    final TextEditingController currentCtrl = TextEditingController();
+    final TextEditingController newCtrl = TextEditingController();
+    final TextEditingController confirmCtrl = TextEditingController();
+    final bool? save = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Change password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            TextField(
+              controller: currentCtrl,
+              obscureText: true,
+              decoration:
+                  const InputDecoration(labelText: 'Current password'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: newCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: 'New password'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: confirmCtrl,
+              obscureText: true,
+              decoration:
+                  const InputDecoration(labelText: 'Confirm new password'),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+    if (save != true || !context.mounted) return;
+    final String current = currentCtrl.text;
+    final String next = newCtrl.text;
+    final String confirm = confirmCtrl.text;
+    if (current.isEmpty || next.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+    if (next != confirm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('New passwords do not match')),
+      );
+      return;
+    }
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final String? error = await context.read<AuthService>().changePassword(
+          currentPassword: current,
+          newPassword: next,
+        );
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? 'Password changed')),
+    );
   }
 
   Future<void> _import(BuildContext context) async {

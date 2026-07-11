@@ -64,6 +64,33 @@ class ApiClient {
     }
   }
 
+  /// PATCH that also returns the HTTP status (mirrors [postResult]).
+  Future<({int status, Map<String, dynamic>? body})> _patchResult(
+      String path, Map<String, dynamic> body,
+      {String? token}) async {
+    try {
+      final Uri uri = Uri.parse('$baseUrl$path');
+      final http.Response res = await _http
+          .patch(
+            uri,
+            headers: <String, String>{
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              if (token != null) 'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
+  }
+
   Future<Map<String, dynamic>?> _post(
       String path, Map<String, dynamic> body,
       {String? token}) async {
@@ -152,6 +179,28 @@ class ApiClient {
         'code': code,
         'password': password,
       });
+
+  /// Update the authenticated user's name and/or email.
+  Future<({int status, Map<String, dynamic>? body})> updateProfile({
+    required String token,
+    String? name,
+    String? email,
+  }) =>
+      _patchResult('/auth/profile', <String, dynamic>{
+        'name': ?name,
+        'email': ?email,
+      }, token: token);
+
+  /// Change the authenticated user's password.
+  Future<({int status, Map<String, dynamic>? body})> changePassword({
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  }) =>
+      postResult('/auth/change-password', <String, dynamic>{
+        'current_password': currentPassword,
+        'password': newPassword,
+      }, token: token);
 
   /// Validate a coupon code against a plan → discount + final amount.
   Future<Map<String, dynamic>?> validateCoupon({

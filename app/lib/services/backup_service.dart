@@ -12,7 +12,8 @@ import '../data/db/database_helper.dart';
 import '../data/models/medicine.dart';
 import '../data/repositories/medicine_repository.dart';
 
-/// Local export/import (always free) of the medicine list as JSON and CSV.
+/// Local export/import (always free) of the medicine list. Exports to CSV;
+/// imports from either a JSON backup or CSV.
 class BackupService {
   final MedicineRepository _repo;
   BackupService([MedicineRepository? repo])
@@ -22,22 +23,6 @@ class BackupService {
     final Directory d = Directory(dir);
     if (!await d.exists()) await d.create(recursive: true);
     return File('$dir/$name');
-  }
-
-  /// Export all medicines to a JSON backup and share it.
-  Future<File> exportJson() async {
-    final List<Medicine> all = await _repo.getAll();
-    final Map<String, Object?> payload = <String, Object?>{
-      'version': 1,
-      'exported_at': DateTime.now().toIso8601String(),
-      'medicines': all.map((Medicine m) => m.toMap()).toList(),
-    };
-    final Directory dir = await getTemporaryDirectory();
-    final String stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
-    final File file =
-        await _fileIn(dir.path, 'med_stock_backup_$stamp.json');
-    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(payload));
-    return file;
   }
 
   /// Export all medicines to CSV and share it.

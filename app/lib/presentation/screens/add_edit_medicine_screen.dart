@@ -25,7 +25,6 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
 
   late final TextEditingController _name;
   late final TextEditingController _brand;
-  late final TextEditingController _category;
   late final TextEditingController _batch;
   late final TextEditingController _barcode;
   late final TextEditingController _quantity;
@@ -35,6 +34,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   late final TextEditingController _notes;
 
   String _unit = 'Tablets';
+  String _category = 'Uncategorised';
   DateTime? _mfgDate;
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
 
@@ -46,7 +46,6 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     final Medicine? m = widget.existing;
     _name = TextEditingController(text: m?.name ?? '');
     _brand = TextEditingController(text: m?.brand ?? '');
-    _category = TextEditingController(text: m?.category ?? '');
     _batch = TextEditingController(text: m?.batchNo ?? '');
     _barcode = TextEditingController(text: m?.barcode ?? '');
     _quantity = TextEditingController(text: m?.quantity.toString() ?? '');
@@ -63,6 +62,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             : '');
     _notes = TextEditingController(text: m?.notes ?? '');
     _unit = m?.unit ?? 'Tablets';
+    final String stored = m?.category.trim() ?? '';
+    _category = stored.isEmpty ? 'Uncategorised' : stored;
     _mfgDate = m?.mfgDate;
     if (m != null) _expiryDate = m.expiryDate;
   }
@@ -70,7 +71,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   @override
   void dispose() {
     for (final TextEditingController c in <TextEditingController>[
-      _name, _brand, _category, _batch, _barcode, _quantity,
+      _name, _brand, _batch, _barcode, _quantity,
       _lowStock, _purchase, _selling, _notes,
     ]) {
       c.dispose();
@@ -125,7 +126,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         .copyWith(
       name: name,
       brand: _brand.text.trim(),
-      category: _category.text.trim(),
+      category: _category,
       batchNo: batch,
       barcode: _barcode.text.trim(),
       quantity: int.tryParse(_quantity.text.trim()) ?? 0,
@@ -228,13 +229,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: LabeledField(
-                          label: 'Category',
-                          hint: 'e.g. Analgesic',
-                          controller: _category,
-                        ),
-                      ),
+                      Expanded(child: _categoryDropdown()),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -328,6 +323,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                     controller: _notes,
                     maxLines: 3,
                   ),
+                  if (_isEdit) ...<Widget>[
+                    const SizedBox(height: 18),
+                    _deleteButton(),
+                  ],
                 ],
               ),
             ),
@@ -509,6 +508,40 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     );
   }
 
+  Widget _categoryDropdown() {
+    // Keep any legacy free-text value that predates the preset list so an edit
+    // never silently drops it.
+    final List<String> options = AppConstants.categories.contains(_category)
+        ? AppConstants.categories
+        : <String>[_category, ...AppConstants.categories];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _fieldLabel('Category'),
+        DropdownButtonFormField<String>(
+          initialValue: _category,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.muted),
+          style: const TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+          items: options
+              .map((String c) => DropdownMenuItem<String>(
+                    value: c,
+                    child: Text(c, overflow: TextOverflow.ellipsis),
+                  ))
+              .toList(),
+          onChanged: (String? v) =>
+              setState(() => _category = v ?? 'Uncategorised'),
+        ),
+      ],
+    );
+  }
+
   Widget _dateField({
     required String label,
     required String value,
@@ -561,6 +594,64 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _deleteButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _deleteMedicine,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.statusRed,
+          backgroundColor: AppColors.card,
+          side: const BorderSide(color: Color(0xFFF4CCCE), width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        icon: const Icon(Icons.delete_outline, size: 20),
+        label: const Text('Delete medicine'),
+      ),
+    );
+  }
+
+  Future<void> _deleteMedicine() async {
+    final Medicine? m = widget.existing;
+    if (m == null) return;
+    final MedicineProvider mp = context.read<MedicineProvider>();
+    final bool ok = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext ctx) => AlertDialog(
+            title: const Text('Delete medicine?'),
+            content: Text('Remove ${m.name} from your stock?'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                style:
+                    TextButton.styleFrom(foregroundColor: AppColors.statusRed),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok) return;
+    await mp.delete(m.id);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Deleted ${m.name}'),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () => mp.undoDelete(m.id),
+        ),
+      ),
     );
   }
 

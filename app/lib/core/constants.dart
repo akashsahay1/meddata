@@ -29,4 +29,24 @@ class AppConstants {
     'Pieces',
     'Boxes',
   ];
+
+  /// Preset medicine categories. Customers pick from this fixed list rather
+  /// than typing free text, so categorisation stays consistent.
+  static const List<String> categories = <String>[
+    'Uncategorised',
+    'Pain Relief / Analgesic',
+    'Antibiotic',
+    'Antipyretic (Fever)',
+    'Antacid / Gastro',
+    'Cough & Cold',
+    'Allergy / Antihistamine',
+    'Diabetes',
+    'Cardiac / Blood Pressure',
+    'Vitamins & Supplements',
+    'Dermatology / Skin',
+    'Eye / Ear Drops',
+    'Ayurvedic / Herbal',
+    'First Aid',
+    'Other',
+  ];
 }

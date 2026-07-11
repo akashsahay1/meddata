@@ -55,6 +55,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.8
 
 # App launcher icon (Meddata colored logo).
 flutter_launcher_icons:
@@ -66,6 +67,17 @@ flutter_launcher_icons:
   # Android adaptive icon: logo as foreground on a white background layer.
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/meddata_logo.png"
+
+# Native splash screen (deep green with the Meddata logo).
+flutter_native_splash:
+  color: "#0A302E"
+  image: assets/images/meddata_logo.png
+  android_12:
+    color: "#0A302E"
+    image: assets/images/meddata_logo.png
+  android: true
+  ios: true
+  web: false
 
 flutter:
   uses-material-design: true

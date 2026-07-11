@@ -152,6 +152,45 @@ class AuthService extends ChangeNotifier {
     return _errorFrom(r.body) ?? 'Invalid or expired code.';
   }
 
+  /// Update the signed-in user's name and/or email. Returns null on success,
+  /// or a user-facing error message on failure.
+  Future<String?> updateProfile({String? name, String? email}) async {
+    if (!isLoggedIn) return 'You are not signed in.';
+    final ({int status, Map<String, dynamic>? body}) r = await _api
+        .updateProfile(token: _token!, name: name, email: email);
+    if (r.status == 0) return 'No internet connection. Please try again.';
+    if (r.status >= 200 && r.status < 300) {
+      final Map<String, dynamic>? user =
+          (r.body?['user'] as Map?)?.cast<String, dynamic>();
+      if (user != null) {
+        _name = user['name'] as String? ?? _name;
+        _email = user['email'] as String? ?? _email;
+      }
+      await _persist();
+      notifyListeners();
+      return null;
+    }
+    return _errorFrom(r.body) ?? 'Could not update profile.';
+  }
+
+  /// Change the signed-in user's password. Returns null on success, or a
+  /// user-facing error message on failure.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (!isLoggedIn) return 'You are not signed in.';
+    final ({int status, Map<String, dynamic>? body}) r =
+        await _api.changePassword(
+      token: _token!,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+    if (r.status == 0) return 'No internet connection. Please try again.';
+    if (r.status >= 200 && r.status < 300) return null;
+    return _errorFrom(r.body) ?? 'Could not change password.';
+  }
+
   String? _errorFrom(Map<String, dynamic>? body) {
     if (body == null) return null;
     if (body['message'] is String) return body['message'] as String;
