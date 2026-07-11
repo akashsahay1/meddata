@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -29,33 +31,47 @@ Future<void> main() async {
   final AuthService auth = AuthService(settings, deviceId);
   await auth.init();
 
-  await NotificationService.instance.init();
-  await BackgroundWorker.init();
-
   final SubscriptionService subscription =
       SubscriptionService(settings, deviceId);
   // The trial/entitlement/coupon endpoints are user-scoped and require the
   // auth token; supply it from AuthService.
   subscription.tokenProvider = () => auth.token;
-  _startBackgroundServices(auth, settings);
 
   runApp(MedStockApp(
     settings: settings,
     auth: auth,
     subscription: subscription,
   ));
+
+  // Initialize notifications + background work AFTER the first frame. These
+  // touch native plugin channels that can be slow (or stall) on iOS; awaiting
+  // them before runApp would freeze the native splash. Best-effort only.
+  unawaited(_startBackgroundServices(auth, settings));
 }
 
-/// Kick off background services without blocking first paint.
-void _startBackgroundServices(AuthService auth, SettingsService settings) {
+/// Best-effort background init, run after runApp so it never blocks first paint.
+Future<void> _startBackgroundServices(
+    AuthService auth, SettingsService settings) async {
   // If already logged in, sync the user's entitlement (premium/trial).
   if (auth.isLoggedIn) auth.refreshMe();
-  BackgroundWorker.scheduleDailyDigest(
-    warningDays: settings.warningDays,
-    notifExpiry: settings.notifExpiry,
-    notifLowStock: settings.notifLowStock,
-  );
-  NotificationService.instance.requestPermissions();
+
+  try {
+    await NotificationService.instance.init();
+    await NotificationService.instance.requestPermissions();
+  } catch (e) {
+    debugPrint('Notification init skipped: $e');
+  }
+
+  try {
+    await BackgroundWorker.init();
+    await BackgroundWorker.scheduleDailyDigest(
+      warningDays: settings.warningDays,
+      notifExpiry: settings.notifExpiry,
+      notifLowStock: settings.notifLowStock,
+    );
+  } catch (e) {
+    debugPrint('Background worker init skipped: $e');
+  }
 }
 
 class MedStockApp extends StatelessWidget {
