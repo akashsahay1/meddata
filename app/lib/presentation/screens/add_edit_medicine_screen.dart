@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +8,8 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
@@ -37,6 +41,11 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   String _category = 'Uncategorised';
   DateTime? _mfgDate;
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
+
+  // Medicine-name autocomplete against the backend master list.
+  final ApiClient _api = ApiClient();
+  final FocusNode _nameFocus = FocusNode();
+  Timer? _searchDebounce;
 
   bool get _isEdit => widget.existing != null;
 
@@ -70,6 +79,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _nameFocus.dispose();
     for (final TextEditingController c in <TextEditingController>[
       _name, _brand, _batch, _barcode, _quantity,
       _lowStock, _purchase, _selling, _notes,
@@ -210,13 +221,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
                 children: <Widget>[
-                  LabeledField(
-                    label: 'Medicine name *',
-                    hint: 'e.g. Paracetamol 500mg',
-                    controller: _name,
-                    validator: (String? v) =>
-                        (v == null || v.trim().isEmpty) ? 'Required' : null,
-                  ),
+                  _nameAutocompleteField(),
                   const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,6 +395,163 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         ),
       ),
     );
+  }
+
+  /// Medicine-name field with a debounced typeahead backed by the master list.
+  /// Uses the existing [_name] controller + [_nameFocus] so validation and
+  /// [_save] keep working unchanged; only the field's decoration is bespoke so
+  /// it matches the [LabeledField] look elsewhere on the form.
+  Widget _nameAutocompleteField() {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double fieldWidth = constraints.maxWidth;
+        return RawAutocomplete<Map<String, dynamic>>(
+          textEditingController: _name,
+          focusNode: _nameFocus,
+          displayStringForOption: (Map<String, dynamic> m) =>
+              (m['name'] as String?) ?? '',
+          optionsBuilder: _searchNames,
+          onSelected: _onNameSelected,
+          fieldViewBuilder: (
+            BuildContext context,
+            TextEditingController controller,
+            FocusNode focusNode,
+            VoidCallback onFieldSubmitted,
+          ) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _fieldLabel('Medicine name *'),
+                TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onFieldSubmitted: (_) => onFieldSubmitted(),
+                  textInputAction: TextInputAction.next,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink,
+                  ),
+                  decoration:
+                      const InputDecoration(hintText: 'e.g. Paracetamol 500mg'),
+                  validator: (String? v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+              ],
+            );
+          },
+          optionsViewBuilder: (
+            BuildContext context,
+            void Function(Map<String, dynamic>) onSelected,
+            Iterable<Map<String, dynamic>> options,
+          ) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Material(
+                  elevation: 4,
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppRadii.input),
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxHeight: 260, maxWidth: fieldWidth),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final Map<String, dynamic> m = options.elementAt(index);
+                        return _suggestionTile(m, () => onSelected(m));
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _suggestionTile(Map<String, dynamic> m, VoidCallback onTap) {
+    final String name = (m['name'] as String?) ?? '';
+    final String manufacturer = (m['manufacturer'] as String?) ?? '';
+    final String packSize = (m['pack_size'] as String?) ?? '';
+    final String subtitle = <String>[manufacturer, packSize]
+        .where((String s) => s.isNotEmpty)
+        .join(' · ');
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.ink,
+              ),
+            ),
+            if (subtitle.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.muted,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Debounced (~250ms) master-list lookup. Returns nothing for queries below
+  /// the backend's 2-char minimum; a superseded lookup never completes and is
+  /// harmlessly discarded by [RawAutocomplete].
+  Future<Iterable<Map<String, dynamic>>> _searchNames(
+      TextEditingValue value) async {
+    final String q = value.text.trim();
+    if (q.length < 2) return const <Map<String, dynamic>>[];
+    _searchDebounce?.cancel();
+    final Completer<Iterable<Map<String, dynamic>>> completer =
+        Completer<Iterable<Map<String, dynamic>>>();
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () async {
+      if (!mounted) return;
+      final String? token = context.read<AuthService>().token;
+      final List<Map<String, dynamic>> results =
+          await _api.searchMedicines(q, token: token);
+      if (!completer.isCompleted) completer.complete(results);
+    });
+    return completer.future;
+  }
+
+  void _onNameSelected(Map<String, dynamic> m) {
+    setState(() {
+      _name.text = (m['name'] as String?) ?? _name.text;
+      _brand.text = (m['manufacturer'] as String?) ?? '';
+      final Object? price = m['price'];
+      if (price is num) {
+        _selling.text = price.toStringAsFixed(2);
+      }
+      final Object? unit = m['unit'];
+      if (unit is String && AppConstants.units.contains(unit)) {
+        _unit = unit;
+      }
+    });
+    _nameFocus.unfocus();
   }
 
   Widget _numberField(

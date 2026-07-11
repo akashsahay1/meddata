@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EntitlementController;
+use App\Http\Controllers\Api\MedicineController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\TrialController;
@@ -48,5 +49,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
         Route::post('backup', [BackupController::class, 'store']);
         Route::get('backup/latest', [BackupController::class, 'latest']);
+
+        Route::get('medicines/search', [MedicineController::class, 'search']);
     });
 });

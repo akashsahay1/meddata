@@ -14,3 +14,6 @@ Thumbs.db
 **/node_modules/
 app/build/
 app/.dart_tool/
+
+# Large design/data source inputs (imported into DB, not app assets)
+/assets/

@@ -114,6 +114,23 @@ class ApiClient {
     return null;
   }
 
+  /// Prefix-search the medicines master list for name autocomplete.
+  /// Returns the `results` list (empty on any failure, empty response, or a
+  /// query shorter than the backend's 2-char minimum).
+  Future<List<Map<String, dynamic>>> searchMedicines(String q,
+      {String? token}) async {
+    final Map<String, dynamic>? body = await _get(
+      '/medicines/search',
+      query: <String, String>{'q': q},
+      token: token,
+    );
+    final Object? results = body?['results'];
+    if (results is List) {
+      return results.whereType<Map<String, dynamic>>().toList();
+    }
+    return const <Map<String, dynamic>>[];
+  }
+
   /// Remote config: trial_days, razorpay_key_id, and plan list for the paywall.
   Future<Map<String, dynamic>?> fetchConfig() => _get('/config');
 
