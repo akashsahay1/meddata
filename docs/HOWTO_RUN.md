@@ -3,6 +3,7 @@
 Two parts, in separate folders: the **Flutter app** (`app/`) and the **Laravel backend** (`backend/`).
 
 ## Prerequisites (already set up on this machine)
+
 - Flutter 3.44.4 stable at `~/development/flutter` → add to PATH:
   `export PATH="$HOME/development/flutter/bin:$PATH"`
 - Android SDK at `~/Library/Android/sdk`, JDK from Android Studio.
@@ -34,7 +35,7 @@ flutter build appbundle --release
 export PATH="$HOME/Library/Application Support/Herd/bin:$PATH"
 cd /Users/akash/Desktop/meddata/backend
 php artisan migrate --seed --force     # schema + admin + plans + settings (+ demo data)
-php artisan serve --port=8000          # or serve via Herd domain
+php artisan serve --port=8000 --host=0.0.0.0         # or serve via Herd domain
 ```
 
 - **Admin panel:** `/admin` → login **akash.sahay1@gmail.com** / **Akash243@#$**
@@ -42,6 +43,7 @@ php artisan serve --port=8000          # or serve via Herd domain
 - The app works fully **offline**; the backend is only for subscription validation + optional cloud backup.
 
 ## Tests
+
 ```bash
 export PATH="$HOME/development/flutter/bin:$PATH"
 cd /Users/akash/Desktop/meddata/app
@@ -49,6 +51,7 @@ flutter test        # domain unit tests (expiry, low-stock, free-tier gating)
 ```
 
 ## Go-live follow-ups (need real credentials — see docs/TASKS.md Phase 6)
+
 - Create the app + subscription products in Google Play Console (`premium_monthly`, `premium_yearly`, `premium_lifetime`).
 - Create a Play Developer API service account; set `GOOGLE_PLAY_CREDENTIALS` in `backend/.env` to enable real server-side purchase verification (a safe local-dev fallback is used until then).
 - Configure RTDN (Pub/Sub) to `POST /api/v1/rtdn`.

@@ -22,11 +22,10 @@ class AuthController extends Controller
 {
     /** Reset code lifetime and the max number of verification attempts allowed. */
     private const RESET_TTL_MINUTES = 15;
+
     private const RESET_MAX_ATTEMPTS = 5;
 
-    public function __construct(private readonly EntitlementService $entitlements)
-    {
-    }
+    public function __construct(private readonly EntitlementService $entitlements) {}
 
     /**
      * POST /auth/register
@@ -43,7 +42,7 @@ class AuthController extends Controller
         ]);
 
         // is_admin is intentionally NOT taken from input; new API users are never admins.
-        $user = new User();
+        $user = new User;
         $user->name = $data['name'];
         $user->email = $data['email'];
         $user->phone = $data['phone'] ?? null;
@@ -131,7 +130,7 @@ class AuthController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['sometimes', 'required', 'email', 'max:255', 'unique:users,email,'.$user->id],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
         ]);
 
@@ -204,8 +203,8 @@ class AuthController extends Controller
 
         $this->safeMail(fn () => Mail::to($data['email'])->send(new PasswordResetMail($code, self::RESET_TTL_MINUTES)));
 
-        // Only expose the code in local dev, never in staging/production.
-        if (app()->environment('local')) {
+        // Only expose the code in local dev and automated tests, never in staging/production.
+        if (app()->environment(['local', 'testing'])) {
             $generic['dev_code'] = $code;
         }
 
@@ -287,7 +286,7 @@ class AuthController extends Controller
         try {
             $fn();
         } catch (\Throwable $e) {
-            Log::warning('Mail send failed: ' . $e->getMessage());
+            Log::warning('Mail send failed: '.$e->getMessage());
         }
     }
 }

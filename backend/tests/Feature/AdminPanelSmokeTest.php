@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Medicine;
 use App\Models\Store;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,7 +17,7 @@ class AdminPanelSmokeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
     }
 
     private function admin(): User
@@ -26,7 +27,7 @@ class AdminPanelSmokeTest extends TestCase
 
     public function test_login_page_renders(): void
     {
-        $this->get('/admin/login')
+        $this->get('/')
             ->assertStatus(200)
             ->assertSee('Meddata');
     }
@@ -36,18 +37,18 @@ class AdminPanelSmokeTest extends TestCase
         $this->actingAs($this->admin());
 
         $indexes = [
-            '/admin/customers',
-            '/admin/stores',
-            '/admin/medicines',
-            '/admin/plans',
-            '/admin/entitlements',
-            '/admin/devices',
-            '/admin/app-settings',
-            '/admin/backups',
-            '/admin/purchase-logs',
-            '/admin/coupons',
-            '/admin/payments',
-            '/admin/users',
+            '/customers',
+            '/stores',
+            '/medicines',
+            '/plans',
+            '/entitlements',
+            '/devices',
+            '/app-settings',
+            '/backups',
+            '/purchase-logs',
+            '/coupons',
+            '/payments',
+            '/users',
         ];
 
         foreach ($indexes as $url) {
@@ -60,16 +61,16 @@ class AdminPanelSmokeTest extends TestCase
         $this->actingAs($this->admin());
 
         $creates = [
-            '/admin/customers/create',
-            '/admin/stores/create',
-            '/admin/medicines/create',
-            '/admin/plans/create',
-            '/admin/devices/create',
-            '/admin/app-settings/create',
-            '/admin/backups/create',
-            '/admin/purchase-logs/create',
-            '/admin/coupons/create',
-            '/admin/users/create',
+            '/customers/create',
+            '/stores/create',
+            '/medicines/create',
+            '/plans/create',
+            '/devices/create',
+            '/app-settings/create',
+            '/backups/create',
+            '/purchase-logs/create',
+            '/coupons/create',
+            '/users/create',
         ];
 
         foreach ($creates as $url) {
@@ -85,9 +86,9 @@ class AdminPanelSmokeTest extends TestCase
         $store = Store::first();
         $medicine = Medicine::first();
 
-        $this->get("/admin/customers/{$customer->id}/edit")->assertStatus(200);
-        $this->get("/admin/stores/{$store->id}/edit")->assertStatus(200);
-        $this->get("/admin/medicines/{$medicine->id}/edit")->assertStatus(200);
+        $this->get("/customers/{$customer->id}/edit")->assertStatus(200);
+        $this->get("/stores/{$store->id}/edit")->assertStatus(200);
+        $this->get("/medicines/{$medicine->id}/edit")->assertStatus(200);
     }
 
     public function test_demo_data_seeded(): void
