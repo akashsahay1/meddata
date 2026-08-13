@@ -75,8 +75,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.canvas,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -96,9 +96,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: AppColors.card,
+                      color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(AppRadii.cardLg),
-                      border: Border.all(color: AppColors.border),
+                      border: Border.all(color: theme.dividerColor),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
                           color: Color(0x140A302E),
@@ -213,11 +213,11 @@ class _LabeledCodeField extends StatelessWidget {
           inputFormatters: <TextInputFormatter>[
             FilteringTextInputFormatter.digitsOnly,
           ],
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: 6,
-            color: AppColors.ink,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: const InputDecoration(
             hintText: '000000',
@@ -265,10 +265,10 @@ class _PasswordField extends StatelessWidget {
         TextFormField(
           controller: controller,
           obscureText: obscure,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.ink,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: InputDecoration(
             hintText: 'At least 6 characters',

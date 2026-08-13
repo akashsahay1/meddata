@@ -290,20 +290,31 @@ class _SubscribeViewState extends State<SubscribeView> {
   // -- Plan toggle -----------------------------------------------------------
 
   Widget _planToggle(String cur) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: AppColors.page,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: _plans
-              .map((SubscriptionPlan p) => _toggleSegment(p))
-              .toList(),
-        ),
+    // With 3+ paid plans (plus the "BEST VALUE" badge) the segmented Row can be
+    // wider than the screen and overflow. Make it horizontally scrollable, while
+    // keeping it centered whenever it does fit.
+    final Widget toggle = Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.page,
+        borderRadius: BorderRadius.circular(14),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children:
+            _plans.map((SubscriptionPlan p) => _toggleSegment(p)).toList(),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Center(child: toggle),
+          ),
+        );
+      },
     );
   }
 

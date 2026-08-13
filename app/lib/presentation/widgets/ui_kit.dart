@@ -546,6 +546,9 @@ class LabeledField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    final Color labelColor = isDark ? AppColors.onDarkMuted : AppColors.muted;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -553,10 +556,10 @@ class LabeledField extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 7, left: 2),
           child: Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: AppColors.muted,
+              color: labelColor,
             ),
           ),
         ),
@@ -567,10 +570,10 @@ class LabeledField extends StatelessWidget {
           maxLines: maxLines,
           onChanged: onChanged,
           enabled: enabled,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.ink,
+            color: theme.colorScheme.onSurface,
           ),
           decoration: InputDecoration(hintText: hint, suffixIcon: suffixIcon),
         ),

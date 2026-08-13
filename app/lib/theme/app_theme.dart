@@ -168,7 +168,10 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.ink,
+          // Theme-aware: dark ink on light, white on dark. Using the constant
+          // AppColors.ink here made outlined buttons (e.g. "Log out") render
+          // dark-on-dark and vanish in dark mode.
+          foregroundColor: ink,
           backgroundColor: surface,
           minimumSize: const Size.fromHeight(54),
           side: BorderSide(color: line, width: 1.5),
@@ -181,7 +184,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: AppColors.green,
+          // Brand green is too dark on dark surfaces; use a lighter green there.
+          foregroundColor: isDark ? AppColors.statusGreen : AppColors.green,
           textStyle:
               const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700),
         ),

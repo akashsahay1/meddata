@@ -5,14 +5,12 @@ import 'package:http/http.dart' as http;
 /// Thin client for the Laravel backend. Every call is best-effort: the app
 /// stays fully functional offline, so callers must handle null/failure.
 class ApiClient {
-  /// Base URL of the Laravel API.
-  /// TEMP (dev): points at `php artisan serve` on the Mac's LAN IP so a physical
-  /// iPhone on the same Wi-Fi can reach it. Herd's `.test` URL only resolves on
-  /// the host machine; `127.0.0.1` on a real device means the phone itself.
-  /// Android emulator reaches the host via 10.0.2.2 instead.
+  /// Base URL of the Laravel API. Defaults to the live backend; override with
+  /// `--dart-define=API_BASE_URL=...` for local dev (e.g. an `adb reverse`
+  /// tunnel at `http://127.0.0.1:8000/api/v1`).
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://192.168.29.220:8000/api/v1',
+    defaultValue: 'https://meddata.akashxdev.com/api/v1',
   );
 
   final http.Client _http;

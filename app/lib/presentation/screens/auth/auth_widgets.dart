@@ -12,6 +12,13 @@ class AuthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
+    // Brand green only reads on the light canvas; on dark the wordmark/title
+    // switch to the theme's onSurface and the subtitle to a light muted tone.
+    final Color wordmarkColor =
+        isDark ? theme.colorScheme.onSurface : AppColors.green;
+    final Color subtitleColor = isDark ? AppColors.onDarkMuted : AppColors.muted;
     return Column(
       children: <Widget>[
         Row(
@@ -21,11 +28,11 @@ class AuthHeader extends StatelessWidget {
             const SizedBox(width: 12),
             Text(
               'Meddata',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.6,
-                color: AppColors.green,
+                color: wordmarkColor,
               ),
             ),
           ],
@@ -34,21 +41,21 @@ class AuthHeader extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.6,
-            color: AppColors.ink,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 6),
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: AppColors.muted,
+            color: subtitleColor,
           ),
         ),
       ],

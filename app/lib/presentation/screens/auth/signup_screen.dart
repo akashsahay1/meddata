@@ -187,10 +187,10 @@ class _PasswordField extends StatelessWidget {
           textInputAction: TextInputAction.done,
           onFieldSubmitted: onSubmitted,
           validator: AuthValidators.password,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.ink,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: InputDecoration(
             hintText: 'At least 6 characters',
