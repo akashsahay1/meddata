@@ -20,11 +20,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('config', [ConfigController::class, 'index']);
     Route::post('register-device', [DeviceController::class, 'register']);
 
-    // Razorpay redirect-mode callback: the checkout WebView lands here after
-    // the bank/3DS page. It only relays the result to the app, which then
-    // calls payment/verify with its token.
-    Route::post('payment/return', [PaymentController::class, 'checkoutReturn']);
-
     // Google Play server-to-server webhook (called by Google, not the app).
     Route::post('rtdn', [PurchaseController::class, 'rtdn']);
 

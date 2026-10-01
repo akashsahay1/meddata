@@ -59,19 +59,53 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// The Meddata logo as used on the website (images/meddata_logo.png),
-/// cropped to its artwork.
+/// The orange plus/cross inside a green rounded square: the Meddata brand mark.
 class BrandMark extends StatelessWidget {
   final double size;
   const BrandMark({super.key, this.size = 26});
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/images/brand_mark.png',
+    // Proportions mirror the design: square radius ~30%, arm thickness ~23%,
+    // arm length ~46% of the mark.
+    final double radius = size * 0.30;
+    final double arm = size * 0.46;
+    final double thick = size * 0.23;
+    final double barRadius = thick * 0.35;
+    return Container(
       width: size,
       height: size,
-      filterQuality: FilterQuality.medium,
+      decoration: BoxDecoration(
+        color: AppColors.green,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: arm,
+          height: arm,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              Container(
+                width: thick,
+                height: arm,
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(barRadius),
+                ),
+              ),
+              Container(
+                width: arm,
+                height: thick,
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(barRadius),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

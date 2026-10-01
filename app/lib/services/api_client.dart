@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 /// Thin client for the Laravel backend. Every call is best-effort: the app
@@ -109,10 +108,7 @@ class ApiClient {
       if (res.statusCode >= 200 && res.statusCode < 300) {
         return jsonDecode(res.body) as Map<String, dynamic>;
       }
-      debugPrint('[ApiClient] POST $path -> ${res.statusCode}: ${res.body}');
-    } catch (e) {
-      debugPrint('[ApiClient] POST $path failed: $e');
-    }
+    } catch (_) {}
     return null;
   }
 

@@ -164,11 +164,6 @@ class _SubscribeViewState extends State<SubscribeView> {
       _snack('Payment cancelled. You have not been charged.');
       return;
     }
-    if (result.containsKey('error')) {
-      setState(() => _busy = false);
-      _snack('Payment failed: ${result['error']}');
-      return;
-    }
 
     final bool ok = await sub.verifyPayment(
       planId: plan.id,
