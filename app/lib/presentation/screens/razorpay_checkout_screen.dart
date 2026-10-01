@@ -12,8 +12,8 @@ import '../../theme/app_theme.dart';
 ///
 /// Pops with:
 ///   * a `{paymentId, orderId, signature}` map on a successful payment, or
-///   * `null` when the payment failed, the modal was dismissed, or the user
-///     closed the screen from the AppBar.
+///   * an `{error}` map when checkout or the payment failed, or
+///   * `null` when the modal was dismissed or the user closed the screen.
 class RazorpayCheckoutScreen extends StatefulWidget {
   const RazorpayCheckoutScreen({
     super.key,
@@ -64,14 +64,20 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     }
 
     final String status = (payload['status'] as String?) ?? 'failed';
+    if (status != 'success') {
+      debugPrint('[Razorpay] checkout $status: ${payload['error'] ?? ''}');
+    }
     if (status == 'success') {
       _finish(<String, String>{
         'paymentId': (payload['razorpay_payment_id'] as String?) ?? '',
         'orderId': (payload['razorpay_order_id'] as String?) ?? '',
         'signature': (payload['razorpay_signature'] as String?) ?? '',
       });
+    } else if (status == 'failed') {
+      _finish(<String, String>{
+        'error': (payload['error'] as String?)?.trim() ?? 'payment failed',
+      });
     } else {
-      // 'failed' or 'dismissed' both cancel with no charge.
       _finish(null);
     }
   }
@@ -153,7 +159,9 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     try {
       var rzp = new Razorpay(options);
       rzp.on('payment.failed', function (response) {
-        post({ status: 'failed', error: (response && response.error) ? response.error.description : 'payment failed' });
+        var err = (response && response.error) ? response.error : {};
+        console.log('[Razorpay] payment.failed ' + JSON.stringify(err));
+        post({ status: 'failed', error: (err.code || '') + ' ' + (err.description || 'payment failed') + ' ' + (err.reason || '') });
       });
       rzp.open();
     } catch (e) {

@@ -50,7 +50,12 @@ class PaymentController extends Controller
         $finalAmount = round($amount - $discount, 2);
         $amountPaise = (int) round($finalAmount * 100);
 
-        $order = $this->razorpay->createOrder($amountPaise, 'rcpt_' . $plan->id . '_' . uniqid());
+        try {
+            $order = $this->razorpay->createOrder($amountPaise, 'rcpt_' . $plan->id . '_' . uniqid());
+        } catch (\Throwable $e) {
+            Log::error('Order create failed for user ' . $user->id . ': ' . $e->getMessage());
+            return response()->json(['message' => 'Payment gateway error. Please try again later.'], 502);
+        }
 
         Payment::create([
             'device_id' => $data['device_id'] ?? ('user-' . $user->id),
@@ -108,6 +113,11 @@ class PaymentController extends Controller
         );
 
         if (! $ok) {
+            Log::warning('Razorpay signature mismatch', [
+                'user_id' => $user->id,
+                'order_id' => $data['razorpay_order_id'],
+                'payment_id' => $data['razorpay_payment_id'],
+            ]);
             $payment->update([
                 'status' => 'failed',
                 'razorpay_payment_id' => $data['razorpay_payment_id'],

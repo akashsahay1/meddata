@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SubscriptionApiTest extends TestCase
@@ -145,6 +146,29 @@ class SubscriptionApiTest extends TestCase
             'device_id' => 'dev-order',
             'status' => 'created',
         ]);
+    }
+
+    public function test_order_create_returns_502_when_razorpay_rejects_order(): void
+    {
+        config(['services.razorpay.key_id' => 'rzp_test_x', 'services.razorpay.key_secret' => 'bad']);
+        Http::fake(['api.razorpay.com/*' => Http::response(
+            ['error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Authentication failed']], 401
+        )]);
+
+        $this->postJson('/api/v1/order/create', [
+            'plan_id' => $this->yearlyPlan()->id,
+        ], $this->authHeaders())->assertStatus(502);
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_order_create_returns_502_when_key_secret_missing(): void
+    {
+        config(['services.razorpay.key_id' => 'rzp_test_x', 'services.razorpay.key_secret' => '']);
+
+        $this->postJson('/api/v1/order/create', [
+            'plan_id' => $this->yearlyPlan()->id,
+        ], $this->authHeaders())->assertStatus(502);
     }
 
     public function test_payment_verify_activates_entitlement_dev_fallback(): void
