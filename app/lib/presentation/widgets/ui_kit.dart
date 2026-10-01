@@ -59,8 +59,8 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// The Meddata app logo (calendar, capsule and orange clock on a white tile),
-/// cropped from the launcher icon artwork.
+/// The Meddata logo as used on the website (images/meddata_logo.png),
+/// cropped to its artwork.
 class BrandMark extends StatelessWidget {
   final double size;
   const BrandMark({super.key, this.size = 26});
