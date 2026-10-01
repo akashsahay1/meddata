@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 /**
  * Razorpay order creation + signature verification.
@@ -39,6 +41,13 @@ class RazorpayService
      */
     public function createOrder(int $amountPaise, string $receipt): array
     {
+        // A key id without a secret can't create real orders, and handing a
+        // synthetic order to the real checkout makes it fail silently.
+        if ($this->keyId() !== '' && $this->keySecret() === '') {
+            Log::error('Razorpay key_id is set but key_secret is missing; cannot create order.');
+            throw new RuntimeException('Razorpay key secret is not configured.');
+        }
+
         if ($this->keysConfigured()) {
             $response = Http::withBasicAuth($this->keyId(), $this->keySecret())
                 ->acceptJson()
@@ -57,6 +66,16 @@ class RazorpayService
                     'key_id' => $this->keyId(),
                 ];
             }
+
+            // Real keys but Razorpay rejected the call (bad secret, test/live
+            // mismatch, amount < 100 paise, ...). Never fall back to a fake
+            // order here: checkout.js would reject it with no visible error.
+            Log::error('Razorpay order creation failed', [
+                'status' => $response->status(),
+                'body' => $response->json() ?? $response->body(),
+                'amount_paise' => $amountPaise,
+            ]);
+            throw new RuntimeException('Razorpay order creation failed: ' . ($response->json('error.description') ?? $response->status()));
         }
 
         // Dev fallback — no real charge, fully testable.

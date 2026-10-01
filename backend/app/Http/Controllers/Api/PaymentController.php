@@ -13,6 +13,7 @@ use App\Services\EntitlementService;
 use App\Services\RazorpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -50,7 +51,12 @@ class PaymentController extends Controller
         $finalAmount = round($amount - $discount, 2);
         $amountPaise = (int) round($finalAmount * 100);
 
-        $order = $this->razorpay->createOrder($amountPaise, 'rcpt_' . $plan->id . '_' . uniqid());
+        try {
+            $order = $this->razorpay->createOrder($amountPaise, 'rcpt_' . $plan->id . '_' . uniqid());
+        } catch (\Throwable $e) {
+            Log::error('Order create failed for user ' . $user->id . ': ' . $e->getMessage());
+            return response()->json(['message' => 'Payment gateway error. Please try again later.'], 502);
+        }
 
         Payment::create([
             'device_id' => $data['device_id'] ?? ('user-' . $user->id),
@@ -108,6 +114,11 @@ class PaymentController extends Controller
         );
 
         if (! $ok) {
+            Log::warning('Razorpay signature mismatch', [
+                'user_id' => $user->id,
+                'order_id' => $data['razorpay_order_id'],
+                'payment_id' => $data['razorpay_payment_id'],
+            ]);
             $payment->update([
                 'status' => 'failed',
                 'razorpay_payment_id' => $data['razorpay_payment_id'],
@@ -162,6 +173,37 @@ class PaymentController extends Controller
             'status' => 'active',
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
         ]);
+    }
+
+    /**
+     * POST /payment/return (public)
+     * Razorpay redirect-mode callback_url. Renders a page that hands the
+     * checkout result to the app's `RZP` JavaScript channel. Nothing is
+     * trusted here: the app still sends it to /payment/verify.
+     */
+    public function checkoutReturn(Request $request): Response
+    {
+        $error = $request->input('error');
+
+        $payload = $request->filled('razorpay_payment_id')
+            ? [
+                'status' => 'success',
+                'razorpay_payment_id' => (string) $request->input('razorpay_payment_id'),
+                'razorpay_order_id' => (string) $request->input('razorpay_order_id', ''),
+                'razorpay_signature' => (string) $request->input('razorpay_signature', ''),
+            ]
+            : [
+                'status' => 'failed',
+                'error' => is_array($error)
+                    ? trim(($error['code'] ?? '') . ' ' . ($error['description'] ?? 'payment failed'))
+                    : 'payment failed',
+            ];
+
+        if ($payload['status'] === 'failed') {
+            Log::info('Razorpay checkout returned failure', ['error' => $error]);
+        }
+
+        return response()->view('payment.return', ['payload' => $payload]);
     }
 
     /* ---------------- helpers ---------------- */

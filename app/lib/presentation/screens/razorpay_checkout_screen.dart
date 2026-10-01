@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 
 /// Full-screen WebView that hosts Razorpay Standard Checkout (checkout.js).
@@ -12,8 +14,8 @@ import '../../theme/app_theme.dart';
 ///
 /// Pops with:
 ///   * a `{paymentId, orderId, signature}` map on a successful payment, or
-///   * `null` when the payment failed, the modal was dismissed, or the user
-///     closed the screen from the AppBar.
+///   * an `{error}` map when checkout or the payment failed, or
+///   * `null` when the modal was dismissed or the user closed the screen.
 class RazorpayCheckoutScreen extends StatefulWidget {
   const RazorpayCheckoutScreen({
     super.key,
@@ -38,6 +40,12 @@ class RazorpayCheckoutScreen extends StatefulWidget {
   State<RazorpayCheckoutScreen> createState() => _RazorpayCheckoutScreenState();
 }
 
+/// Override for local testing, e.g. `http://127.0.0.1:8000/api/v1/payment/return`.
+const String _callbackOverride = String.fromEnvironment('RAZORPAY_CALLBACK_URL');
+const String _callbackUrl = _callbackOverride != ''
+    ? _callbackOverride
+    : '${ApiClient.baseUrl}/payment/return';
+
 class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
   late final WebViewController _controller;
   bool _handled = false;
@@ -48,10 +56,48 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('RZP', onMessageReceived: _onMessage)
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: _onNavigationRequest,
+        onWebResourceError: (WebResourceError e) => debugPrint(
+            '[Razorpay] web error ${e.errorCode} ${e.description} ${e.url ?? ''}'),
+      ))
       ..loadHtmlString(
         _buildHtml(),
         baseUrl: 'https://checkout.razorpay.com',
       );
+  }
+
+  /// UPI apps (PhonePe, GPay, BHIM, ...) are opened by checkout via
+  /// `upi://` or `intent://` links. A WebView can't load those itself, so
+  /// hand them to Android; checkout keeps polling and fires its handler once
+  /// the user approves in the UPI app.
+  Future<NavigationDecision> _onNavigationRequest(NavigationRequest req) async {
+    final Uri? uri = Uri.tryParse(req.url);
+    if (uri == null || uri.scheme == 'http' || uri.scheme == 'https' ||
+        uri.scheme == 'about' || uri.scheme == 'data' || uri.scheme == 'blob') {
+      return NavigationDecision.navigate;
+    }
+    final Uri target = _intentToUri(req.url) ?? uri;
+    bool launched = false;
+    try {
+      launched = await launchUrl(target, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[Razorpay] could not open ${target.scheme} link: $e');
+    }
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('That UPI app is not installed. Choose another option.')));
+    }
+    return NavigationDecision.prevent;
+  }
+
+  /// `intent://pay?..#Intent;scheme=upi;package=...;end` -> `upi://pay?..`.
+  Uri? _intentToUri(String url) {
+    if (!url.startsWith('intent://')) return null;
+    final int hash = url.indexOf('#Intent;');
+    final String body = url.substring('intent://'.length, hash < 0 ? url.length : hash);
+    final RegExpMatch? m = RegExp(r';scheme=([^;]+)').firstMatch(url);
+    return Uri.tryParse('${m?.group(1) ?? 'upi'}://$body');
   }
 
   void _onMessage(JavaScriptMessage message) {
@@ -64,14 +110,20 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     }
 
     final String status = (payload['status'] as String?) ?? 'failed';
+    if (status != 'success') {
+      debugPrint('[Razorpay] checkout $status: ${payload['error'] ?? ''}');
+    }
     if (status == 'success') {
       _finish(<String, String>{
         'paymentId': (payload['razorpay_payment_id'] as String?) ?? '',
         'orderId': (payload['razorpay_order_id'] as String?) ?? '',
         'signature': (payload['razorpay_signature'] as String?) ?? '',
       });
+    } else if (status == 'failed') {
+      _finish(<String, String>{
+        'error': (payload['error'] as String?)?.trim() ?? 'payment failed',
+      });
     } else {
-      // 'failed' or 'dismissed' both cancel with no charge.
       _finish(null);
     }
   }
@@ -95,6 +147,12 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
         'contact': widget.prefillContact,
       },
       'theme': <String, String>{'color': '#0E4D4A'},
+      // A WebView can't open checkout's bank/3DS popup (window.open returns
+      // null -> "Please use another method"). Redirect mode loads it in this
+      // same WebView and POSTs the result to our backend, whose page relays it
+      // back over the RZP channel.
+      'redirect': true,
+      'callback_url': _callbackUrl,
     };
     // jsonEncode keeps every value safely escaped for embedding in the script.
     final String optionsJson = jsonEncode(options);
@@ -153,7 +211,9 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     try {
       var rzp = new Razorpay(options);
       rzp.on('payment.failed', function (response) {
-        post({ status: 'failed', error: (response && response.error) ? response.error.description : 'payment failed' });
+        var err = (response && response.error) ? response.error : {};
+        console.log('[Razorpay] payment.failed ' + JSON.stringify(err));
+        post({ status: 'failed', error: (err.code || '') + ' ' + (err.description || 'payment failed') + ' ' + (err.reason || '') });
       });
       rzp.open();
     } catch (e) {
