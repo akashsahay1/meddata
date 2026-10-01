@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../theme/app_theme.dart';
@@ -48,10 +49,48 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('RZP', onMessageReceived: _onMessage)
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: _onNavigationRequest,
+        onWebResourceError: (WebResourceError e) => debugPrint(
+            '[Razorpay] web error ${e.errorCode} ${e.description} ${e.url ?? ''}'),
+      ))
       ..loadHtmlString(
         _buildHtml(),
         baseUrl: 'https://checkout.razorpay.com',
       );
+  }
+
+  /// UPI apps (PhonePe, GPay, BHIM, ...) are opened by checkout via
+  /// `upi://` or `intent://` links. A WebView can't load those itself, so
+  /// hand them to Android; checkout keeps polling and fires its handler once
+  /// the user approves in the UPI app.
+  Future<NavigationDecision> _onNavigationRequest(NavigationRequest req) async {
+    final Uri? uri = Uri.tryParse(req.url);
+    if (uri == null || uri.scheme == 'http' || uri.scheme == 'https' ||
+        uri.scheme == 'about' || uri.scheme == 'data' || uri.scheme == 'blob') {
+      return NavigationDecision.navigate;
+    }
+    final Uri target = _intentToUri(req.url) ?? uri;
+    bool launched = false;
+    try {
+      launched = await launchUrl(target, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[Razorpay] could not open ${target.scheme} link: $e');
+    }
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('That UPI app is not installed. Choose another option.')));
+    }
+    return NavigationDecision.prevent;
+  }
+
+  /// `intent://pay?..#Intent;scheme=upi;package=...;end` -> `upi://pay?..`.
+  Uri? _intentToUri(String url) {
+    if (!url.startsWith('intent://')) return null;
+    final int hash = url.indexOf('#Intent;');
+    final String body = url.substring('intent://'.length, hash < 0 ? url.length : hash);
+    final RegExpMatch? m = RegExp(r';scheme=([^;]+)').firstMatch(url);
+    return Uri.tryParse('${m?.group(1) ?? 'upi'}://$body');
   }
 
   void _onMessage(JavaScriptMessage message) {
