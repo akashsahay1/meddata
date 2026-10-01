@@ -213,7 +213,7 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
       rzp.on('payment.failed', function (response) {
         var err = (response && response.error) ? response.error : {};
         console.log('[Razorpay] payment.failed ' + JSON.stringify(err));
-        post({ status: 'failed', error: (err.code || '') + ' ' + (err.description || 'payment failed') + ' ' + (err.reason || '') });
+        post({ status: 'failed', error: err.description || 'payment failed' });
       });
       rzp.open();
     } catch (e) {
@@ -250,7 +250,11 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
           onPressed: () => _finish(null),
         ),
       ),
-      body: WebViewWidget(controller: _controller),
+      // Edge-to-edge: keep checkout's bottom Continue button above the nav bar.
+      body: SafeArea(
+        top: false,
+        child: WebViewWidget(controller: _controller),
+      ),
     );
   }
 }

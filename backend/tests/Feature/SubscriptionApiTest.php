@@ -171,6 +171,28 @@ class SubscriptionApiTest extends TestCase
         ], $this->authHeaders())->assertStatus(502);
     }
 
+    public function test_payment_return_relays_success_payload(): void
+    {
+        $this->post('/api/v1/payment/return', [
+            'razorpay_payment_id' => 'pay_1',
+            'razorpay_order_id' => 'order_1',
+            'razorpay_signature' => 'sig',
+        ])->assertOk()
+            ->assertSee('"status":"success"', false)
+            ->assertSee('"razorpay_payment_id":"pay_1"', false);
+    }
+
+    public function test_payment_return_relays_failure_without_error_code(): void
+    {
+        $res = $this->post('/api/v1/payment/return', [
+            'error' => ['code' => 'BAD_REQUEST_ERROR', 'description' => 'Declined by bank'],
+        ])->assertOk()
+            ->assertSee('"status":"failed"', false)
+            ->assertSee('"error":"Declined by bank"', false);
+
+        $this->assertStringNotContainsString('BAD_REQUEST_ERROR', $res->getContent());
+    }
+
     public function test_payment_verify_activates_entitlement_dev_fallback(): void
     {
         $plan = $this->yearlyPlan();

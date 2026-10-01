@@ -17,13 +17,6 @@ class UpgradeScreen extends StatelessWidget {
 
     if (s.isPremium) return const _PremiumConfirmation();
 
-    final String trialLine = s.isTrialActive
-        ? (s.trialDaysLeft <= 1
-            ? 'Keep expiry and low-stock alerts running after your trial ends.'
-            : 'Keep expiry and low-stock alerts running after your '
-                '${s.trialDaysLeft}-day trial.')
-        : 'Keep expiry and low-stock alerts running, unlock everything.';
-
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: SafeArea(
@@ -39,38 +32,13 @@ class UpgradeScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
-              child: Column(
-                children: <Widget>[
-                  const Text(
-                    'Unlock Meddata Pro',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: AppColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    trialLine,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.muted,
-                      height: 1.35,
-                    ),
-                  ),
-                  if (s.isTrialActive) ...<Widget>[
-                    const SizedBox(height: 14),
-                    _TrialPill(daysLeft: s.trialDaysLeft),
-                  ],
-                ],
+            // Title and subtitle come from SubscribeView's hero; only the
+            // trial countdown is specific to this screen.
+            if (s.isTrialActive)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 6, 22, 0),
+                child: _TrialPill(daysLeft: s.trialDaysLeft),
               ),
-            ),
             const SizedBox(height: 4),
             // ---- Plans / coupon / CTA (logic-owning SubscribeView) --------
             Expanded(

@@ -600,20 +600,24 @@ class _SubscribeViewState extends State<SubscribeView> {
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: _busy ? null : _subscribe,
-          child: _busy
-              ? const SizedBox(
-                  height: 22,
-                  width: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
-                  ),
-                )
-              : Text('Continue · ${Fmt.money(_payable, symbol: cur)}'),
+      // The paywall runs edge-to-edge; keep the CTA above the nav bar.
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _busy ? null : _subscribe,
+            child: _busy
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text('Continue · ${Fmt.money(_payable, symbol: cur)}'),
+          ),
         ),
       ),
     );

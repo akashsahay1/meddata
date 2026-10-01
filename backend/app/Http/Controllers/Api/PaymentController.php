@@ -194,8 +194,8 @@ class PaymentController extends Controller
             ]
             : [
                 'status' => 'failed',
-                'error' => is_array($error)
-                    ? trim(($error['code'] ?? '') . ' ' . ($error['description'] ?? 'payment failed'))
+                'error' => is_array($error) && ! empty($error['description'])
+                    ? (string) $error['description']
                     : 'payment failed',
             ];
 

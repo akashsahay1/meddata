@@ -70,9 +70,12 @@ flutter_launcher_icons:
 flutter_native_splash:
   color: "#0A302E"
   image: assets/images/splash.png
+  # Android 12+ masks the splash icon to a circle (MIUI crops a square), so it
+  # gets the artwork scaled into the safe zone on a white icon background.
   android_12:
     color: "#0A302E"
-    image: assets/images/splash.png
+    image: assets/images/splash_android12.png
+    icon_background_color: "#FFFFFF"
   android: true
   ios: true
   web: false
