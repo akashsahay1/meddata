@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../services/api_client.dart';
 import '../../theme/app_theme.dart';
 
 /// Full-screen WebView that hosts Razorpay Standard Checkout (checkout.js).
@@ -38,6 +39,12 @@ class RazorpayCheckoutScreen extends StatefulWidget {
   @override
   State<RazorpayCheckoutScreen> createState() => _RazorpayCheckoutScreenState();
 }
+
+/// Override for local testing, e.g. `http://127.0.0.1:8000/api/v1/payment/return`.
+const String _callbackOverride = String.fromEnvironment('RAZORPAY_CALLBACK_URL');
+const String _callbackUrl = _callbackOverride != ''
+    ? _callbackOverride
+    : '${ApiClient.baseUrl}/payment/return';
 
 class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
   late final WebViewController _controller;
@@ -140,6 +147,12 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
         'contact': widget.prefillContact,
       },
       'theme': <String, String>{'color': '#0E4D4A'},
+      // A WebView can't open checkout's bank/3DS popup (window.open returns
+      // null -> "Please use another method"). Redirect mode loads it in this
+      // same WebView and POSTs the result to our backend, whose page relays it
+      // back over the RZP channel.
+      'redirect': true,
+      'callback_url': _callbackUrl,
     };
     // jsonEncode keeps every value safely escaped for embedding in the script.
     final String optionsJson = jsonEncode(options);

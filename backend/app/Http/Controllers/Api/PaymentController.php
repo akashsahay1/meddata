@@ -13,6 +13,7 @@ use App\Services\EntitlementService;
 use App\Services\RazorpayService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -172,6 +173,37 @@ class PaymentController extends Controller
             'status' => 'active',
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
         ]);
+    }
+
+    /**
+     * POST /payment/return (public)
+     * Razorpay redirect-mode callback_url. Renders a page that hands the
+     * checkout result to the app's `RZP` JavaScript channel. Nothing is
+     * trusted here: the app still sends it to /payment/verify.
+     */
+    public function checkoutReturn(Request $request): Response
+    {
+        $error = $request->input('error');
+
+        $payload = $request->filled('razorpay_payment_id')
+            ? [
+                'status' => 'success',
+                'razorpay_payment_id' => (string) $request->input('razorpay_payment_id'),
+                'razorpay_order_id' => (string) $request->input('razorpay_order_id', ''),
+                'razorpay_signature' => (string) $request->input('razorpay_signature', ''),
+            ]
+            : [
+                'status' => 'failed',
+                'error' => is_array($error)
+                    ? trim(($error['code'] ?? '') . ' ' . ($error['description'] ?? 'payment failed'))
+                    : 'payment failed',
+            ];
+
+        if ($payload['status'] === 'failed') {
+            Log::info('Razorpay checkout returned failure', ['error' => $error]);
+        }
+
+        return response()->view('payment.return', ['payload' => $payload]);
     }
 
     /* ---------------- helpers ---------------- */
