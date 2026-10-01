@@ -59,53 +59,19 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// The orange plus/cross inside a green rounded square: the Meddata brand mark.
+/// The Meddata app logo (calendar, capsule and orange clock on a white tile),
+/// cropped from the launcher icon artwork.
 class BrandMark extends StatelessWidget {
   final double size;
   const BrandMark({super.key, this.size = 26});
 
   @override
   Widget build(BuildContext context) {
-    // Proportions mirror the design: square radius ~30%, arm thickness ~23%,
-    // arm length ~46% of the mark.
-    final double radius = size * 0.30;
-    final double arm = size * 0.46;
-    final double thick = size * 0.23;
-    final double barRadius = thick * 0.35;
-    return Container(
+    return Image.asset(
+      'assets/images/brand_mark.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: AppColors.green,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: Center(
-        child: SizedBox(
-          width: arm,
-          height: arm,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              Container(
-                width: thick,
-                height: arm,
-                decoration: BoxDecoration(
-                  color: AppColors.orange,
-                  borderRadius: BorderRadius.circular(barRadius),
-                ),
-              ),
-              Container(
-                width: arm,
-                height: thick,
-                decoration: BoxDecoration(
-                  color: AppColors.orange,
-                  borderRadius: BorderRadius.circular(barRadius),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      filterQuality: FilterQuality.medium,
     );
   }
 }
