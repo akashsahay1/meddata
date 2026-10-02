@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
+use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
@@ -151,6 +154,68 @@ class AuthController extends Controller
     }
 
     /**
+     * POST /auth/avatar (auth.token)
+     * Upload (or replace) the user's profile photo. Stored on the private
+     * local disk and served by showAvatar(), so no storage:link is needed.
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $user = $request->user();
+        $file = $request->file('avatar');
+        $name = $user->id.'_'.Str::random(24).'.'.$file->extension();
+        $file->storeAs('avatars', $name, 'local');
+
+        $old = $user->avatar_path;
+        $user->avatar_path = 'avatars/'.$name;
+        $user->save();
+        if ($old) {
+            Storage::disk('local')->delete($old);
+        }
+
+        return response()->json(['ok' => true, 'user' => $this->userPayload($user)]);
+    }
+
+    /**
+     * DELETE /auth/avatar (auth.token)
+     * Remove the user's profile photo.
+     */
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user->avatar_path) {
+            Storage::disk('local')->delete($user->avatar_path);
+            $user->avatar_path = null;
+            $user->save();
+        }
+
+        return response()->json(['ok' => true, 'user' => $this->userPayload($user)]);
+    }
+
+    /**
+     * GET /avatars/{file} (public)
+     * Serve a stored profile photo. Names carry a random token, so they
+     * aren't guessable from the user id.
+     */
+    public function showAvatar(string $file): Response
+    {
+        if (! preg_match('/^\d+_[A-Za-z0-9]{24}\.(jpg|jpeg|png|webp)$/', $file)) {
+            abort(404);
+        }
+        $path = 'avatars/'.$file;
+        if (! Storage::disk('local')->exists($path)) {
+            abort(404);
+        }
+
+        return response()->file(Storage::disk('local')->path($path), [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+        ]);
+    }
+
+    /**
      * POST /auth/change-password (auth.token)
      * Change the password for a logged-in user; requires the current password.
      * Revokes all other tokens so other sessions are logged out.
@@ -276,6 +341,9 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone,
+            'avatar_url' => $user->avatar_path
+                ? url('/api/v1/avatars/'.basename($user->avatar_path))
+                : null,
         ];
     }
 

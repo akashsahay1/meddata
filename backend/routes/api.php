@@ -34,6 +34,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:auth-forgot');
     Route::post('auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:auth-reset');
 
+    // Profile photos (public; file names carry a random token).
+    Route::get('avatars/{file}', [AuthController::class, 'showAvatar']);
+
     // ---- Authenticated: everything money/data/entitlement related ----
     // These were previously keyed on a client-supplied device_id with no auth,
     // which allowed trial farming and cross-user data access (IDOR). They are
@@ -42,6 +45,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('auth/logout', [AuthController::class, 'logout']);
         Route::get('auth/me', [AuthController::class, 'me']);
         Route::patch('auth/profile', [AuthController::class, 'updateProfile']);
+        Route::post('auth/avatar', [AuthController::class, 'uploadAvatar']);
+        Route::delete('auth/avatar', [AuthController::class, 'deleteAvatar']);
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
         Route::get('entitlement', [EntitlementController::class, 'show']);

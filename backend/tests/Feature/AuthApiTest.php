@@ -4,8 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\ApiToken;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class AuthApiTest extends TestCase
@@ -15,10 +19,10 @@ class AuthApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
     }
 
-    private function register(array $overrides = []): \Illuminate\Testing\TestResponse
+    private function register(array $overrides = []): TestResponse
     {
         return $this->postJson('/api/v1/auth/register', array_merge([
             'name' => 'Test User',
@@ -182,5 +186,56 @@ class AuthApiTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Invalid or expired code');
+    }
+
+    public function test_avatar_upload_replace_serve_and_delete(): void
+    {
+        Storage::fake('local');
+        $token = $this->register()->json('token');
+        $auth = ['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'];
+
+        $this->withHeaders($auth)->getJson('/api/v1/auth/me')
+            ->assertJsonPath('user.avatar_url', null);
+
+        $first = $this->withHeaders($auth)->post('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->image('me.jpg', 300, 300),
+        ])->assertOk();
+        $firstUrl = $first->json('user.avatar_url');
+        $this->assertNotNull($firstUrl);
+        $firstPath = User::where('email', 'user@example.com')->value('avatar_path');
+        Storage::disk('local')->assertExists($firstPath);
+
+        $this->get(parse_url($firstUrl, PHP_URL_PATH))->assertOk();
+
+        // Replacing removes the previous file.
+        $this->withHeaders($auth)->post('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->image('new.png', 200, 200),
+        ])->assertOk();
+        Storage::disk('local')->assertMissing($firstPath);
+
+        $this->withHeaders($auth)->deleteJson('/api/v1/auth/avatar')
+            ->assertOk()
+            ->assertJsonPath('user.avatar_url', null);
+        $this->assertSame([], Storage::disk('local')->files('avatars'));
+    }
+
+    public function test_avatar_rejects_non_images_and_requires_auth(): void
+    {
+        Storage::fake('local');
+        $token = $this->register()->json('token');
+
+        $this->withHeaders(['Authorization' => "Bearer {$token}", 'Accept' => 'application/json'])
+            ->post('/api/v1/auth/avatar', [
+                'avatar' => UploadedFile::fake()->create('doc.pdf', 10, 'application/pdf'),
+            ])
+            ->assertStatus(422);
+
+        $this->flushHeaders()
+            ->withHeaders(['Accept' => 'application/json'])
+            ->post('/api/v1/auth/avatar', ['avatar' => UploadedFile::fake()->image('me.jpg')])
+            ->assertStatus(401);
+
+        $this->get('/api/v1/avatars/1_nope.jpg')->assertNotFound();
+        $this->get('/api/v1/avatars/..%2F..%2F.env')->assertNotFound();
     }
 }

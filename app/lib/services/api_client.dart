@@ -210,6 +210,53 @@ class ApiClient {
         'email': ?email,
       }, token: token);
 
+  /// Upload (or replace) the profile photo at [filePath] as multipart.
+  Future<({int status, Map<String, dynamic>? body})> uploadAvatar({
+    required String token,
+    required String filePath,
+  }) async {
+    try {
+      final http.MultipartRequest req =
+          http.MultipartRequest('POST', Uri.parse('$baseUrl/auth/avatar'))
+            ..headers.addAll(<String, String>{
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            })
+            ..files.add(await http.MultipartFile.fromPath('avatar', filePath));
+      final http.Response res = await http.Response.fromStream(
+          await _http.send(req).timeout(const Duration(seconds: 30)));
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (e) {
+      debugPrint('[ApiClient] avatar upload failed: $e');
+      return (status: 0, body: null);
+    }
+  }
+
+  /// Remove the profile photo.
+  Future<({int status, Map<String, dynamic>? body})> deleteAvatar(
+      String token) async {
+    try {
+      final http.Response res = await _http.delete(
+        Uri.parse('$baseUrl/auth/avatar'),
+        headers: <String, String>{
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(_timeout);
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
+  }
+
   /// Change the authenticated user's password.
   Future<({int status, Map<String, dynamic>? body})> changePassword({
     required String token,

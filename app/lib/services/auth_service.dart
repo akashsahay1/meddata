@@ -11,6 +11,7 @@ class AuthService extends ChangeNotifier {
   static const String _kToken = 'auth_token';
   static const String _kEmail = 'auth_email';
   static const String _kName = 'auth_name';
+  static const String _kAvatar = 'auth_avatar_url';
 
   final SettingsService _settings;
   final ApiClient _api;
@@ -19,6 +20,7 @@ class AuthService extends ChangeNotifier {
   String? _token;
   String? _email;
   String? _name;
+  String? _avatarUrl;
 
   AuthService(this._settings, this.deviceId, [ApiClient? api])
       : _api = api ?? ApiClient();
@@ -26,6 +28,7 @@ class AuthService extends ChangeNotifier {
   String? get token => _token;
   String? get email => _email;
   String? get name => _name;
+  String? get avatarUrl => _avatarUrl;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
 
   Future<void> init() async {
@@ -33,6 +36,8 @@ class AuthService extends ChangeNotifier {
     _token = p.getString(_kToken);
     _email = p.getString(_kEmail);
     _name = p.getString(_kName);
+    final String? avatar = p.getString(_kAvatar);
+    _avatarUrl = (avatar == null || avatar.isEmpty) ? null : avatar;
   }
 
   Future<void> _persist() async {
@@ -41,10 +46,12 @@ class AuthService extends ChangeNotifier {
       await p.remove(_kToken);
       await p.remove(_kEmail);
       await p.remove(_kName);
+      await p.remove(_kAvatar);
     } else {
       await p.setString(_kToken, _token!);
       await p.setString(_kEmail, _email ?? '');
       await p.setString(_kName, _name ?? '');
+      await p.setString(_kAvatar, _avatarUrl ?? '');
     }
   }
 
@@ -98,6 +105,7 @@ class AuthService extends ChangeNotifier {
           (b['user'] as Map?)?.cast<String, dynamic>();
       _email = user?['email'] as String?;
       _name = user?['name'] as String?;
+      _avatarUrl = user?['avatar_url'] as String?;
       _applyEntitlement((b['entitlement'] as Map?)?.cast<String, dynamic>());
       _persist();
       notifyListeners();
@@ -116,6 +124,7 @@ class AuthService extends ChangeNotifier {
     if (user != null) {
       _email = user['email'] as String? ?? _email;
       _name = user['name'] as String? ?? _name;
+      _avatarUrl = user['avatar_url'] as String?;
     }
     _applyEntitlement((me['entitlement'] as Map?)?.cast<String, dynamic>());
     await _persist();
@@ -127,6 +136,7 @@ class AuthService extends ChangeNotifier {
     _token = null;
     _email = null;
     _name = null;
+    _avatarUrl = null;
     await _persist();
     notifyListeners();
     if (t != null) await _api.logout(t); // best-effort server revoke
@@ -171,6 +181,37 @@ class AuthService extends ChangeNotifier {
       return null;
     }
     return _errorFrom(r.body) ?? 'Could not update profile.';
+  }
+
+  /// Upload a new profile photo from [filePath]. Returns null on success, or
+  /// a user-facing error message on failure.
+  Future<String?> uploadAvatar(String filePath) async {
+    if (!isLoggedIn) return 'You are not signed in.';
+    final ({int status, Map<String, dynamic>? body}) r =
+        await _api.uploadAvatar(token: _token!, filePath: filePath);
+    return _applyAvatarResult(r, 'Could not upload photo.');
+  }
+
+  /// Remove the profile photo. Returns null on success, or an error message.
+  Future<String?> removeAvatar() async {
+    if (!isLoggedIn) return 'You are not signed in.';
+    final ({int status, Map<String, dynamic>? body}) r =
+        await _api.deleteAvatar(_token!);
+    return _applyAvatarResult(r, 'Could not remove photo.');
+  }
+
+  Future<String?> _applyAvatarResult(
+      ({int status, Map<String, dynamic>? body}) r, String fallback) async {
+    if (r.status == 0) return 'No internet connection. Please try again.';
+    if (r.status >= 200 && r.status < 300) {
+      final Map<String, dynamic>? user =
+          (r.body?['user'] as Map?)?.cast<String, dynamic>();
+      _avatarUrl = user?['avatar_url'] as String?;
+      await _persist();
+      notifyListeners();
+      return null;
+    }
+    return _errorFrom(r.body) ?? fallback;
   }
 
   /// Change the signed-in user's password. Returns null on success, or a

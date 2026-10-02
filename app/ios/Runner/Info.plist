@@ -27,7 +27,9 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Meddata uses the camera to scan medicine barcodes.</string>
+		<string>Meddata uses the camera to scan medicine barcodes and take your profile photo.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Meddata uses your photo library to set your profile photo.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsArbitraryLoads</key>

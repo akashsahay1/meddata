@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/auth_service.dart';
@@ -28,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _versionTaps = 0;
   bool _devUnlocked = false;
   String _deviceId = '…';
+  bool _avatarBusy = false;
 
   @override
   void initState() {
@@ -77,7 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListView(
             padding: EdgeInsets.zero,
             children: <Widget>[
-              _header(displayName, displayEmail, topInset),
+              _header(displayName, displayEmail, topInset, auth.avatarUrl),
               Padding(
                 padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
                 child: _planCard(context, s),
@@ -225,9 +228,162 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // --- Profile photo --------------------------------------------------------
+
+  Widget _avatar(String name, String? avatarUrl) {
+    final Widget initials = Container(
+      alignment: Alignment.center,
+      color: AppColors.greenMid,
+      child: Text(
+        initialsOf(name),
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          color: Colors.white,
+        ),
+      ),
+    );
+    return Semantics(
+      button: true,
+      label: 'Change profile photo',
+      child: GestureDetector(
+        onTap: _avatarBusy ? null : () => _changeAvatar(avatarUrl != null),
+        child: SizedBox(
+          width: 70,
+          height: 70,
+          child: Stack(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: avatarUrl == null
+                      ? initials
+                      : Image.network(
+                          avatarUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => initials,
+                        ),
+                ),
+              ),
+              if (_avatarBusy)
+                Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0x99000000),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2.4, color: Colors.white),
+                  ),
+                ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppColors.orange,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.green, width: 2),
+                  ),
+                  child: const Icon(Icons.photo_camera,
+                      size: 14, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _changeAvatar(bool hasPhoto) async {
+    final String? action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.of(ctx).pop('gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.of(ctx).pop('camera'),
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Remove photo',
+                    style: TextStyle(color: Colors.red)),
+                onTap: () => Navigator.of(ctx).pop('remove'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+    final AuthService auth = context.read<AuthService>();
+
+    if (action == 'remove') {
+      setState(() => _avatarBusy = true);
+      final String? err = await auth.removeAvatar();
+      if (!mounted) return;
+      setState(() => _avatarBusy = false);
+      _toast(err ?? 'Profile photo removed');
+      return;
+    }
+
+    final ImageSource source =
+        action == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    if (source == ImageSource.camera &&
+        !(await Permission.camera.request()).isGranted) {
+      if (mounted) _toast('Allow camera access in Settings to take a photo.');
+      return;
+    }
+    final XFile? file;
+    try {
+      // Downscale before upload: the avatar is shown at 64px.
+      file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+    } catch (e) {
+      debugPrint('[Avatar] pick failed: $e');
+      if (mounted) _toast('Could not open the photo picker.');
+      return;
+    }
+    if (file == null || !mounted) return;
+    setState(() => _avatarBusy = true);
+    final String? err = await auth.uploadAvatar(file.path);
+    if (!mounted) return;
+    setState(() => _avatarBusy = false);
+    _toast(err ?? 'Profile photo updated');
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
   // --- Green profile header -------------------------------------------------
 
-  Widget _header(String name, String? email, double topInset) {
+  Widget _header(
+      String name, String? email, double topInset, String? avatarUrl) {
     return Container(
       width: double.infinity,
       color: AppColors.green,
@@ -235,23 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
-          Container(
-            width: 64,
-            height: 64,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.greenMid,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              initialsOf(name),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          _avatar(name, avatarUrl),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
