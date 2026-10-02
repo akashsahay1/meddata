@@ -94,6 +94,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _FilterChips(mp: mp),
                 ],
               ),
             ),
@@ -101,7 +103,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
               child: mp.loading
                   ? const Center(child: CircularProgressIndicator())
                   : items.isEmpty
-                      ? _EmptyInventory(hasAny: mp.totalCount > 0)
+                      ? _EmptyInventory(
+                          hasAny: mp.totalCount > 0,
+                          filtered: mp.filter != MedicineFilter.all,
+                        )
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(18, 6, 18, 120),
                           itemCount: items.length,
@@ -135,9 +140,73 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 }
 
+/// Quick status filters (All / Low stock / Expiring soon / Expired) with
+/// counts; combines with the search query via [MedicineProvider.setFilter].
+class _FilterChips extends StatelessWidget {
+  final MedicineProvider mp;
+  const _FilterChips({required this.mp});
+
+  @override
+  Widget build(BuildContext context) {
+    final List<(MedicineFilter, String, int, Color)> options =
+        <(MedicineFilter, String, int, Color)>[
+      (MedicineFilter.all, 'All', mp.totalCount, AppColors.green),
+      (MedicineFilter.lowStock, 'Low stock', mp.lowStockCount,
+          AppColors.statusAmber),
+      (MedicineFilter.expiring, 'Expiring soon', mp.expiringCount,
+          AppColors.statusRed),
+      (MedicineFilter.expired, 'Expired', mp.expiredCount,
+          AppColors.statusRed),
+    ];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: <Widget>[
+          for (final (MedicineFilter f, String label, int count, Color c)
+              in options)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _chip(f, label, count, c),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(MedicineFilter f, String label, int count, Color accent) {
+    final bool selected = mp.filter == f;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => mp.setFilter(f),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? accent : AppColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: selected ? accent : AppColors.border),
+          ),
+          child: Text(
+            '$label · $count',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : AppColors.ink,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyInventory extends StatelessWidget {
   final bool hasAny;
-  const _EmptyInventory({required this.hasAny});
+  final bool filtered;
+  const _EmptyInventory({required this.hasAny, this.filtered = false});
 
   @override
   Widget build(BuildContext context) {
@@ -164,7 +233,9 @@ class _EmptyInventory extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               hasAny
-                  ? 'Try a different search.'
+                  ? (filtered
+                      ? 'Try a different search or filter.'
+                      : 'Try a different search.')
                   : 'Tap the + button to add your first item.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.muted),
