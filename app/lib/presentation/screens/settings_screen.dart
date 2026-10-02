@@ -60,6 +60,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final SettingsService s = context.watch<SettingsService>();
     final AuthService auth = context.watch<AuthService>();
     final double topInset = MediaQuery.of(context).padding.top;
+    // MainShell uses extendBody, so the floating bottom bar's height arrives
+    // as bottom padding; without it Log out ends up hidden behind the bar.
+    final double bottomInset = MediaQuery.of(context).padding.bottom;
 
     final String displayName = auth.name?.isNotEmpty == true
         ? auth.name!
@@ -69,141 +72,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
-      body: ListView(
-        padding: EdgeInsets.zero,
+      body: Stack(
         children: <Widget>[
-          _header(displayName, displayEmail, topInset),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-            child: _planCard(context, s),
-          ),
-
-          // Account
-          _sectionLabel('Account'),
-          _menuCard(<Widget>[
-            _menuRow(
-              icon: Icons.person_outline,
-              label: 'Edit profile',
-              onTap: () => _editProfile(context, auth),
-            ),
-            _menuRow(
-              icon: Icons.lock_outline,
-              label: 'Change password',
-              onTap: () => _changePassword(context),
-            ),
-          ]),
-
-          // Appearance
-          _sectionLabel('Appearance'),
-          _menuCard(<Widget>[
-            _menuRow(
-              icon: Icons.brightness_6_outlined,
-              label: 'Theme',
-              value: _themeLabel(s.themeMode),
-              onTap: () => _pickTheme(context, s),
-            ),
-          ]),
-
-          // Alerts
-          _sectionLabel('Alerts'),
-          _menuCard(<Widget>[
-            _menuRow(
-              icon: Icons.schedule,
-              label: 'Expiry warning window',
-              value: '${s.warningDays} days',
-              onTap: () => _pickWarningDays(context, s),
-            ),
-            _menuRow(
-              icon: Icons.access_time,
-              label: 'Daily reminder time',
-              value: s.reminderTime.format(context),
-              onTap: () async {
-                final TimeOfDay? t = await showTimePicker(
-                    context: context, initialTime: s.reminderTime);
-                if (t != null) await s.setReminderTime(t);
-              },
-            ),
-            _switchRow(
-              icon: Icons.event_busy_outlined,
-              label: 'Expiry notifications',
-              value: s.notifExpiry,
-              onChanged: s.setNotifExpiry,
-            ),
-            _switchRow(
-              icon: Icons.inventory_2_outlined,
-              label: 'Low-stock notifications',
-              value: s.notifLowStock,
-              onChanged: s.setNotifLowStock,
-            ),
-          ]),
-
-          // Data
-          _sectionLabel('Data'),
-          _menuCard(<Widget>[
-            _menuRow(
-              icon: Icons.table_view_outlined,
-              label: 'Export as CSV',
-              onTap: () => _exportCsv(context),
-            ),
-            _menuRow(
-              icon: Icons.file_download_outlined,
-              label: 'Import from file (JSON / CSV)',
-              onTap: () => _import(context),
-            ),
-          ]),
-
-          if (_devUnlocked) ...<Widget>[
-            _sectionLabel('Developer / Testing'),
-            _menuCard(<Widget>[
-              _switchRow(
-                icon: Icons.workspace_premium_outlined,
-                label: 'Test premium unlock',
-                value: s.isPremium,
-                onChanged: (bool v) => s.setPremium(v),
+          ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              _header(displayName, displayEmail, topInset),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                child: _planCard(context, s),
               ),
-              _menuRow(
-                icon: Icons.perm_device_information_outlined,
-                label: 'Device ID',
-                value: _deviceId,
-                trailing: const Icon(Icons.copy, size: 18, color: AppColors.muted),
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: _deviceId));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Device ID copied')),
-                  );
-                },
+
+              // Account
+              _sectionLabel('Account'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.person_outline,
+                  label: 'Edit profile',
+                  onTap: () => _editProfile(context, auth),
+                ),
+                _menuRow(
+                  icon: Icons.lock_outline,
+                  label: 'Change password',
+                  onTap: () => _changePassword(context),
+                ),
+              ]),
+
+              // Appearance
+              _sectionLabel('Appearance'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.brightness_6_outlined,
+                  label: 'Theme',
+                  value: _themeLabel(s.themeMode),
+                  onTap: () => _pickTheme(context, s),
+                ),
+              ]),
+
+              // Alerts
+              _sectionLabel('Alerts'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.schedule,
+                  label: 'Expiry warning window',
+                  value: '${s.warningDays} days',
+                  onTap: () => _pickWarningDays(context, s),
+                ),
+                _menuRow(
+                  icon: Icons.access_time,
+                  label: 'Daily reminder time',
+                  value: s.reminderTime.format(context),
+                  onTap: () async {
+                    final TimeOfDay? t = await showTimePicker(
+                        context: context, initialTime: s.reminderTime);
+                    if (t != null) await s.setReminderTime(t);
+                  },
+                ),
+                _switchRow(
+                  icon: Icons.event_busy_outlined,
+                  label: 'Expiry notifications',
+                  value: s.notifExpiry,
+                  onChanged: s.setNotifExpiry,
+                ),
+                _switchRow(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Low-stock notifications',
+                  value: s.notifLowStock,
+                  onChanged: s.setNotifLowStock,
+                ),
+              ]),
+
+              // Data
+              _sectionLabel('Data'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.table_view_outlined,
+                  label: 'Export as CSV',
+                  onTap: () => _exportCsv(context),
+                ),
+                _menuRow(
+                  icon: Icons.file_download_outlined,
+                  label: 'Import from file (JSON / CSV)',
+                  onTap: () => _import(context),
+                ),
+              ]),
+
+              if (_devUnlocked) ...<Widget>[
+                _sectionLabel('Developer / Testing'),
+                _menuCard(<Widget>[
+                  _switchRow(
+                    icon: Icons.workspace_premium_outlined,
+                    label: 'Test premium unlock',
+                    value: s.isPremium,
+                    onChanged: (bool v) => s.setPremium(v),
+                  ),
+                  _menuRow(
+                    icon: Icons.perm_device_information_outlined,
+                    label: 'Device ID',
+                    value: _deviceId,
+                    trailing: const Icon(Icons.copy, size: 18, color: AppColors.muted),
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: _deviceId));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Device ID copied')),
+                      );
+                    },
+                  ),
+                ]),
+              ],
+
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
+                child: SecondaryButton(
+                  label: 'Log out',
+                  icon: Icons.logout,
+                  onPressed: () => _confirmLogout(context),
+                ),
               ),
-            ]),
-          ],
 
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
-            child: SecondaryButton(
-              label: 'Log out',
-              icon: Icons.logout,
-              onPressed: () => _confirmLogout(context),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-          Center(
-            child: GestureDetector(
-              onTap: _onVersionTap,
-              behavior: HitTestBehavior.opaque,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'Meddata v1.0.0',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF9BAAA7),
+              const SizedBox(height: 16),
+              Center(
+                child: GestureDetector(
+                  onTap: _onVersionTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      'Meddata v1.0.0',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF9BAAA7),
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(height: 24 + bottomInset),
+            ],
           ),
-          const SizedBox(height: 24),
+          // Header-green strip behind the status bar so scrolled rows don't
+          // run under the clock and battery icons.
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: topInset,
+            child: const ColoredBox(color: AppColors.green),
+          ),
         ],
       ),
     );
