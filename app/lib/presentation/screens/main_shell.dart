@@ -52,7 +52,22 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       backgroundColor: AppColors.canvas,
       extendBody: true,
-      body: IndexedStack(index: _index, children: _tabs),
+      // extendBody hands the tabs the floating bar's height as bottom padding;
+      // lift their (floating) snackbars by it so they aren't hidden behind it.
+      body: Builder(
+        builder: (BuildContext context) {
+          final ThemeData theme = Theme.of(context);
+          return Theme(
+            data: theme.copyWith(
+              snackBarTheme: theme.snackBarTheme.copyWith(
+                insetPadding: EdgeInsets.fromLTRB(
+                    15, 5, 15, 10 + MediaQuery.of(context).padding.bottom),
+              ),
+            ),
+            child: IndexedStack(index: _index, children: _tabs),
+          );
+        },
+      ),
       bottomNavigationBar: _BottomBar(
         index: _index,
         alertCount: alertTotal,
