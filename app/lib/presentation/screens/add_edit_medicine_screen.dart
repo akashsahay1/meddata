@@ -90,13 +90,44 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     super.dispose();
   }
 
+  static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Manufacture date can't be in the future and must fall before expiry;
+  /// expiry must fall after the manufacture date. The pickers are bounded
+  /// accordingly and [_dateError] re-checks on save.
   Future<void> _pickDate({required bool isExpiry}) async {
-    final DateTime initial = isExpiry ? _expiryDate : (_mfgDate ?? DateTime.now());
+    final DateTime today = _day(DateTime.now());
+    final DateTime earliest = DateTime(2000);
+    final DateTime latest = DateTime(2100);
+    final DateTime first;
+    final DateTime last;
+    DateTime initial;
+    if (isExpiry) {
+      first = _mfgDate == null
+          ? earliest
+          : _day(_mfgDate!).add(const Duration(days: 1));
+      last = latest;
+      initial = _expiryDate;
+    } else {
+      final DateTime beforeExpiry =
+          _day(_expiryDate).subtract(const Duration(days: 1));
+      last = beforeExpiry.isBefore(today) ? beforeExpiry : today;
+      first = earliest;
+      initial = _mfgDate ?? last;
+    }
+    if (last.isBefore(first)) {
+      _showDateError(isExpiry
+          ? 'No valid expiry date after this manufacture date.'
+          : 'Set a later expiry date first.');
+      return;
+    }
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      firstDate: first,
+      lastDate: last,
     );
     if (picked != null) {
       setState(() {
@@ -107,6 +138,25 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         }
       });
     }
+  }
+
+  /// Null when the dates are consistent, otherwise a message for the user.
+  String? _dateError() {
+    final DateTime? mfg = _mfgDate == null ? null : _day(_mfgDate!);
+    if (mfg == null) return null;
+    if (mfg.isAfter(_day(DateTime.now()))) {
+      return "Manufacture date can't be in the future.";
+    }
+    if (!mfg.isBefore(_day(_expiryDate))) {
+      return 'Expiry date must be after the manufacture date.';
+    }
+    return null;
+  }
+
+  void _showDateError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _scanBarcode() async {
@@ -120,6 +170,11 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    final String? dateError = _dateError();
+    if (dateError != null) {
+      _showDateError(dateError);
+      return;
+    }
     final MedicineProvider mp = context.read<MedicineProvider>();
     final DateTime now = DateTime.now();
     final String name = _name.text.trim();
