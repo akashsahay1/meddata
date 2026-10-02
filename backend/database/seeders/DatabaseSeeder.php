@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\AppSetting;
+use App\Models\Coupon;
+use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -90,6 +92,7 @@ class DatabaseSeeder extends Seeder
             ['key' => 'expiry_warning_days', 'value' => '30', 'type' => 'int', 'label' => 'Default expiry warning (days)', 'group' => 'alerts'],
             ['key' => 'low_stock_default', 'value' => '10', 'type' => 'int', 'label' => 'Default low-stock threshold', 'group' => 'alerts'],
             ['key' => 'support_email', 'value' => 'akash.sahay1@gmail.com', 'type' => 'string', 'label' => 'Support email', 'group' => 'general'],
+            ['key' => 'support_whatsapp', 'value' => '', 'type' => 'string', 'label' => 'Support WhatsApp number (with country code)', 'group' => 'general'],
             ['key' => 'maintenance_mode', 'value' => '0', 'type' => 'bool', 'label' => 'Maintenance mode', 'group' => 'general'],
             ['key' => 'force_update', 'value' => '0', 'type' => 'bool', 'label' => 'Force app update', 'group' => 'general'],
             // ---- Custom subscriptions (Razorpay + trial) ----
@@ -110,12 +113,12 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($coupons as $c) {
-            \App\Models\Coupon::updateOrCreate(['code' => $c['code']], $c);
+            Coupon::updateOrCreate(['code' => $c['code']], $c);
         }
 
         // ---- Demo data for the management backend (customers / stores / medicines) ----
         // Only seed when the customers table is empty so re-running the seeder stays idempotent.
-        if (\App\Models\Customer::count() === 0) {
+        if (Customer::count() === 0) {
             $this->call(DemoDataSeeder::class);
         }
     }

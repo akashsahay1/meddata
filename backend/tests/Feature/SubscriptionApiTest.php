@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AppSetting;
 use App\Models\Coupon;
 use App\Models\Entitlement;
 use App\Models\Plan;
@@ -40,6 +41,16 @@ class SubscriptionApiTest extends TestCase
             ->assertJsonPath('trial_days', 7)
             ->assertJsonPath('razorpay_key_id', '')
             ->assertJsonStructure(['plans' => [['id', 'product_id', 'price']]]);
+    }
+
+    public function test_config_normalises_support_whatsapp_number(): void
+    {
+        $this->getJson('/api/v1/config')->assertJsonPath('support_whatsapp', '');
+
+        foreach (['+91 98765 43210', '09876543210', '9876543210', '919876543210'] as $raw) {
+            AppSetting::put('support_whatsapp', $raw);
+            $this->getJson('/api/v1/config')->assertJsonPath('support_whatsapp', '919876543210');
+        }
     }
 
     public function test_coupon_validate_percentage(): void

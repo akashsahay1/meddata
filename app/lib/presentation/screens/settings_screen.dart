@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/device_id.dart';
@@ -24,6 +26,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const String _appVersion = '1.0.0';
   static const Color _chevron = Color(0xFFB4C4C1);
   static const Color _rowLine = Color(0xFFF2F5F4);
 
@@ -160,6 +163,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
 
+              // Support (WhatsApp; number is set in the admin panel)
+              _sectionLabel('Support'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.support_agent,
+                  label: 'Chat with support',
+                  onTap: () => _openSupportChat(auth),
+                ),
+                _menuRow(
+                  icon: Icons.rate_review_outlined,
+                  label: 'Send feedback',
+                  onTap: () => _sendFeedback(auth),
+                ),
+              ]),
+
               if (_devUnlocked) ...<Widget>[
                 _sectionLabel('Developer / Testing'),
                 _menuCard(<Widget>[
@@ -201,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'Meddata v1.0.0',
+                      'Meddata v$_appVersion',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
@@ -226,6 +244,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  // --- Support chat & feedback (WhatsApp) -----------------------------------
+
+  String _signature(AuthService auth) {
+    final String who = <String?>[auth.name, auth.email]
+        .whereType<String>()
+        .where((String v) => v.isNotEmpty)
+        .join(' · ');
+    final String platform = Platform.isIOS ? 'iOS' : 'Android';
+    return '— $who\nMeddata v$_appVersion ($platform)';
+  }
+
+  /// The support WhatsApp number from /config (digits with country code), or
+  /// null when it isn't configured / reachable.
+  Future<String?> _supportNumber() async {
+    final Map<String, dynamic>? config = await ApiClient().fetchConfig();
+    final String number = (config?['support_whatsapp'] as String?) ?? '';
+    return number.isEmpty ? null : number;
+  }
+
+  Future<void> _openWhatsApp(String message) async {
+    final String? number = await _supportNumber();
+    if (!mounted) return;
+    if (number == null) {
+      _toast(
+          'Support chat is not available right now. Please try again later.');
+      return;
+    }
+    final Uri uri =
+        Uri.https('wa.me', '/$number', <String, String>{'text': message});
+    bool opened = false;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[Support] could not open WhatsApp: $e');
+    }
+    if (!opened && mounted) _toast('Could not open WhatsApp.');
+  }
+
+  Future<void> _openSupportChat(AuthService auth) =>
+      _openWhatsApp('Hi Meddata support,\n\n\n${_signature(auth)}');
+
+  Future<void> _sendFeedback(AuthService auth) async {
+    final ({int rating, String message})? result =
+        await showDialog<({int rating, String message})>(
+      context: context,
+      builder: (_) => const _FeedbackDialog(),
+    );
+    if (result == null || !mounted) return;
+    final int rating = result.rating;
+    final String stars = '★' * rating + '☆' * (5 - rating);
+    await _openWhatsApp('Meddata feedback: $stars ($rating/5)\n'
+        '${result.message.isEmpty ? '' : '\n${result.message}\n'}'
+        '\n${_signature(auth)}');
   }
 
   // --- Profile photo --------------------------------------------------------
@@ -896,6 +969,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await context.read<MedicineProvider>().load();
     messenger.showSnackBar(
       SnackBar(content: Text('Imported $count medicines')),
+    );
+  }
+}
+
+/// Star rating + message; pops `(rating, message)` or null on cancel. Owns its
+/// controller so it outlives the dialog's exit animation.
+class _FeedbackDialog extends StatefulWidget {
+  const _FeedbackDialog();
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final TextEditingController _text = TextEditingController();
+  int _rating = 0;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Send feedback'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Text('How is Meddata working for you?'),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              for (int i = 1; i <= 5; i++)
+                Semantics(
+                  button: true,
+                  selected: i <= _rating,
+                  label: '$i star${i == 1 ? '' : 's'}',
+                  child: InkResponse(
+                    radius: 24,
+                    onTap: () => setState(() => _rating = i),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        i <= _rating
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        size: 32,
+                        color: AppColors.orange,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          TextField(
+            controller: _text,
+            maxLines: 4,
+            minLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              hintText: 'Tell us what you like or what we can improve',
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Opens WhatsApp to send this to our support team.',
+            style: TextStyle(fontSize: 12, color: AppColors.muted),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _rating == 0
+              ? null
+              : () => Navigator.of(context)
+                  .pop((rating: _rating, message: _text.text.trim())),
+          child: const Text('Send'),
+        ),
+      ],
     );
   }
 }
