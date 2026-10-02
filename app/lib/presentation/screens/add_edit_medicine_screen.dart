@@ -434,6 +434,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                   ),
                   decoration:
                       const InputDecoration(hintText: 'e.g. Paracetamol 500mg'),
+                  // Re-check as it's edited so a stale "Required" clears.
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   validator: (String? v) =>
                       (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
@@ -547,8 +549,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         _selling.text = price.toStringAsFixed(2);
       }
       final Object? unit = m['unit'];
-      if (unit is String && AppConstants.units.contains(unit)) {
-        _unit = unit;
+      if (unit is String) {
+        final String canonical = AppConstants.canonicalUnit(unit);
+        if (AppConstants.units.contains(canonical)) _unit = canonical;
       }
     });
     _nameFocus.unfocus();
@@ -578,6 +581,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             color: AppColors.ink,
           ),
           decoration: InputDecoration(hintText: hint),
+          // Re-check as it's edited so a stale "Required" clears.
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           validator: required
               ? (String? v) =>
                   (v == null || v.trim().isEmpty) ? 'Required' : null
@@ -660,7 +665,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             fontWeight: FontWeight.w600,
             color: AppColors.ink,
           ),
-          items: AppConstants.units
+          items: (AppConstants.units.contains(_unit)
+                  ? AppConstants.units
+                  : <String>[_unit, ...AppConstants.units])
               .map((String u) =>
                   DropdownMenuItem<String>(value: u, child: Text(u)))
               .toList(),

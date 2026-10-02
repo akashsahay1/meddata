@@ -60,7 +60,7 @@ class MedicineController extends Controller
             'injection' => 'Injections',
             'syrup' => 'Bottles',
             'bottle' => 'Bottles',
-            'ml' => 'ml',
+            'ml' => 'ML',
             'sachet' => 'Sachets',
             'strip' => 'Strips',
             'cream' => 'Tubes',

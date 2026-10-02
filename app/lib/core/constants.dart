@@ -22,13 +22,24 @@ class AppConstants {
     'Strips',
     'Capsules',
     'Bottles',
-    'ml',
+    'ML',
     'Tubes',
     'Sachets',
     'Injections',
     'Pieces',
     'Boxes',
   ];
+
+  /// Maps a stored unit onto its [units] spelling, ignoring case, so records
+  /// saved before a rename (e.g. 'ml' -> 'ML') still match the dropdown.
+  static String canonicalUnit(String? unit) {
+    final String u = (unit ?? '').trim();
+    if (u.isEmpty) return 'Tablets';
+    for (final String known in units) {
+      if (known.toLowerCase() == u.toLowerCase()) return known;
+    }
+    return u;
+  }
 
   /// Preset medicine categories. Customers pick from this fixed list rather
   /// than typing free text, so categorisation stays consistent.

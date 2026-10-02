@@ -117,7 +117,7 @@ class Medicine {
       batchNo: (map['batch_no'] as String?) ?? '',
       barcode: (map['barcode'] as String?) ?? '',
       quantity: (map['quantity'] as int?) ?? 0,
-      unit: (map['unit'] as String?) ?? 'Tablets',
+      unit: AppConstants.canonicalUnit(map['unit'] as String?),
       lowStockThreshold: (map['low_stock_threshold'] as int?) ??
           AppConstants.defaultLowStockThreshold,
       purchasePrice: ((map['purchase_price'] as num?) ?? 0).toDouble(),
