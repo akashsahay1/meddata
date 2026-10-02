@@ -51,10 +51,19 @@ class SettingsService extends ChangeNotifier {
       _trialEndsAt != null && _trialEndsAt!.isAfter(DateTime.now());
 
   /// Days remaining in the trial (0 if none / expired).
+  /// Calendar days until the trial's end date (so a 7-day trial reads 7 and a
+  /// few minutes of clock drift can't make it 8); 1 on the last day, 0 after.
   int get trialDaysLeft {
-    if (_trialEndsAt == null) return 0;
-    final int d = _trialEndsAt!.difference(DateTime.now()).inHours ~/ 24;
-    return d < 0 ? 0 : d + (_trialEndsAt!.isAfter(DateTime.now()) ? 1 : 0);
+    final DateTime? end = _trialEndsAt;
+    final DateTime now = DateTime.now();
+    if (end == null || !end.isAfter(now)) return 0;
+    // Rounded so a DST shift between the two midnights can't drop a day.
+    final int d = (DateTime(end.year, end.month, end.day)
+                .difference(DateTime(now.year, now.month, now.day))
+                .inHours /
+            24)
+        .round();
+    return d < 1 ? 1 : d;
   }
 
   /// The app is usable if the user has paid premium OR is within the trial.

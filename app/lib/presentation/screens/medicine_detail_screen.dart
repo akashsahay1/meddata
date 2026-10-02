@@ -278,7 +278,11 @@ class _HeaderCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: <Widget>[
-              StatusChip.forExpiry(status),
+              // Expiry chip reads "In stock" when the date is fine; only show
+              // that when there's no stock problem to report instead.
+              if (status.expiryState != ExpiryState.ok ||
+                  (medicine.quantity > 0 && !status.isLowStock))
+                StatusChip.forExpiry(status),
               if (medicine.quantity == 0)
                 StatusChip.outOfStock()
               else if (status.isLowStock)
