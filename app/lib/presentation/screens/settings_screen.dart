@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/platform.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/backup_service.dart';
@@ -253,7 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .whereType<String>()
         .where((String v) => v.isNotEmpty)
         .join(' · ');
-    final String platform = Platform.isIOS ? 'iOS' : 'Android';
+    final String platform = AppPlatform.name;
     return '— $who\nMeddata v$_appVersion ($platform)';
   }
 
@@ -387,14 +388,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: <Widget>[
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from gallery'),
+              title: Text(AppPlatform.isDesktop ? 'Choose a picture' : 'Choose from gallery'),
               onTap: () => Navigator.of(ctx).pop('gallery'),
             ),
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Take a photo'),
-              onTap: () => Navigator.of(ctx).pop('camera'),
-            ),
+            if (AppPlatform.supportsCamera)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Take a photo'),
+                onTap: () => Navigator.of(ctx).pop('camera'),
+              ),
             if (hasPhoto)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),

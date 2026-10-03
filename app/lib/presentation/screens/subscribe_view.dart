@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/formatters.dart';
+import '../../core/platform.dart';
 import '../../data/models/subscription_plan.dart';
+import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/subscription_service.dart';
@@ -142,6 +147,13 @@ class _SubscribeViewState extends State<SubscribeView> {
       return;
     }
 
+    // Desktop has no in-app checkout: pay in the browser; the server
+    // verifies the payment and activates the plan, we just wait for it.
+    if (!AppPlatform.supportsInAppCheckout) {
+      await _payInBrowser(orderId);
+      return;
+    }
+
     // Real keys: open Razorpay Standard Checkout inside a WebView. It pops a
     // {paymentId, orderId, signature} map on success, or null when the payment
     // failed / the modal was dismissed / the user closed the screen.
@@ -187,6 +199,75 @@ class _SubscribeViewState extends State<SubscribeView> {
       widget.onUnlocked?.call();
     } else {
       _snack('Payment could not be verified. If money was deducted, contact support.');
+    }
+  }
+
+  /// Opens the browser checkout for [orderId] and waits (polling the
+  /// account) until the server reports the plan active, or the user stops.
+  Future<void> _payInBrowser(String orderId) async {
+    final AuthService auth = context.read<AuthService>();
+    final SettingsService settings = context.read<SettingsService>();
+    final Uri url = Uri.parse('${ApiClient.baseUrl}/pay/$orderId');
+    bool opened = false;
+    try {
+      opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('[Pay] could not open browser: $e');
+    }
+    if (!mounted) return;
+    if (!opened) {
+      setState(() => _busy = false);
+      _snack('Could not open the browser. Please try again.');
+      return;
+    }
+
+    bool done = false;
+    Timer? poll;
+    Future<void> check() async {
+      await auth.refreshMe();
+      if (settings.isPremium && !done) {
+        done = true;
+        poll?.cancel();
+        if (mounted) Navigator.of(context, rootNavigator: true).pop(true);
+      }
+    }
+
+    poll = Timer.periodic(const Duration(seconds: 4), (_) => check());
+    final bool? paid = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Complete payment in your browser'),
+        content: const Row(
+          children: <Widget>[
+            SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4)),
+            SizedBox(width: 14),
+            Expanded(
+              child: Text('A Razorpay page has opened in your browser. '
+                  'This window unlocks by itself once the payment is done.'),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => launchUrl(url, mode: LaunchMode.externalApplication),
+            child: const Text('Open page again'),
+          ),
+          ElevatedButton(onPressed: check, child: const Text("I've paid — check now")),
+        ],
+      ),
+    );
+    done = true;
+    poll.cancel();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (paid == true) {
+      _snack('Payment successful. Premium unlocked.');
+      widget.onUnlocked?.call();
     }
   }
 

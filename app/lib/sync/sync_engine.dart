@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../core/platform.dart';
 import '../data/db/database_helper.dart';
 import '../services/api_client.dart';
 import 'outbox.dart';
@@ -272,7 +272,7 @@ class SyncEngine extends ChangeNotifier {
       final ({int status, Map<String, dynamic>? body}) r = await _api.syncPush(
         token,
         deviceId: _deviceId!,
-        platform: Platform.operatingSystem,
+        platform: AppPlatform.name.toLowerCase(),
         mutations: send.map(_toWire).toList(),
       );
       if (!_ok(r.status)) return _offlineOrError(r.status);

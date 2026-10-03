@@ -99,6 +99,57 @@ class _MainShellState extends State<MainShell> {
     final int alertTotal =
         mp.expiringCount + mp.expiredCount + mp.lowStockCount;
 
+    // Wide windows (Windows PC, tablets): side rail instead of the bottom
+    // bar, and content kept to a readable width.
+    if (MediaQuery.sizeOf(context).width >= 900) {
+      return Scaffold(
+        backgroundColor: AppColors.canvas,
+        body: Row(
+          children: <Widget>[
+            NavigationRail(
+              selectedIndex: _index,
+              onDestinationSelected: (int i) => setState(() => _index = i),
+              labelType: NavigationRailLabelType.all,
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: FloatingActionButton(
+                  tooltip: 'Add medicine',
+                  onPressed: _addMedicine,
+                  child: const Icon(Icons.add),
+                ),
+              ),
+              destinations: <NavigationRailDestination>[
+                const NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined), label: Text('Home')),
+                const NavigationRailDestination(
+                    icon: Icon(Icons.grid_view_outlined), label: Text('Inventory')),
+                NavigationRailDestination(
+                  icon: Badge(
+                    isLabelVisible: alertTotal > 0,
+                    label: Text('$alertTotal'),
+                    child: const Icon(Icons.notifications_none),
+                  ),
+                  label: const Text('Alerts'),
+                ),
+                const NavigationRailDestination(
+                    icon: Icon(Icons.person_outline), label: Text('Profile')),
+              ],
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: IndexedStack(index: _index, children: _tabs),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       extendBody: true,

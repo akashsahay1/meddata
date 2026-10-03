@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/constants.dart';
+import '../../core/platform.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../services/api_client.dart';
@@ -677,8 +678,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
                   ),
-                  decoration: const InputDecoration(
-                    hintText: 'Scan or enter code',
+                  decoration: InputDecoration(
+                    hintText: AppPlatform.supportsCamera
+                        ? 'Scan or enter code'
+                        : 'Scan with USB scanner or type',
                     filled: false,
                     isDense: true,
                     border: InputBorder.none,
@@ -689,6 +692,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                   ),
                 ),
               ),
+              // On a PC a USB scanner types straight into the field.
+              if (AppPlatform.supportsCamera) ...<Widget>[
               const SizedBox(width: 8),
               InkWell(
                 onTap: _scanBarcode,
@@ -705,6 +710,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                       size: 20, color: Colors.white),
                 ),
               ),
+              ],
             ],
           ),
         ),

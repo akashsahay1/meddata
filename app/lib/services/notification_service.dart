@@ -40,8 +40,14 @@ class NotificationService {
     const AndroidInitializationSettings android =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings ios = DarwinInitializationSettings();
-    const InitializationSettings settings =
-        InitializationSettings(android: android, iOS: ios);
+    // Windows toasts need an app identity; the GUID must stay fixed.
+    const WindowsInitializationSettings windows = WindowsInitializationSettings(
+      appName: 'Meddata',
+      appUserModelId: 'Meddata.MedicineStock',
+      guid: 'f9033c7c-2a2e-4eba-a999-7a5e7b2653e4',
+    );
+    const InitializationSettings settings = InitializationSettings(
+        android: android, iOS: ios, windows: windows);
     await _plugin.initialize(settings: settings);
     _ready = true;
   }

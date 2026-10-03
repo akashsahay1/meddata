@@ -1,10 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'core/platform.dart';
+import 'data/db/database_helper.dart';
 import 'l10n/app_localizations.dart';
 
 import 'services/auth_service.dart';
@@ -22,6 +27,15 @@ import 'presentation/screens/onboarding_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (AppPlatform.isDesktop) {
+    // Desktop uses SQLite through FFI; keep the database in the app's
+    // support folder (e.g. %APPDATA%\com.medstock\med_stock on Windows).
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.pathOverride =
+        p.join((await getApplicationSupportDirectory()).path, 'meddata.db');
+  }
 
   final SettingsService settings = SettingsService();
   await settings.init();
