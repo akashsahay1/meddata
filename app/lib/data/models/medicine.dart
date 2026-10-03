@@ -1,8 +1,11 @@
 import '../../core/constants.dart';
 
-/// A single medicine stock record. Dates are stored in the DB as epoch millis.
+/// One batch of a product, flattened for the UI: [id] is the batch id and
+/// [productId] its product. Product fields (name, brand, unit, ...) are
+/// shared by every batch of the product. Dates are epoch millis in the DB.
 class Medicine {
   final String id;
+  final String productId;
   final String name;
   final String brand;
   final String category;
@@ -23,6 +26,7 @@ class Medicine {
 
   const Medicine({
     required this.id,
+    this.productId = '',
     required this.name,
     this.brand = '',
     this.category = '',
@@ -65,6 +69,7 @@ class Medicine {
   }) {
     return Medicine(
       id: id,
+      productId: productId,
       name: name ?? this.name,
       brand: brand ?? this.brand,
       category: category ?? this.category,
@@ -88,6 +93,7 @@ class Medicine {
   Map<String, Object?> toMap() {
     return <String, Object?>{
       'id': id,
+      'product_id': productId,
       'name': name,
       'brand': brand,
       'category': category,
@@ -111,6 +117,7 @@ class Medicine {
   factory Medicine.fromMap(Map<String, Object?> map) {
     return Medicine(
       id: map['id'] as String,
+      productId: (map['product_id'] as String?) ?? '',
       name: (map['name'] as String?) ?? '',
       brand: (map['brand'] as String?) ?? '',
       category: (map['category'] as String?) ?? '',

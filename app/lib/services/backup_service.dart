@@ -8,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/constants.dart';
-import '../data/db/database_helper.dart';
 import '../data/models/medicine.dart';
 import '../data/repositories/medicine_repository.dart';
 
@@ -52,16 +51,36 @@ class BackupService {
         .share(ShareParams(files: <XFile>[XFile(file.path)], text: text));
   }
 
-  /// Restore from a JSON backup file (replaces existing data).
+  /// Import a JSON backup file. Adds its medicines to the current inventory
+  /// with fresh ids (inventory is synced across devices now, so wiping it
+  /// here would not remove anything from the server).
   Future<int> importJson(File file) async {
     final Map<String, dynamic> data =
         jsonDecode(await file.readAsString()) as Map<String, dynamic>;
     final List<dynamic> meds = (data['medicines'] as List<dynamic>? ?? <dynamic>[]);
-    await DatabaseHelper.instance.clearAll();
     int count = 0;
     for (final dynamic raw in meds) {
-      final Medicine m = Medicine.fromMap(Map<String, Object?>.from(raw as Map));
-      await _repo.insert(m);
+      final Map<String, Object?> row = Map<String, Object?>.from(raw as Map);
+      if ((row['is_deleted'] as int? ?? 0) == 1) continue;
+      final Medicine m = Medicine.fromMap(row);
+      await _repo.insert(Medicine(
+        id: const Uuid().v4(),
+        name: m.name,
+        brand: m.brand,
+        category: m.category,
+        batchNo: m.batchNo,
+        barcode: m.barcode,
+        quantity: m.quantity,
+        unit: m.unit,
+        lowStockThreshold: m.lowStockThreshold,
+        purchasePrice: m.purchasePrice,
+        sellingPrice: m.sellingPrice,
+        mfgDate: m.mfgDate,
+        expiryDate: m.expiryDate,
+        notes: m.notes,
+        createdAt: m.createdAt,
+        updatedAt: m.updatedAt,
+      ));
       count++;
     }
     return count;

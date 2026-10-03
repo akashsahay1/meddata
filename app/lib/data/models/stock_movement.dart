@@ -16,6 +16,26 @@ class StockMovement {
     required this.createdAt,
   });
 
+  /// Maps both the old local reasons and the synced ledger's reasons onto
+  /// the labels the UI shows.
+  static StockReason reasonFrom(String? r) {
+    switch (r) {
+      case 'add':
+      case 'opening':
+      case 'purchase':
+      case 'purchase_free':
+        return StockReason.add;
+      case 'restock':
+      case 'sale_return':
+        return StockReason.restock;
+      case 'sell':
+      case 'sale':
+        return StockReason.sell;
+      default:
+        return StockReason.adjust;
+    }
+  }
+
   Map<String, Object?> toMap() => <String, Object?>{
         'id': id,
         'medicine_id': medicineId,
@@ -28,10 +48,7 @@ class StockMovement {
         id: map['id'] as String,
         medicineId: map['medicine_id'] as String,
         change: (map['change'] as int?) ?? 0,
-        reason: StockReason.values.firstWhere(
-          (StockReason r) => r.name == map['reason'],
-          orElse: () => StockReason.adjust,
-        ),
+        reason: reasonFrom(map['reason'] as String?),
         createdAt: DateTime.fromMillisecondsSinceEpoch(
             (map['created_at'] as int?) ?? 0),
       );
