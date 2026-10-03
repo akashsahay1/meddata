@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('email')->index();
             $table->string('code', 6);
+            $table->unsignedTinyInteger('attempts')->default(0);
             $table->dateTime('expires_at');
             $table->timestamps();
         });

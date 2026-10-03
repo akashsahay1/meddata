@@ -16,6 +16,7 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $this->syncColumns($table);
+            $this->editVersion($table);
             $table->string('name');
             $table->string('name_norm');
             $table->string('manufacturer')->nullable();
@@ -38,6 +39,7 @@ return new class extends Migration
         Schema::create('batches', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $this->syncColumns($table);
+            $this->editVersion($table);
             $table->uuid('product_id');
             $table->string('batch_no', 64)->nullable();
             $table->date('expiry_date');
@@ -76,6 +78,17 @@ return new class extends Migration
             $table->unsignedBigInteger('new_paise')->nullable();
             $table->index(['shop_id', 'batch_id']);
         });
+    }
+
+    /**
+     * `version` moves on every change (incl. a stock movement recomputing a
+     * batch's qty) so devices pull it; `edit_version` moves only on real
+     * edits and is what conflict checks compare, so a sale on one device
+     * doesn't make a price edit on another conflict.
+     */
+    private function editVersion(Blueprint $table): void
+    {
+        $table->unsignedBigInteger('edit_version')->default(0);
     }
 
     private function syncColumns(Blueprint $table): void

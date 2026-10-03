@@ -21,6 +21,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->json('features')->nullable();    // list of feature strings
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
