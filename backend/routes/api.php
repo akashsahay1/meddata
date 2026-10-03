@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\EntitlementController;
 use App\Http\Controllers\Api\MedicineController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\ShopController;
+use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\TrialController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,6 +49,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::patch('auth/profile', [AuthController::class, 'updateProfile']);
         Route::post('auth/avatar', [AuthController::class, 'uploadAvatar']);
         Route::delete('auth/avatar', [AuthController::class, 'deleteAvatar']);
+
+        // Shop + multi-device inventory sync.
+        Route::get('shops/current', [ShopController::class, 'current']);
+        Route::patch('shops/current', [ShopController::class, 'update']);
+        Route::get('sync/status', [SyncController::class, 'status']);
+        Route::get('sync/pull', [SyncController::class, 'pull']);
+        Route::post('sync/push', [SyncController::class, 'push']);
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
         Route::get('entitlement', [EntitlementController::class, 'show']);
