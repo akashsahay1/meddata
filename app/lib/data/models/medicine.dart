@@ -16,7 +16,6 @@ class Medicine {
   final int lowStockThreshold;
   final double purchasePrice;
   final double sellingPrice;
-  final String? supplierId;
   final DateTime? mfgDate;
   final DateTime expiryDate;
   final String notes;
@@ -37,7 +36,6 @@ class Medicine {
     this.lowStockThreshold = AppConstants.defaultLowStockThreshold,
     this.purchasePrice = 0,
     this.sellingPrice = 0,
-    this.supplierId,
     this.mfgDate,
     required this.expiryDate,
     this.notes = '',
@@ -60,7 +58,6 @@ class Medicine {
     int? lowStockThreshold,
     double? purchasePrice,
     double? sellingPrice,
-    String? supplierId,
     DateTime? mfgDate,
     DateTime? expiryDate,
     String? notes,
@@ -80,7 +77,6 @@ class Medicine {
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       purchasePrice: purchasePrice ?? this.purchasePrice,
       sellingPrice: sellingPrice ?? this.sellingPrice,
-      supplierId: supplierId ?? this.supplierId,
       mfgDate: mfgDate ?? this.mfgDate,
       expiryDate: expiryDate ?? this.expiryDate,
       notes: notes ?? this.notes,
@@ -104,7 +100,6 @@ class Medicine {
       'low_stock_threshold': lowStockThreshold,
       'purchase_price': purchasePrice,
       'selling_price': sellingPrice,
-      'supplier_id': supplierId,
       'mfg_date': mfgDate?.millisecondsSinceEpoch,
       'expiry_date': expiryDate.millisecondsSinceEpoch,
       'notes': notes,
@@ -129,7 +124,6 @@ class Medicine {
           AppConstants.defaultLowStockThreshold,
       purchasePrice: ((map['purchase_price'] as num?) ?? 0).toDouble(),
       sellingPrice: ((map['selling_price'] as num?) ?? 0).toDouble(),
-      supplierId: map['supplier_id'] as String?,
       mfgDate: map['mfg_date'] == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(map['mfg_date'] as int),

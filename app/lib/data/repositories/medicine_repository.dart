@@ -257,18 +257,15 @@ class MedicineRepository {
     }
   }
 
-  /// Stock history of a batch, newest first (synced ledger + pre-v2 history).
+  /// Stock history of a batch, newest first.
   Future<List<StockMovement>> movementsFor(String medicineId) async {
     final Database db = await _dbHelper.database;
     final List<Map<String, Object?>> rows = await db.rawQuery('''
       SELECT id, batch_id AS medicine_id, delta_units AS change,
         reason, occurred_at AS created_at
-      FROM inv_movements WHERE batch_id = ? AND IFNULL(ref_type, '') != 'migration'
-      UNION ALL
-      SELECT id, medicine_id, change, reason, created_at
-      FROM stock_movements WHERE medicine_id = ?
-      ORDER BY created_at DESC
-    ''', <Object?>[medicineId, medicineId]);
+      FROM inv_movements WHERE batch_id = ?
+      ORDER BY occurred_at DESC
+    ''', <Object?>[medicineId]);
     return rows.map(StockMovement.fromMap).toList();
   }
 

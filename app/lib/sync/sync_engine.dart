@@ -195,7 +195,7 @@ class SyncEngine extends ChangeNotifier {
   }
 
   /// First upload of inventory created before this device was linked
-  /// (e.g. the v1 -> v2 migration).
+  /// (e.g. medicines added offline before the first sync).
   Future<void> _queueAllLocal(Database db) async {
     await db.transaction((Transaction txn) async {
       await txn.delete('outbox');
