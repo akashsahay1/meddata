@@ -9,7 +9,6 @@ use App\Mail\WelcomeMail;
 use App\Models\ApiToken;
 use App\Models\AppSetting;
 use App\Models\User;
-use App\Services\CustomerSyncService;
 use App\Services\EntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,7 +30,6 @@ class AuthController extends Controller
 
     public function __construct(
         private readonly EntitlementService $entitlements,
-        private readonly CustomerSyncService $customers,
     ) {}
 
     /**
@@ -60,9 +58,6 @@ class AuthController extends Controller
         $ent = $this->entitlements->ensureTrial($user, $data['device_id'] ?? null);
         $payload = $this->entitlements->payload($ent);
         $token = $user->issueToken('app');
-
-        // Mirror the new user into the admin "Customers" section.
-        $this->customers->syncFromUser($user, $data['device_id'] ?? null);
 
         $this->sendWelcomeEmails($user, $payload);
 
@@ -93,9 +88,6 @@ class AuthController extends Controller
 
         $ent = $this->entitlements->ensureTrial($user, $data['device_id'] ?? null);
         $token = $user->issueToken('app');
-
-        // Backfill/refresh the customer mirror for existing users on login too.
-        $this->customers->syncFromUser($user, $data['device_id'] ?? null);
 
         return response()->json([
             'token' => $token,

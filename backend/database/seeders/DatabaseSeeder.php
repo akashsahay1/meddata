@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\AppSetting;
 use App\Models\Coupon;
-use App\Models\Customer;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -122,12 +121,6 @@ class DatabaseSeeder extends Seeder
 
         foreach ($coupons as $c) {
             Coupon::updateOrCreate(['code' => $c['code']], $c);
-        }
-
-        // ---- Demo data for the management backend (customers / stores / medicines) ----
-        // Only seed when the customers table is empty so re-running the seeder stays idempotent.
-        if (Customer::count() === 0) {
-            $this->call(DemoDataSeeder::class);
         }
     }
 }

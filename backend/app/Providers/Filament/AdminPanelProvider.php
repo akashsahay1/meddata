@@ -2,11 +2,11 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use App\Filament\Pages\Dashboard;
 use Filament\Navigation\NavigationGroup;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -52,7 +52,7 @@ class AdminPanelProvider extends PanelProvider
             ->navigationGroups([
                 // Icons live on the individual resources (Font Awesome), so groups
                 // are label-only — Filament v5 forbids icons on both a group and its items.
-                NavigationGroup::make('Customers & Stores'),
+                NavigationGroup::make('Shops'),
                 NavigationGroup::make('Catalog'),
                 NavigationGroup::make('Subscriptions'),
                 NavigationGroup::make('System'),

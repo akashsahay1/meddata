@@ -2,19 +2,20 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Medicine;
+use App\Models\Product;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
-class MedicineCategoryChart extends ChartWidget
+class ProductCategoryChart extends ChartWidget
 {
-    protected ?string $heading = 'Medicines by Category';
+    protected ?string $heading = 'Products by Category';
 
     protected static ?int $sort = 3;
 
     protected function getData(): array
     {
-        $rows = Medicine::query()
+        // Product uses soft deletes, so tombstoned rows are excluded automatically.
+        $rows = Product::query()
             ->select('category', DB::raw('COUNT(*) as total'))
             ->groupBy('category')
             ->orderByDesc('total')
@@ -34,7 +35,7 @@ class MedicineCategoryChart extends ChartWidget
         return [
             'datasets' => [
                 [
-                    'label' => 'Medicines',
+                    'label' => 'Products',
                     'data' => $data,
                     'backgroundColor' => array_slice($palette, 0, count($data)),
                     'borderWidth' => 0,

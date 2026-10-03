@@ -7,19 +7,19 @@
                 This is the admin backend for <strong>Meddata — Medicine Stock &amp; Expiry Tracker</strong>,
                 an offline-first pharmacy inventory app. The app works fully offline; this backend is used
                 for <strong>subscription validation</strong>, <strong>optional cloud backup</strong>, and
-                <strong>managing customers, stores, medicines and plans</strong>.
+                <strong>shop data sync</strong> and <strong>viewing shops, the medicine catalog and plans</strong>.
             </p>
         </x-filament::section>
 
         <x-filament::section>
             <x-slot name="heading">Navigation &amp; management pages</x-slot>
             <ul>
-                <li><strong>Customers &amp; Stores</strong> — Customers (shop owners) and their Stores. Full add / edit / list, search, filters, Trash (soft-delete) and pagination.</li>
-                <li><strong>Catalog</strong> — Medicines synced/managed from the backend (name, batch, expiry, quantity, price) with expiry/low-stock filters.</li>
+                <li><strong>Shops</strong> — Shops registered from the app (read-only): owner, GSTIN, product and device counts, last sync. Open a shop to see its devices and products (total stock and batch count).</li>
+                <li><strong>Catalog</strong> — <strong>Master catalog</strong>: the shared medicine list (CSV seed plus medicines added by shops), read-only with search by name/barcode and a source filter.</li>
                 <li><strong>Subscriptions</strong> — <strong>Plans</strong> (create/edit price, badge, features), <strong>Entitlements</strong> (who is premium) and <strong>Purchase Logs</strong>.</li>
                 <li><strong>System</strong> — <strong>App Settings</strong> (free-tier limit, warning days, etc.), <strong>Backups</strong>, <strong>Users</strong> (admins) and this <strong>Documentation</strong>.</li>
             </ul>
-            <p>Every list supports column search, multiple filters, and restore/force-delete for trashed rows.</p>
+            <p>Lists support column search, filters and pagination.</p>
         </x-filament::section>
 
         <x-filament::section>
@@ -67,7 +67,7 @@ GOOGLE_PLAY_PACKAGE=com.medstock.med_stock</code></pre>
         <x-filament::section>
             <x-slot name="heading">Running the backend</x-slot>
             <pre><code>cd backend
-php artisan migrate --seed --force   # schema + admin + plans + settings + demo data
+php artisan migrate --seed --force   # schema + admin + plans + settings + coupons
 php artisan serve --port=8000        # admin at /admin</code></pre>
             <p>Admin login is created by the seeder. Database: MariaDB <code>med_stock</code>.</p>
         </x-filament::section>

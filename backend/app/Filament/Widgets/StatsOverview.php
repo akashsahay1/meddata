@@ -2,12 +2,14 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Customer;
+use App\Models\Batch;
 use App\Models\Entitlement;
-use App\Models\Medicine;
-use App\Models\Store;
+use App\Models\Product;
+use App\Models\Shop;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 
 class StatsOverview extends StatsOverviewWidget
 {
@@ -16,28 +18,30 @@ class StatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         $premium = Entitlement::where('is_premium', true)->count();
-        $expiredMeds = Medicine::whereNotNull('expiry_date')
-            ->whereDate('expiry_date', '<', now())
+        $appUsers = User::where('is_admin', false);
+        // Batch uses soft deletes, so tombstoned batches are excluded.
+        $expiredInStock = Batch::whereDate('expiry_date', '<', now()->toDateString())
+            ->where('qty_units', '>', 0)
             ->count();
 
         return [
-            Stat::make('Total Customers', Customer::count())
-                ->description('Registered shop owners')
-                ->descriptionIcon('fas-user-tie')
-                ->color('primary')
-                ->chart($this->last8Months(Customer::class)),
-
-            Stat::make('Total Stores', Store::count())
-                ->description('Active shops')
+            Stat::make('Shops', Shop::count())
+                ->description('Registered shops')
                 ->descriptionIcon('fas-store')
-                ->color('success')
-                ->chart($this->last8Months(Store::class)),
+                ->color('primary')
+                ->chart($this->last8Months(Shop::query())),
 
-            Stat::make('Total Medicines', Medicine::count())
-                ->description($expiredMeds . ' expired in stock')
+            Stat::make('App users', (clone $appUsers)->count())
+                ->description('Shop owners using the app')
+                ->descriptionIcon('fas-user-tie')
+                ->color('success')
+                ->chart($this->last8Months($appUsers)),
+
+            Stat::make('Products', Product::count())
+                ->description($expiredInStock.' expired in stock')
                 ->descriptionIcon('fas-pills')
-                ->color($expiredMeds > 0 ? 'warning' : 'success')
-                ->chart($this->last8Months(Medicine::class)),
+                ->color($expiredInStock > 0 ? 'warning' : 'success')
+                ->chart($this->last8Months(Product::query())),
 
             Stat::make('Premium Subscribers', $premium)
                 ->description('Active paid entitlements')
@@ -48,14 +52,15 @@ class StatsOverview extends StatsOverviewWidget
     }
 
     /** Monthly counts for the last 8 months, for a mini sparkline. */
-    protected function last8Months(string $model): array
+    protected function last8Months(Builder $query): array
     {
         $points = [];
         for ($i = 7; $i >= 0; $i--) {
             $start = now()->copy()->subMonths($i)->startOfMonth();
             $end = now()->copy()->subMonths($i)->endOfMonth();
-            $points[] = $model::whereBetween('created_at', [$start, $end])->count();
+            $points[] = (clone $query)->whereBetween('created_at', [$start, $end])->count();
         }
+
         // Ensure a non-flat line if everything landed in one month.
         return array_sum($points) > 0 ? $points : [0, 1, 1, 2, 3, 4, 5];
     }
