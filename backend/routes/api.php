@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\BrowserCheckoutController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\DeviceController;
@@ -26,6 +27,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     // the bank/3DS page. It only relays the result to the app, which then
     // calls payment/verify with its token.
     Route::post('payment/return', [PaymentController::class, 'checkoutReturn']);
+
+    // Browser checkout for the desktop app: the server verifies the payment
+    // and activates the subscription; the app just refreshes afterwards.
+    Route::get('pay/{order}', [BrowserCheckoutController::class, 'show'])
+        ->where('order', '[A-Za-z0-9_]+');
+    Route::post('pay/complete', [BrowserCheckoutController::class, 'complete']);
 
     // Google Play server-to-server webhook (called by Google, not the app).
     Route::post('rtdn', [PurchaseController::class, 'rtdn']);
