@@ -8,7 +8,6 @@ import 'package:provider/single_child_widget.dart';
 import 'l10n/app_localizations.dart';
 
 import 'services/auth_service.dart';
-import 'services/background_worker.dart';
 import 'services/device_id.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
@@ -63,12 +62,12 @@ Future<void> main() async {
   // Initialize notifications + background work AFTER the first frame. These
   // touch native plugin channels that can be slow (or stall) on iOS; awaiting
   // them before runApp would freeze the native splash. Best-effort only.
-  unawaited(_startBackgroundServices(auth, settings));
+  unawaited(_startBackgroundServices(auth, settings, medicines));
 }
 
 /// Best-effort background init, run after runApp so it never blocks first paint.
-Future<void> _startBackgroundServices(
-    AuthService auth, SettingsService settings) async {
+Future<void> _startBackgroundServices(AuthService auth,
+    SettingsService settings, MedicineProvider medicines) async {
   // If already logged in, sync the user's entitlement (premium/trial).
   if (auth.isLoggedIn) auth.refreshMe();
 
@@ -79,15 +78,31 @@ Future<void> _startBackgroundServices(
     debugPrint('Notification init skipped: $e');
   }
 
-  try {
-    await BackgroundWorker.scheduleDailyDigest(
-      warningDays: settings.warningDays,
-      notifExpiry: settings.notifExpiry,
-      notifLowStock: settings.notifLowStock,
-    );
-  } catch (e) {
-    debugPrint('Daily digest scheduling skipped: $e');
+  // Keep scheduled alerts in step with the inventory (local edits and
+  // changes synced from other devices) and with the alert settings.
+  Timer? pending;
+  Future<void> refreshAlerts() async {
+    try {
+      await NotificationService.instance.refreshAll(
+        warningDays: settings.warningDays,
+        notifyExpiry: settings.notifExpiry,
+        notifyLowStock: settings.notifLowStock,
+        hour: settings.reminderHour,
+        minute: settings.reminderMinute,
+      );
+    } catch (e) {
+      debugPrint('Alert scheduling skipped: $e');
+    }
   }
+
+  void scheduleRefresh() {
+    pending?.cancel();
+    pending = Timer(const Duration(seconds: 3), refreshAlerts);
+  }
+
+  medicines.addListener(scheduleRefresh);
+  settings.addListener(scheduleRefresh);
+  await refreshAlerts();
 }
 
 class MedStockApp extends StatelessWidget {
