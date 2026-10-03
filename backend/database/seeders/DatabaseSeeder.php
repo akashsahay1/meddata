@@ -9,21 +9,29 @@ use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
         // ---- Super admin (logs into the Filament panel at /admin) ----
-        User::updateOrCreate(
-            ['email' => 'akash.sahay1@gmail.com'],
-            [
-                'name' => 'Akash Sahay',
-                'password' => Hash::make('Akash243@#$'),
-                'is_admin' => true,
-                'email_verified_at' => now(),
-            ],
-        );
+        // Credentials come from env (ADMIN_EMAIL / ADMIN_PASSWORD). An existing
+        // admin's password is only changed when ADMIN_PASSWORD is set, so
+        // re-running the seeder never resets it to a value baked into code.
+        $adminEmail = env('ADMIN_EMAIL', 'akash.sahay1@gmail.com');
+        $adminPassword = env('ADMIN_PASSWORD');
+        $admin = User::firstOrNew(['email' => $adminEmail]);
+        $admin->fill(['name' => $admin->name ?: 'Akash Sahay', 'is_admin' => true]);
+        $admin->email_verified_at ??= now();
+        if ($adminPassword) {
+            $admin->password = Hash::make($adminPassword);
+        } elseif (! $admin->exists) {
+            $generated = Str::random(20);
+            $admin->password = Hash::make($generated);
+            $this->command?->warn("Admin {$adminEmail} created with generated password: {$generated}");
+        }
+        $admin->save();
 
         // ---- Default subscription plans (editable in admin) ----
         $premiumFeatures = [

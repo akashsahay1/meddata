@@ -8,7 +8,7 @@ Two parts, in separate folders: the **Flutter app** (`app/`) and the **Laravel b
   `export PATH="$HOME/development/flutter/bin:$PATH"`
 - Android SDK at `~/Library/Android/sdk`, JDK from Android Studio.
 - Laravel Herd (PHP 8.4 + Composer) → `export PATH="$HOME/Library/Application Support/Herd/bin:$PATH"`
-- MariaDB running via Herd; database `med_stock` (root / `Akash243@#$`).
+- MariaDB running via Herd; database `med_stock` (root / your local DB password).
 
 ## Flutter app
 
@@ -38,7 +38,7 @@ php artisan migrate --seed --force     # schema + admin + plans + settings (+ de
 php artisan serve --port=8000 --host=0.0.0.0         # or serve via Herd domain
 ```
 
-- **Admin panel:** `/admin` → login **akash.sahay1@gmail.com** / **Akash243@#$**
+- **Admin panel:** `/admin` → login **akash.sahay1@gmail.com** / the `ADMIN_PASSWORD` you set in `.env`
 - **API base:** `/api/v1` (`config`, `register-device`, `entitlement`, `purchase/verify`, `rtdn`, `backup`).
 - The app works fully **offline**; the backend is only for subscription validation + optional cloud backup.
 

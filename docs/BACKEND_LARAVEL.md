@@ -4,13 +4,13 @@ Supersedes the "Supabase/Firebase" option in the earlier docs. The backend is a 
 
 ## Environment
 - **Server:** Laravel Herd (macOS). App served at `http://med-stock-api.test` (Herd auto-domain from folder name).
-- **DB:** MariaDB (via Herd), `DB_HOST=127.0.0.1`, `DB_DATABASE=med_stock`, `DB_USERNAME=root`, `DB_PASSWORD=Akash243@#$`.
+- **DB:** MariaDB (via Herd), `DB_HOST=127.0.0.1`, `DB_DATABASE=med_stock`, `DB_USERNAME=root`, `DB_PASSWORD=<your DB password>`.
 - **Admin panel:** [Filament](https://filamentphp.com) (free) at `/admin`.
 
 ## Seeded super admin
 - Name: **Akash Sahay**
 - Email: **akash.sahay1@gmail.com**
-- Password: **Akash243@#$**
+- Password: the `ADMIN_PASSWORD` from `.env` (seeded by `php artisan db:seed`)
 
 ## What the admin panel can edit (requirement: "everything editable")
 - **Users / customers** — device/account, current plan, status.
