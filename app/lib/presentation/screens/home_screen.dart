@@ -6,6 +6,7 @@ import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart'; // exports the shared ui_kit + medicineStatusPill
+import '../widgets/sync_badge.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'medicine_detail_screen.dart';
@@ -137,6 +138,8 @@ class _Header extends StatelessWidget {
                   ],
                 ),
               ),
+              const SyncBadge(onDark: true),
+              const SizedBox(width: 10),
               _AvatarButton(onTap: onProfile),
             ],
           ),

@@ -14,6 +14,7 @@ import 'services/notification_service.dart';
 import 'services/settings_service.dart';
 import 'services/subscription_service.dart';
 import 'state/medicine_provider.dart';
+import 'sync/sync_engine.dart';
 import 'theme/app_theme.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/lock_screen.dart';
@@ -37,10 +38,26 @@ Future<void> main() async {
   // auth token; supply it from AuthService.
   subscription.tokenProvider = () => auth.token;
 
+  // Inventory is shared by all of the shop's devices through the server.
+  final MedicineProvider medicines = MedicineProvider()..load();
+  final SyncEngine sync = SyncEngine(
+    tokenProvider: () => auth.token,
+    userKeyProvider: () => auth.email,
+    deviceId: () async => deviceId,
+  )..onDataChanged = medicines.load;
+  void followLogin() =>
+      auth.isLoggedIn ? sync.start() : sync.stop();
+  auth.addListener(followLogin);
+  followLogin();
+  // Catch up as soon as the app comes back to the foreground.
+  AppLifecycleListener(onResume: sync.syncNow);
+
   runApp(MedStockApp(
     settings: settings,
     auth: auth,
     subscription: subscription,
+    medicines: medicines,
+    sync: sync,
   ));
 
   // Initialize notifications + background work AFTER the first frame. These
@@ -77,11 +94,15 @@ class MedStockApp extends StatelessWidget {
   final SettingsService settings;
   final AuthService auth;
   final SubscriptionService subscription;
+  final MedicineProvider medicines;
+  final SyncEngine sync;
   const MedStockApp({
     super.key,
     required this.settings,
     required this.auth,
     required this.subscription,
+    required this.medicines,
+    required this.sync,
   });
 
   @override
@@ -91,9 +112,8 @@ class MedStockApp extends StatelessWidget {
         ChangeNotifierProvider<SettingsService>.value(value: settings),
         ChangeNotifierProvider<AuthService>.value(value: auth),
         ChangeNotifierProvider<SubscriptionService>.value(value: subscription),
-        ChangeNotifierProvider<MedicineProvider>(
-          create: (_) => MedicineProvider()..load(),
-        ),
+        ChangeNotifierProvider<MedicineProvider>.value(value: medicines),
+        ChangeNotifierProvider<SyncEngine>.value(value: sync),
       ],
       child: Consumer<SettingsService>(
         builder: (BuildContext context, SettingsService s, _) {

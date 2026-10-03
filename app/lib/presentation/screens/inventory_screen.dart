@@ -7,6 +7,7 @@ import '../../domain/medicine_status.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/sync_badge.dart';
 import 'medicine_detail_screen.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
@@ -60,14 +61,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const Text(
-                    'Inventory',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.3,
-                      color: AppColors.ink,
-                    ),
+                  const Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Inventory',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                      SyncBadge(),
+                    ],
                   ),
                   const SizedBox(height: 14),
                   TextField(

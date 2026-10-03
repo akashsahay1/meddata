@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/medicine_provider.dart';
+import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
@@ -22,6 +23,55 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  SyncEngine? _sync;
+  bool _asking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sync = context.read<SyncEngine>()..addListener(_onSync);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onSync());
+  }
+
+  @override
+  void dispose() {
+    _sync?.removeListener(_onSync);
+    super.dispose();
+  }
+
+  /// This device already had medicines and the shop on the server has data
+  /// too (second device / reinstall): ask what to do with the local ones.
+  Future<void> _onSync() async {
+    final SyncEngine? sync = _sync;
+    if (sync == null || !sync.needsLocalDataChoice || _asking || !mounted) return;
+    _asking = true;
+    final LocalDataChoice? choice = await showDialog<LocalDataChoice>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Medicines already on this device'),
+        content: const Text(
+          'Your shop already has medicines saved online. What should happen '
+          'to the medicines saved only on this device?\n\n'
+          'Add them: they are added to your shop (you may get duplicates to '
+          'delete).\n'
+          "Remove them: this device shows only the shop's medicines.",
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(LocalDataChoice.discard),
+            child: const Text('Remove them'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(LocalDataChoice.merge),
+            child: const Text('Add them'),
+          ),
+        ],
+      ),
+    );
+    _asking = false;
+    if (choice != null) await sync.resolveLocalData(choice);
+  }
 
   static const List<Widget> _tabs = <Widget>[
     HomeScreen(),
