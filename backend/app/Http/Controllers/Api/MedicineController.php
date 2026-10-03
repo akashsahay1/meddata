@@ -10,25 +10,29 @@ use Illuminate\Http\Request;
 class MedicineController extends Controller
 {
     /**
-     * Prefix search over the medicines master list.
+     * Search the shared medicine catalog (CSV seed + medicines added by shops).
      *
-     * GET /api/v1/medicines/search?q=<string>
+     * GET /api/v1/medicines/search?q=<name prefix>
+     * GET /api/v1/medicines/search?barcode=<code>
      */
     public function search(Request $request): JsonResponse
     {
+        $barcode = trim((string) $request->query('barcode', ''));
         $q = trim((string) $request->query('q', ''));
 
-        if (mb_strlen($q) < 2) {
+        if ($barcode !== '') {
+            $query = MedicineMaster::query()->where('barcode', $barcode);
+        } elseif (mb_strlen($q) >= 2) {
+            $query = MedicineMaster::query()
+                ->where('name_norm', 'like', $this->escapeLike(MedicineMaster::norm($q)).'%');
+        } else {
             return response()->json(['results' => []]);
         }
 
-        $prefix = mb_strtolower($q);
-
-        $rows = MedicineMaster::query()
-            ->where('name_norm', 'like', $this->escapeLike($prefix).'%')
+        $rows = $query->orderBy('is_discontinued')
             ->orderBy('name')
             ->limit(15)
-            ->get(['id', 'name', 'manufacturer', 'type', 'pack_size', 'composition', 'price']);
+            ->get();
 
         $results = $rows->map(fn (MedicineMaster $m): array => [
             'id' => (int) $m->id,
@@ -39,6 +43,10 @@ class MedicineController extends Controller
             'composition' => $m->composition,
             'price' => $m->price !== null ? (float) $m->price : null,
             'unit' => $this->deriveUnit($m->pack_size),
+            'barcode' => $m->barcode,
+            'hsn' => $m->hsn,
+            'gst_rate_bp' => $m->gst_rate_bp,
+            'source' => $m->source,
         ])->all();
 
         return response()->json(['results' => $results]);

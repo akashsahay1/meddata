@@ -42,7 +42,10 @@ class SyncService
 
     private ?bool $premium = null;
 
-    public function __construct(private readonly EntitlementService $entitlements) {}
+    public function __construct(
+        private readonly EntitlementService $entitlements,
+        private readonly MasterCatalogService $catalog,
+    ) {}
 
     /** Apply mutations in order; each in its own transaction. */
     public function push(Shop $shop, User $user, string $deviceId, array $mutations): array
@@ -203,6 +206,12 @@ class SyncService
         $row->version = $shop->nextVersion();
         $row->edit_version = $row->version;
         $row->save();
+
+        if ($row instanceof Product) {
+            $this->catalog->linkProduct($row, $shop, $user);
+        } elseif ($row instanceof Batch) {
+            $this->catalog->notePrice($row);
+        }
 
         return ['status' => 'ok', 'version' => (int) $row->edit_version];
     }

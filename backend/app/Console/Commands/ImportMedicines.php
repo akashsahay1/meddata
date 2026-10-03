@@ -2,14 +2,15 @@
 
 namespace App\Console\Commands;
 
+use App\Models\MedicineMaster;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class ImportMedicines extends Command
 {
-    protected $signature = 'medicines:import {path=/Users/akash/Desktop/meddata/assets/indian_medicine_data.csv}';
+    protected $signature = 'medicines:import {path : Path to the Indian medicine CSV}';
 
-    protected $description = 'Stream the Indian medicine CSV into the medicines_master table (idempotent, chunked).';
+    protected $description = 'Upsert the Indian medicine CSV into medicines_master by CSV id (seed rows only; medicines added by shops are kept).';
 
     private const BATCH_SIZE = 1000;
 
@@ -33,8 +34,8 @@ class ImportMedicines extends Command
             return self::FAILURE;
         }
 
-        // Idempotent re-runs: start from a clean table each time.
-        DB::table('medicines_master')->truncate();
+        // Idempotent re-runs: rows are upserted by their CSV id (seed_id), so
+        // medicines added by shops (source = 'shop') are never touched.
 
         // Header row. Expected columns (order matters):
         // id,name,price(₹),Is_discontinued,manufacturer_name,type,pack_size_label,short_composition1,short_composition2
@@ -108,16 +109,23 @@ class ImportMedicines extends Command
         $composition = $comp2 !== '' ? trim($comp1.', '.$comp2) : $comp1;
         $composition = trim($composition, " \t\n\r\0\x0B,");
 
+        $manufacturer = $this->nullify($row[4] ?? null);
+        $now = now();
+
         return [
-            'id' => $id,
+            'seed_id' => $id,
+            'source' => 'seed',
             'name' => $name,
-            'name_norm' => mb_strtolower($name),
-            'manufacturer' => $this->nullify($row[4] ?? null),
+            'name_norm' => MedicineMaster::norm($name),
+            'manufacturer' => $manufacturer,
+            'manufacturer_norm' => MedicineMaster::norm($manufacturer),
             'type' => $this->nullify($row[5] ?? null),
             'pack_size' => $this->nullify($row[6] ?? null),
             'composition' => $composition !== '' ? $composition : null,
             'price' => $this->parsePrice($row[2] ?? null),
             'is_discontinued' => strtoupper(trim((string) ($row[3] ?? ''))) === 'TRUE',
+            'created_at' => $now,
+            'updated_at' => $now,
         ];
     }
 
@@ -130,7 +138,7 @@ class ImportMedicines extends Command
     private function flush(array $batch, int &$skipped): int
     {
         try {
-            DB::table('medicines_master')->insert($batch);
+            $this->upsert($batch);
 
             return count($batch);
         } catch (\Throwable $e) {
@@ -140,7 +148,7 @@ class ImportMedicines extends Command
 
             foreach ($batch as $record) {
                 try {
-                    DB::table('medicines_master')->insert($record);
+                    $this->upsert([$record]);
                     $ok++;
                 } catch (\Throwable $inner) {
                     $skipped++;
@@ -149,6 +157,17 @@ class ImportMedicines extends Command
 
             return $ok;
         }
+    }
+
+    /** @param  array<int, array<string, mixed>>  $rows */
+    private function upsert(array $rows): void
+    {
+        DB::table('medicines_master')->upsert(
+            $rows,
+            ['seed_id'],
+            ['name', 'name_norm', 'manufacturer', 'manufacturer_norm', 'type', 'pack_size',
+                'composition', 'price', 'is_discontinued', 'updated_at'],
+        );
     }
 
     private function nullify(?string $value): ?string
