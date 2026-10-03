@@ -123,7 +123,7 @@ class SyncApiTest extends TestCase
         $this->assertSame(-6, (int) StockMovement::where('batch_id', $b)->sum('delta_units'));
 
         // Clients cannot set qty directly, and movements cannot be deleted.
-        $ver = (int) Batch::find($b)->version;
+        $ver = (int) Batch::find($b)->edit_version;
         $this->push($token, [$this->m('batches', $b, ['qty_units' => 999], $ver)]);
         $this->assertSame(-6, (int) Batch::find($b)->qty_units);
         $this->push($token, [$this->m('stock_movements', StockMovement::first()->id, [], null, 'delete')])
@@ -156,12 +156,30 @@ class SyncApiTest extends TestCase
             ->assertJsonPath('results.0.status', 'conflict');
     }
 
+    public function test_a_sale_on_another_device_does_not_block_a_price_edit(): void
+    {
+        $token = $this->token();
+        [, $b, $v] = $this->seedBatch($token, 3000);
+
+        // Phone sells a strip: batch qty (and pull version) change...
+        $this->push($token, [$this->m('stock_movements', (string) Str::uuid(), [
+            'batch_id' => $b, 'delta_units' => -1, 'reason' => 'sale', 'occurred_at' => now()->toIso8601String(),
+        ])], 'phone');
+        $this->assertGreaterThan($v, (int) Batch::find($b)->version);
+
+        // ...but nobody edited the batch, so the PC's price edit still applies.
+        $this->push($token, [$this->m('batches', $b, ['mrp_paise' => 3500], $v)], 'windows')
+            ->assertJsonPath('results.0.status', 'ok');
+        $this->assertSame(3500, (int) Batch::find($b)->mrp_paise);
+        $this->assertSame(-1, (int) Batch::find($b)->qty_units);
+    }
+
     public function test_delete_tombstones_product_and_its_batches(): void
     {
         $token = $this->token();
         [$p, $b] = $this->seedBatch($token);
         $since = $this->withToken($token)->getJson('/api/v1/sync/status')->json('server_version');
-        $pv = (int) Product::find($p)->version;
+        $pv = (int) Product::find($p)->edit_version;
 
         $this->push($token, [$this->m('products', $p, [], $pv, 'delete')])->assertJsonPath('results.0.status', 'ok');
 

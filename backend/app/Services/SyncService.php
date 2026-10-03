@@ -19,9 +19,10 @@ use Illuminate\Support\Str;
  *
  * Push rules:
  * - Every mutation has its own id; re-sending it returns the stored result.
- * - Product/batch edits carry `base_version`; if the server row moved on
- *   (another device edited it) the edit is a conflict and the current row is
- *   returned. Nothing is overwritten without the user choosing (prices!).
+ * - Product/batch edits carry `base_version` = the row's `edit_version` the
+ *   device saw; if another device edited the row since, it's a conflict and
+ *   the current row is returned. Nothing is overwritten without the user
+ *   choosing (prices!). Stock movements don't count as edits.
  * - Stock movements are insert-only; batch qty is recomputed from them.
  * - Batch price edits are recorded in price_changes.
  *
@@ -168,7 +169,7 @@ class SyncService
         if ($row->trashed()) {
             return $this->conflict('deleted', $row);
         }
-        if ($base === null || $base !== (int) $row->version) {
+        if ($base === null || $base !== (int) $row->edit_version) {
             return $this->conflict('version_mismatch', $row);
         }
 
@@ -200,9 +201,10 @@ class SyncService
             $row->name_norm = Product::normalizeName($row->name);
         }
         $row->version = $shop->nextVersion();
+        $row->edit_version = $row->version;
         $row->save();
 
-        return ['status' => 'ok', 'version' => (int) $row->version];
+        return ['status' => 'ok', 'version' => (int) $row->edit_version];
     }
 
     private function update(Shop $shop, User $user, string $deviceId, Model $row, array $data): array
@@ -219,11 +221,12 @@ class SyncService
             $row->name_norm = Product::normalizeName($row->name);
         }
         if (! $row->isDirty()) {
-            return ['status' => 'ok', 'version' => (int) $row->version];
+            return ['status' => 'ok', 'version' => (int) $row->edit_version];
         }
 
         $row->device_id = $deviceId;
         $row->version = $shop->nextVersion();
+        $row->edit_version = $row->version;
         $row->save();
 
         if ($row instanceof Batch) {
@@ -246,7 +249,7 @@ class SyncService
             }
         }
 
-        return ['status' => 'ok', 'version' => (int) $row->version];
+        return ['status' => 'ok', 'version' => (int) $row->edit_version];
     }
 
     private function applyDelete(Shop $shop, string $deviceId, ?Model $row, ?int $base): array
@@ -255,9 +258,9 @@ class SyncService
             return $this->rejected('not_found');
         }
         if ($row->trashed()) {
-            return ['status' => 'ok', 'version' => (int) $row->version];
+            return ['status' => 'ok', 'version' => (int) $row->edit_version];
         }
-        if ($base === null || $base !== (int) $row->version) {
+        if ($base === null || $base !== (int) $row->edit_version) {
             return $this->conflict('version_mismatch', $row);
         }
 
@@ -267,13 +270,14 @@ class SyncService
                 ->each(fn (Batch $b) => $this->tombstone($shop, $deviceId, $b));
         }
 
-        return ['status' => 'ok', 'version' => (int) $row->version];
+        return ['status' => 'ok', 'version' => (int) $row->edit_version];
     }
 
     private function tombstone(Shop $shop, string $deviceId, Model $row): void
     {
         $row->device_id = $deviceId;
         $row->version = $shop->nextVersion();
+        $row->edit_version = $row->version;
         $row->deleted_at = now();
         $row->save();
     }
