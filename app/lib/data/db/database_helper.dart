@@ -10,8 +10,16 @@ import '../../core/constants.dart';
 /// batches; stock is an append-only movement ledger; pending changes wait in
 /// an outbox until the sync engine pushes them.
 class DatabaseHelper {
-  DatabaseHelper._();
+  DatabaseHelper._() : _factory = null, _path = null;
   static final DatabaseHelper instance = DatabaseHelper._();
+
+  /// A separate database (tests simulating several devices).
+  DatabaseHelper.at(DatabaseFactory factory, String path)
+      : _factory = factory,
+        _path = path;
+
+  final DatabaseFactory? _factory;
+  final String? _path;
 
   static const String _dbName = 'med_stock.db';
   static const int _dbVersion = 2;
@@ -34,9 +42,10 @@ class DatabaseHelper {
   }
 
   Future<Database> _open() async {
-    final DatabaseFactory factory = factoryOverride ?? databaseFactory;
-    final String path =
-        pathOverride ?? p.join(await factory.getDatabasesPath(), _dbName);
+    final DatabaseFactory factory = _factory ?? factoryOverride ?? databaseFactory;
+    final String path = _path ??
+        pathOverride ??
+        p.join(await factory.getDatabasesPath(), _dbName);
     return factory.openDatabase(
       path,
       options: OpenDatabaseOptions(

@@ -210,6 +210,75 @@ class ApiClient {
         'email': ?email,
       }, token: token);
 
+  /// GET that also returns the HTTP status (0 = network failure).
+  Future<({int status, Map<String, dynamic>? body})> getResult(String path,
+      {Map<String, String>? query, String? token, Duration? timeout}) async {
+    try {
+      final Uri uri =
+          Uri.parse('$baseUrl$path').replace(queryParameters: query);
+      final http.Response res = await _http.get(uri, headers: <String, String>{
+        'Accept': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      }).timeout(timeout ?? _timeout);
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
+  }
+
+  // ---- Shop + multi-device sync -------------------------------------------
+
+  Future<({int status, Map<String, dynamic>? body})> currentShop(String token) =>
+      getResult('/shops/current', token: token);
+
+  Future<({int status, Map<String, dynamic>? body})> syncStatus(String token) =>
+      getResult('/sync/status', token: token);
+
+  Future<({int status, Map<String, dynamic>? body})> syncPull(String token,
+          {required int since, required String deviceId, int limit = 500}) =>
+      getResult('/sync/pull',
+          token: token,
+          timeout: const Duration(seconds: 30),
+          query: <String, String>{
+            'since': '$since',
+            'limit': '$limit',
+            'device_id': deviceId,
+          });
+
+  Future<({int status, Map<String, dynamic>? body})> syncPush(String token,
+      {required String deviceId,
+      required List<Map<String, Object?>> mutations,
+      String? platform}) async {
+    try {
+      final http.Response res = await _http
+          .post(
+            Uri.parse('$baseUrl/sync/push'),
+            headers: <String, String>{
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(<String, Object?>{
+              'device_id': deviceId,
+              'mutations': mutations,
+              'platform': ?platform,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
+  }
+
   /// Upload (or replace) the profile photo at [filePath] as multipart.
   Future<({int status, Map<String, dynamic>? body})> uploadAvatar({
     required String token,
