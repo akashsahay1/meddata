@@ -18,7 +18,11 @@ import 'upgrade_screen.dart';
 
 class AddEditMedicineScreen extends StatefulWidget {
   final Medicine? existing;
-  const AddEditMedicineScreen({super.key, this.existing});
+
+  /// Add a new batch of this medicine: product details are prefilled, the
+  /// batch fields (batch no, quantity, dates) start empty.
+  final Medicine? newBatchOf;
+  const AddEditMedicineScreen({super.key, this.existing, this.newBatchOf});
 
   @override
   State<AddEditMedicineScreen> createState() => _AddEditMedicineScreenState();
@@ -52,12 +56,14 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   @override
   void initState() {
     super.initState();
-    final Medicine? m = widget.existing;
+    final Medicine? m = widget.existing ?? widget.newBatchOf;
+    final bool batchOnly = widget.existing == null && widget.newBatchOf != null;
     _name = TextEditingController(text: m?.name ?? '');
     _brand = TextEditingController(text: m?.brand ?? '');
-    _batch = TextEditingController(text: m?.batchNo ?? '');
+    _batch = TextEditingController(text: batchOnly ? '' : (m?.batchNo ?? ''));
     _barcode = TextEditingController(text: m?.barcode ?? '');
-    _quantity = TextEditingController(text: m?.quantity.toString() ?? '');
+    _quantity = TextEditingController(
+        text: batchOnly ? '' : (m?.quantity.toString() ?? ''));
     _lowStock = TextEditingController(
         text: (m?.lowStockThreshold ?? AppConstants.defaultLowStockThreshold)
             .toString());
@@ -73,8 +79,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     _unit = m?.unit ?? 'Tablets';
     final String stored = m?.category.trim() ?? '';
     _category = stored.isEmpty ? 'Uncategorised' : stored;
-    _mfgDate = m?.mfgDate;
-    if (m != null) _expiryDate = m.expiryDate;
+    _mfgDate = batchOnly ? null : m?.mfgDate;
+    if (m != null && !batchOnly) _expiryDate = m.expiryDate;
   }
 
   @override
@@ -425,7 +431,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
           ),
           const SizedBox(width: 12),
           Text(
-            _isEdit ? 'Edit Medicine' : 'Add Medicine',
+            _isEdit
+                ? 'Edit Medicine'
+                : (widget.newBatchOf != null ? 'Add batch' : 'Add Medicine'),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,

@@ -4,6 +4,7 @@ import '../data/models/medicine.dart';
 import '../data/models/stock_movement.dart';
 import '../data/repositories/medicine_repository.dart';
 import '../domain/medicine_status.dart';
+import '../domain/product_stock.dart';
 
 enum MedicineFilter { all, expiring, expired, lowStock }
 
@@ -18,6 +19,8 @@ class MedicineProvider extends ChangeNotifier {
       : _repo = repo ?? MedicineRepository();
 
   List<Medicine> _all = <Medicine>[];
+  List<ProductStock> _products = <ProductStock>[];
+  Map<String, int> _productQty = <String, int>{};
   bool _loading = true;
   String _query = '';
   MedicineFilter _filter = MedicineFilter.all;
@@ -33,10 +36,18 @@ class MedicineProvider extends ChangeNotifier {
   MedicineSort get sort => _sort;
   int get totalCount => _all.length;
 
+  /// Number of products (all batches of a medicine count once).
+  int get productCount => _products.length;
+  List<ProductStock> get products => _products;
+
   Future<void> load() async {
     _loading = true;
     notifyListeners();
     _all = await _repo.getAll();
+    _products = ProductStock.group(_all);
+    _productQty = <String, int>{
+      for (final ProductStock p in _products) p.productId: p.totalQty,
+    };
     _loading = false;
     notifyListeners();
   }
@@ -56,8 +67,20 @@ class MedicineProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  MedicineStatus statusOf(Medicine m) =>
-      MedicineStatus.of(m, warningDays: warningDays);
+  /// Status of one batch. Low stock is judged on the product's total stock
+  /// across all its batches.
+  MedicineStatus statusOf(Medicine m) => MedicineStatus.of(m,
+      warningDays: warningDays, productQty: _productQty[m.productId]);
+
+  ProductStock? productById(String productId) {
+    for (final ProductStock p in _products) {
+      if (p.productId == productId) return p;
+    }
+    return null;
+  }
+
+  /// Batches that still hold stock (expiry alerts only matter for these).
+  Iterable<Medicine> get _stocked => _all.where((Medicine m) => m.quantity > 0);
 
   /// All active medicines, ignoring search/filter (used by the alerts screen).
   List<Medicine> get visibleAllForAlerts => List<Medicine>.unmodifiable(_all);
@@ -71,16 +94,75 @@ class MedicineProvider extends ChangeNotifier {
   }
 
   // ---- Derived counts for the dashboard tiles ----
-  int get expiringCount => _all.where((Medicine m) {
-        final ExpiryState s = statusOf(m).expiryState;
-        return s == ExpiryState.expiring;
-      }).length;
+  int get expiringCount =>
+      _stocked.where((Medicine m) => statusOf(m).isExpiring).length;
 
   int get expiredCount =>
-      _all.where((Medicine m) => statusOf(m).isExpired).length;
+      _stocked.where((Medicine m) => statusOf(m).isExpired).length;
 
+  /// Products whose total stock is at or below their low-stock level.
   int get lowStockCount =>
-      _all.where((Medicine m) => statusOf(m).isLowStock).length;
+      _products.where((ProductStock p) => p.isLowStock).length;
+
+  /// For alert lists: expired / expiring batches that still have stock,
+  /// and one entry (its next batch) per low-stock product.
+  List<Medicine> get expiredBatches =>
+      _stocked.where((Medicine m) => statusOf(m).isExpired).toList();
+  List<Medicine> get expiringBatches =>
+      _stocked.where((Medicine m) => statusOf(m).isExpiring).toList()
+        ..sort((Medicine a, Medicine b) => a.expiryDate.compareTo(b.expiryDate));
+  /// Product counts for the Inventory filter chips (match the product list).
+  int get productsExpiringCount => _products
+      .where((ProductStock p) => p.inStock.any((Medicine m) => statusOf(m).isExpiring))
+      .length;
+  int get productsExpiredCount => _products
+      .where((ProductStock p) => p.inStock.any((Medicine m) => statusOf(m).isExpired))
+      .length;
+
+  List<ProductStock> get lowStockProducts =>
+      _products.where((ProductStock p) => p.isLowStock).toList();
+
+  /// Products after search, filter and sort (the Inventory list).
+  List<ProductStock> get visibleProducts {
+    final String q = _query.trim().toLowerCase();
+    Iterable<ProductStock> list = _products;
+    if (q.isNotEmpty) {
+      list = list.where((ProductStock p) => p.batches.any((Medicine m) =>
+          m.name.toLowerCase().contains(q) ||
+          m.brand.toLowerCase().contains(q) ||
+          m.batchNo.toLowerCase().contains(q) ||
+          m.barcode.toLowerCase().contains(q) ||
+          m.category.toLowerCase().contains(q)));
+    }
+    switch (_filter) {
+      case MedicineFilter.all:
+        break;
+      case MedicineFilter.expiring:
+        list = list.where((ProductStock p) =>
+            p.inStock.any((Medicine m) => statusOf(m).isExpiring));
+      case MedicineFilter.expired:
+        list = list.where((ProductStock p) =>
+            p.inStock.any((Medicine m) => statusOf(m).isExpired));
+      case MedicineFilter.lowStock:
+        list = list.where((ProductStock p) => p.isLowStock);
+    }
+    final List<ProductStock> out = list.toList();
+    switch (_sort) {
+      case MedicineSort.nameAsc:
+        break; // already by name
+      case MedicineSort.expirySoonest:
+        out.sort((ProductStock a, ProductStock b) =>
+            a.nearestExpiry.compareTo(b.nearestExpiry));
+      case MedicineSort.quantityLowest:
+        out.sort((ProductStock a, ProductStock b) => a.totalQty.compareTo(b.totalQty));
+      case MedicineSort.recentlyUpdated:
+        DateTime last(ProductStock p) => p.batches
+            .map((Medicine m) => m.updatedAt)
+            .reduce((DateTime a, DateTime b) => a.isAfter(b) ? a : b);
+        out.sort((ProductStock a, ProductStock b) => last(b).compareTo(last(a)));
+    }
+    return out;
+  }
 
   double get totalStockValue =>
       _all.fold(0, (double sum, Medicine m) => sum + m.stockValue);
@@ -135,7 +217,9 @@ class MedicineProvider extends ChangeNotifier {
     return result;
   }
 
-  bool canAdd() => Entitlement(isPremium: isPremium).canAddMedicine(_all.length);
+  /// Free-plan limit counts products (a new batch of a known medicine is free).
+  bool canAdd() =>
+      Entitlement(isPremium: isPremium).canAddMedicine(_products.length);
 
   Future<AddResult> add(Medicine m, {bool allowDuplicate = false}) async {
     if (!canAdd()) return AddResult.blockedByFreeLimit;

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
-import '../../data/models/medicine.dart';
 import '../../domain/medicine_status.dart';
+import '../../domain/product_stock.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/sync_badge.dart';
-import 'medicine_detail_screen.dart';
+import 'product_detail_screen.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
 /// medicines rendered as [MedicineTile]. Reads from the shared
@@ -37,10 +37,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
     super.dispose();
   }
 
-  void _openDetail(Medicine m) {
+  void _openProduct(ProductStock p) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => MedicineDetailScreen(medicineId: m.id),
+        builder: (_) => ProductDetailScreen(productId: p.productId),
       ),
     );
   }
@@ -48,7 +48,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   @override
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.watch<MedicineProvider>();
-    final List<Medicine> items = mp.visible;
+    final List<ProductStock> items = mp.visibleProducts;
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -112,7 +112,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : items.isEmpty
                       ? _EmptyInventory(
-                          hasAny: mp.totalCount > 0,
+                          hasAny: mp.productCount > 0,
                           filtered: mp.filter != MedicineFilter.all,
                         )
                       : ListView.separated(
@@ -121,22 +121,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           separatorBuilder: (_, _) =>
                               const SizedBox(height: 10),
                           itemBuilder: (BuildContext context, int i) {
-                            final Medicine m = items[i];
-                            final MedicineStatus s = mp.statusOf(m);
+                            final ProductStock p = items[i];
+                            final MedicineStatus s = MedicineStatus(
+                              expiryState: p.worstExpiry(mp.warningDays),
+                              daysToExpiry: 0,
+                              isLowStock: p.isLowStock,
+                            );
                             final List<String> subParts = <String>[
-                              if (m.brand.isNotEmpty) m.brand,
-                              if (m.category.isNotEmpty) m.category,
+                              if (p.brand.isNotEmpty) p.brand,
+                              if (p.category.isNotEmpty) p.category,
+                              if (p.batches.length > 1) '${p.batches.length} batches',
                             ];
                             return MedicineTile(
-                              name: m.name,
+                              name: p.name,
                               subtitle: subParts.join(' · '),
-                              status: medicineStatusPill(s, m.quantity),
-                              qtyLabel: '${m.quantity} ${m.unit}',
-                              priceLabel: m.sellingPrice > 0
-                                  ? Fmt.money(m.sellingPrice)
+                              status: medicineStatusPill(s, p.totalQty),
+                              qtyLabel: '${p.totalQty} ${p.unit}',
+                              priceLabel: p.currentMrp > 0
+                                  ? Fmt.money(p.currentMrp)
                                   : null,
-                              expLabel: 'Exp ${Fmt.dateShort(m.expiryDate)}',
-                              onTap: () => _openDetail(m),
+                              expLabel: 'Exp ${Fmt.dateShort(p.nearestExpiry)}',
+                              onTap: () => _openProduct(p),
                             );
                           },
                         ),
@@ -158,12 +163,12 @@ class _FilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<(MedicineFilter, String, int, Color)> options =
         <(MedicineFilter, String, int, Color)>[
-      (MedicineFilter.all, 'All', mp.totalCount, AppColors.green),
+      (MedicineFilter.all, 'All', mp.productCount, AppColors.green),
       (MedicineFilter.lowStock, 'Low stock', mp.lowStockCount,
           AppColors.statusAmber),
-      (MedicineFilter.expiring, 'Expiring soon', mp.expiringCount,
+      (MedicineFilter.expiring, 'Expiring soon', mp.productsExpiringCount,
           AppColors.statusRed),
-      (MedicineFilter.expired, 'Expired', mp.expiredCount,
+      (MedicineFilter.expired, 'Expired', mp.productsExpiredCount,
           AppColors.statusRed),
     ];
     return SingleChildScrollView(

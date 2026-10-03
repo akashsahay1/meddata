@@ -40,6 +40,9 @@ class MedicineStatus {
     Medicine m, {
     int warningDays = AppConstants.defaultExpiryWarningDays,
     DateTime? now,
+    // Stock to judge "low" by: the product's total across batches. Defaults
+    // to this batch's own quantity.
+    int? productQty,
   }) {
     final DateTime today = _dateOnly(now ?? DateTime.now());
     final DateTime exp = _dateOnly(m.expiryDate);
@@ -57,7 +60,7 @@ class MedicineStatus {
     return MedicineStatus(
       expiryState: state,
       daysToExpiry: days,
-      isLowStock: m.quantity <= m.lowStockThreshold,
+      isLowStock: (productQty ?? m.quantity) <= m.lowStockThreshold,
     );
   }
 

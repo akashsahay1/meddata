@@ -7,6 +7,7 @@ import '../data/repositories/medicine_repository.dart';
 import '../data/models/medicine.dart';
 import '../domain/expiry_alert_plan.dart';
 import '../domain/medicine_status.dart';
+import '../domain/product_stock.dart';
 
 /// Wraps local notifications: the daily digest plus pre-scheduled
 /// expiry-day alerts, all built on the device (no server involved).
@@ -160,16 +161,19 @@ class NotificationService {
       {required int warningDays,
       required bool notifyExpiry,
       required bool notifyLowStock}) {
-    int expired = 0, expiring = 0, low = 0;
-    for (final Medicine m in all) {
+    // Same rules as the app: expiry counts batches that still have stock;
+    // low stock counts medicines by their total across batches.
+    int expired = 0, expiring = 0;
+    for (final Medicine m in all.where((Medicine m) => m.quantity > 0)) {
       final MedicineStatus s = MedicineStatus.of(m, warningDays: warningDays);
       if (s.isExpired) {
         expired++;
       } else if (s.isExpiring) {
         expiring++;
       }
-      if (s.isLowStock) low++;
     }
+    final int low =
+        ProductStock.group(all).where((ProductStock p) => p.isLowStock).length;
     final List<String> parts = <String>[];
     if (notifyExpiry && expired > 0) parts.add('$expired expired');
     if (notifyExpiry && expiring > 0) parts.add('$expiring expiring soon');

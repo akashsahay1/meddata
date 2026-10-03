@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/models/medicine.dart';
+import '../../domain/medicine_status.dart';
+import '../../domain/product_stock.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
@@ -10,6 +12,7 @@ import '../widgets/sync_badge.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'medicine_detail_screen.dart';
+import 'product_detail_screen.dart';
 import 'settings_screen.dart';
 import 'upgrade_screen.dart';
 
@@ -237,12 +240,13 @@ class _DashboardBody extends StatelessWidget {
         .toSet()
         .length;
 
-    final List<Medicine> attention = all.where((Medicine m) {
-      final s = mp.statusOf(m);
-      return s.isExpired || s.isExpiring || s.isLowStock || m.quantity == 0;
-    }).toList()
-      ..sort((Medicine a, Medicine b) =>
-          _severity(mp, a).compareTo(_severity(mp, b)));
+    // One row per medicine, for its most serious problem.
+    final List<(ProductStock, int, MedicineStatus)> attention =
+        <(ProductStock, int, MedicineStatus)>[
+      for (final ProductStock p in mp.products)
+        if (_problem(mp, p) case (final int sev, final MedicineStatus st))
+          (p, sev, st),
+    ]..sort((a, b) => a.$2.compareTo(b.$2));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -261,7 +265,7 @@ class _DashboardBody extends StatelessWidget {
             Expanded(
               child: StatCard(
                 label: 'Medicines',
-                value: '${mp.totalCount}',
+                value: '${mp.productCount}',
                 sub: catCount == 1 ? '1 category' : '$catCount categories',
               ),
             ),
@@ -307,15 +311,16 @@ class _DashboardBody extends StatelessWidget {
         if (attention.isEmpty)
           const _AllGoodCard()
         else
-          ...attention.map((Medicine m) {
-            final s = mp.statusOf(m);
+          ...attention.map(((ProductStock, int, MedicineStatus) row) {
+            final ProductStock p = row.$1;
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: MedicineTile(
-                name: m.name,
-                subtitle: _subtitle(m),
-                status: medicineStatusPill(s, m.quantity),
-                onTap: () => onOpenMedicine(m),
+                name: p.name,
+                subtitle: _subtitle(p),
+                status: medicineStatusPill(row.$3, p.totalQty),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => ProductDetailScreen(productId: p.productId))),
               ),
             );
           }),
@@ -323,19 +328,29 @@ class _DashboardBody extends StatelessWidget {
     );
   }
 
-  static String _subtitle(Medicine m) {
-    final String qty = '${m.quantity} ${m.unit}';
-    if (m.brand.trim().isEmpty) return qty;
-    return '${m.brand} · $qty';
+  static String _subtitle(ProductStock p) {
+    final String qty = '${p.totalQty} ${p.unit}';
+    if (p.brand.trim().isEmpty) return qty;
+    return '${p.brand} · $qty';
   }
 
-  // Lower value sorts first: expired < expiring < out of stock < low.
-  static int _severity(MedicineProvider mp, Medicine m) {
-    final s = mp.statusOf(m);
-    if (s.isExpired) return 0;
-    if (s.isExpiring) return 1;
-    if (m.quantity == 0) return 2;
-    return 3;
+  /// The medicine's most serious problem as (severity, status to show), or
+  /// null if it's fine. Lower severity sorts first: expired < expiring <
+  /// out of stock < low. Expiry only counts for batches with stock.
+  static (int, MedicineStatus)? _problem(MedicineProvider mp, ProductStock p) {
+    for (final Medicine b in p.inStock) {
+      final MedicineStatus s = mp.statusOf(b);
+      if (s.isExpired) return (0, s);
+    }
+    for (final Medicine b in p.inStock) {
+      final MedicineStatus s = mp.statusOf(b);
+      if (s.isExpiring) return (1, s);
+    }
+    const MedicineStatus low = MedicineStatus(
+        expiryState: ExpiryState.ok, daysToExpiry: 999, isLowStock: true);
+    if (p.totalQty == 0) return (2, low);
+    if (p.isLowStock) return (3, low);
+    return null;
   }
 }
 

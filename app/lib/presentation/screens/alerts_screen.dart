@@ -4,10 +4,12 @@ import 'package:provider/provider.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../domain/medicine_status.dart';
+import '../../domain/product_stock.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'medicine_detail_screen.dart';
+import 'product_detail_screen.dart';
 
 /// Soft border tints from the design handoff (not part of the core palette:
 /// a low-alpha version of each status hue used only for the alert tile edges).
@@ -21,21 +23,14 @@ class AlertsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.watch<MedicineProvider>();
 
-    final List<Medicine> expired = <Medicine>[];
-    final List<Medicine> expiring = <Medicine>[];
-    final List<Medicine> low = <Medicine>[];
-
-    for (final Medicine m in mp.visibleAllForAlerts) {
-      final MedicineStatus s = mp.statusOf(m);
-      if (s.isExpired) {
-        expired.add(m);
-      } else if (s.isExpiring) {
-        expiring.add(m);
-      }
-      if (s.isLowStock) low.add(m);
-    }
-    expiring.sort((Medicine a, Medicine b) =>
-        a.expiryDate.compareTo(b.expiryDate));
+    // Expiry alerts: batches that still have stock. Low stock: one entry
+    // per medicine (its total across batches), shown via its next batch.
+    final List<Medicine> expired = mp.expiredBatches;
+    final List<Medicine> expiring = mp.expiringBatches;
+    final List<Medicine> low = <Medicine>[
+      for (final ProductStock p in mp.lowStockProducts)
+        p.inStock.isNotEmpty ? p.inStock.first : p.first,
+    ];
 
     final bool empty = expired.isEmpty && expiring.isEmpty && low.isEmpty;
 
@@ -215,7 +210,8 @@ class _AlertSection extends StatelessWidget {
       subtitle = m.brand.isNotEmpty
           ? m.brand
           : (m.category.isNotEmpty ? m.category : null);
-      priceLabel = '${m.quantity} left';
+      final int total = mp.productById(m.productId)?.totalQty ?? m.quantity;
+      priceLabel = '$total left';
       expLabel = 'min ${m.lowStockThreshold}';
     }
 
@@ -229,7 +225,9 @@ class _AlertSection extends StatelessWidget {
       expLabel: expLabel,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => MedicineDetailScreen(medicineId: m.id),
+          builder: (_) => kind == _AlertKind.lowStock
+              ? ProductDetailScreen(productId: m.productId)
+              : MedicineDetailScreen(medicineId: m.id),
         ),
       ),
     );
