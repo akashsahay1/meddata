@@ -19,7 +19,7 @@ Independent pharmacy and medical-store owners in India (₹ pricing, English + H
 ```
 meddata/
 ├── app/          Flutter app (Android, iOS, Windows desktop)
-├── backend/      Laravel 12 + Filament admin (REST API, SQLite/MariaDB)
+├── backend/      Laravel 13 + Filament 5 admin (REST API, SQLite/MariaDB)
 ├── docs/         This file
 └── README.md
 ```
@@ -58,7 +58,7 @@ app/lib/
 - **Export:** csv + pdf + printing + share_plus
 - **Auth:** Custom Bearer token (no Sanctum) → email/password login → api_tokens table (SHA-256 hash)
 
-### Backend (Laravel 12 + Filament)
+### Backend (Laravel 13 + Filament 5)
 
 ```
 backend/
@@ -235,6 +235,7 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 ```bash
 cd backend
 composer install
+touch database/database.sqlite      # SQLite dev DB (gitignored)
 cp .env.example .env               # set DB, ADMIN_EMAIL, ADMIN_PASSWORD, Razorpay keys, ANTHROPIC_API_KEY
 php artisan migrate:fresh --seed    # schema + admin + plans + settings
 php artisan medicines:import <csv>  # import master catalog (CSV path is required)
@@ -252,10 +253,11 @@ php artisan queue:work database   # needed for AI invoice reading
 # Backend (77 tests: sync, catalog, browser payment, payment security, invoice scans, admin)
 cd backend && php artisan test
 
-# App tests (50 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan)
+# App tests (133 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+#   widget tests for Add/Edit + Home/Inventory, accessibility on every screen, add→alert smoke test)
 cd app && flutter test
 
-# Two-device integration (3 tests: stock sync, price edit, offline, merge)
+# Two-device integration (needs a running backend; skipped otherwise)
 cd app && flutter test test/integration/
 ```
 
@@ -333,11 +335,15 @@ cd app && flutter test test/integration/
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
-- [ ] Supplier management UI (model/repo exist, no screen)
+- [~] ~~Supplier management UI~~ — replaced by P4 parties (customers + suppliers)
 - [ ] Bulk CSV import of medicines (being replaced by P2 import wizard)
-- [ ] Accessibility audit: tap targets, scalable text, semantic labels
-- [ ] Widget tests (Add/Edit, Home) + smoke integration test
-- [ ] Final README update
+- [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
+- [ ] Accessibility coverage for screens added since the audit (invoice scan, import wizard, billing)
+- [ ] Contrast below WCAG AA in brand colours (white on orange buttons 2.8:1, status pills 2.2–3.4:1, Subscribe plan toggle 4.0:1) — needs a design decision
+- [x] Widget tests (Add/Edit 14, Home/Inventory 8) + smoke test add → list → expiry alerts scheduled (`test/integration/smoke_add_to_alert_test.dart`, no server needed)
+- [x] Fix: clearing a batch's manufacture date on Edit now saves (and syncs)
+- [x] Final README update
+- [x] Android release signing reads `android/key.properties` (falls back to the debug key when absent)
 - [ ] Home-screen "today's expiries" widget (optional, only if doesn't raise minSdk)
 
 ---
@@ -373,6 +379,7 @@ cd app && flutter test test/integration/
 - [ ] Run the queue worker under supervisor: `php artisan queue:work database --sleep=3 --tries=3 --timeout=330 --max-time=3600` (`autorestart=true`, `stopwaitsecs=360`); `php artisan queue:restart` after each deploy
 - [ ] Raise upload limits to ~12 MB: PHP `upload_max_filesize` + `post_max_size` (currently 2 MB) and nginx `client_max_body_size`
 - [ ] Cron: `* * * * * php artisan schedule:run` (daily cleanup of old invoice scans)
+- [ ] Android: create an upload keystore and `app/android/key.properties` (`storePassword`, `keyPassword`, `keyAlias`, `storeFile` relative to `android/app`); without it release builds are signed with the debug key
 - [ ] Build and test Windows installer (Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage)
 - [ ] Cross-device testing: Windows ↔ phone sync, price conflicts, offline edits, USB barcode scanner
 
@@ -384,6 +391,12 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `ad51dd5` | README: final update |
+| `70eadeb` | App a11y: 48dp touch targets, screen-reader names, AA muted text, large text |
+| `e289628` | App a11y: password toggles and settings switches named; auth links wrap |
+| `17774cd` | App tests: widget tests Add/Edit, Home, Inventory + add-to-alert smoke test |
+| `6dcc51b` | App: clearing a batch's manufacture date now saves |
+| `af5ddf3` | Docs: AI invoice reading |
 | `fb518f9` | AI invoice reading: server-side Claude extraction + app review screen |
 | `d3bfa60` | Docs: security fixes, deploy notes |
 | `c6b15b4` | Security: payment bypasses closed, debug-only test tools, secure token storage |

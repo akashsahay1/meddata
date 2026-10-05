@@ -1,7 +1,19 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Release signing: android/key.properties (gitignored) points at the upload
+// keystore. Without it, release builds fall back to the debug key so
+// `flutter run --release` still works — never publish such a build.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -19,9 +31,8 @@ android {
 
     defaultConfig {
         applicationId = "com.medstock.med_stock"
-        // Old-phone support: Android 6.0 (Marshmallow) and up — ~98% device coverage.
-        // 23 is Flutter 3.44's hard engine floor (below this the build is rejected);
-        // still far below Flutter's default of 24, so we support older phones.
+        // Flutter 3.44's default, 24 (Android 7.0). Plugins such as
+        // flutter_secure_storage need 24, so it is also the effective floor.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -33,11 +44,26 @@ android {
         // `--split-per-abi` release build (which manages ABI splitting itself).
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Signing with debug keys for now so `flutter run --release` works.
-            // Replace with a real keystore before publishing (see docs/TASKS.md Phase 6).
-            signingConfig = signingConfigs.getByName("debug")
+            // Real upload key when android/key.properties exists (see
+            // docs/MEDDATA.md §10), else the debug key for local release runs.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             // Keep the release small for low-end devices.
             isMinifyEnabled = true
             isShrinkResources = true
