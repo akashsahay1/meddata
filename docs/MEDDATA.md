@@ -2,7 +2,7 @@
 
 > Multi-device pharmacy inventory app for phones + Windows  
 > Repo: `D:\meddata` (branch `main`)  
-> Last updated: 5 Oct 2026
+> Last updated: 5 Oct 2026 (P0b, P2, P3 done; P4 in progress)
 
 ---
 
@@ -272,6 +272,17 @@ cd app && flutter test test/integration/
 
 ## 8. Task list
 
+### Status at a glance (5 Oct 2026)
+
+| Area | Status |
+|------|--------|
+| P0 / P0b Security | ✅ Done |
+| P1 Products, batches, sync, Windows | 🔧 12/14 — remaining 2 need a Windows PC with Visual Studio and a real phone |
+| P2 Onboarding (barcode lookup, Excel/CSV import, AI invoice reading) | ✅ Done |
+| P3 GST billing | ✅ Done — a few decisions to confirm (§9) |
+| P4 Accounting | 🔧 In progress |
+| Needs the owner | Windows build + installer, real-device tests (sync, notifications), deploy checklist (§10), brand-colour contrast decision, confirm billing decisions (§9) |
+
 ### P0 — Security cleanup ✅ Done
 
 - [x] Remove hardcoded DB password and admin password from repo
@@ -334,7 +345,7 @@ cd app && flutter test test/integration/
 - [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
 - Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
-### P4 — Accounting ⬜ Planned
+### P4 — Accounting 🔧 In progress (parties/ledgers/payments/returns/GSTR; stock valuation/profit/expiry loss)
 
 - [ ] Parties table: unified customers + suppliers
 - [ ] Ledgers: per-party running balance
@@ -408,6 +419,7 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `5d8836b` | Docs: P3 GST billing done |
 | `8ad5fe8` | App: New bill button contrast; tests follow billing + secure token |
 | `d53c7f0` | App: GST billing — counter sale, invoices (A4 + 80 mm), bills list |
 | `fc395d5` | Backend: GST billing — bills API, invoice series, Filament Bills |
