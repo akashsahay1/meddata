@@ -74,10 +74,14 @@ class BrowserCheckoutController extends Controller
         }
 
         $ent = $this->orders->markPaid($payment, $paymentId);
+        if (! $ent) {
+            return $this->result(false, 'This plan is no longer available. Please contact support.');
+        }
 
-        return $ent
+        // A replayed callback for an order paid long ago activates nothing.
+        return $ent->isActivePaid()
             ? $this->result(true, 'Payment successful. Premium is active — go back to the Meddata app.')
-            : $this->result(false, 'This plan is no longer available. Please contact support.');
+            : $this->result(false, 'This order was already used. If money was deducted, contact support.');
     }
 
     private function result(bool $ok, string $message, bool $alreadyPaid = false): Response

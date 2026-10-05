@@ -49,6 +49,9 @@ dependencies:
   url_launcher: ^6.3.2
   image_picker: ^1.2.3
   sqflite_common_ffi: ^2.4.3
+  # Auth token storage (Keychain / Android Keystore / Windows Credential
+  # Manager). The Windows build needs Visual Studio's "C++ ATL" component.
+  flutter_secure_storage: ^11.2.0
 
 dev_dependencies:
   flutter_test:

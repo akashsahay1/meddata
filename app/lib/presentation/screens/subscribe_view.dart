@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -27,6 +28,9 @@ class SubscribeView extends StatefulWidget {
 }
 
 class _SubscribeViewState extends State<SubscribeView> {
+  static const String _paymentsUnavailable =
+      'Payments are not available right now. Please try again later.';
+
   final TextEditingController _coupon = TextEditingController();
 
   List<SubscriptionPlan> _plans = <SubscriptionPlan>[];
@@ -109,12 +113,16 @@ class _SubscribeViewState extends State<SubscribeView> {
     final SubscriptionService sub = context.read<SubscriptionService>();
     final String? token = context.read<AuthService>().token;
 
-    final Map<String, dynamic>? order =
+    final ({int status, Map<String, dynamic>? body}) created =
         await sub.createOrder(plan.id, _couponApplied, token: token);
     if (!mounted) return;
+    final Map<String, dynamic>? order =
+        created.status >= 200 && created.status < 300 ? created.body : null;
     if (order == null) {
       setState(() => _busy = false);
-      _snack('Could not start payment. Check your connection and try again.');
+      _snack(created.status == 503
+          ? _paymentsUnavailable
+          : 'Could not start payment. Check your connection and try again.');
       return;
     }
 
@@ -122,27 +130,15 @@ class _SubscribeViewState extends State<SubscribeView> {
     final String orderId = (order['order_id'] as String?) ?? '';
     final int amountPaise = (order['amount'] as num?)?.toInt() ?? 0;
 
-    // Dev fallback: no real Razorpay keys configured → simulate a paid order so
-    // the whole flow is testable. Real keys → open the real Razorpay checkout.
-    final bool devMode = keyId.isEmpty || keyId == 'rzp_test_dev';
-    if (devMode) {
-      final bool ok = await sub.verifyPayment(
-        planId: plan.id,
-        orderId: orderId,
-        paymentId: 'pay_dev_${DateTime.now().millisecondsSinceEpoch}',
-        signature: 'dev',
-        couponCode: _couponApplied,
-        token: token,
-      );
-      if (!mounted) return;
-      setState(() => _busy = false);
-      if (ok) {
-        await context.read<AuthService>().refreshMe();
-        if (!mounted) return;
-        _snack('Payment successful (test mode). Premium unlocked.');
-        widget.onUnlocked?.call();
+    // No real key: the server has no Razorpay keys and runs its dev fallback.
+    // Only a debug build may then fake the payment (test mode). A release
+    // build never does, whatever the server sends: payments are unavailable.
+    if (!SubscriptionService.isRealKey(keyId)) {
+      if (kDebugMode) {
+        await _payInTestMode(sub, plan, orderId, token);
       } else {
-        _snack('Test payment could not be verified.');
+        setState(() => _busy = false);
+        _snack(_paymentsUnavailable);
       }
       return;
     }
@@ -199,6 +195,30 @@ class _SubscribeViewState extends State<SubscribeView> {
       widget.onUnlocked?.call();
     } else {
       _snack('Payment could not be verified. If money was deducted, contact support.');
+    }
+  }
+
+  /// Debug builds only: completes [orderId] without Razorpay. Only a server
+  /// in its local/testing environment with no keys accepts this.
+  Future<void> _payInTestMode(SubscriptionService sub, SubscriptionPlan plan,
+      String orderId, String? token) async {
+    final bool ok = await sub.verifyPayment(
+      planId: plan.id,
+      orderId: orderId,
+      paymentId: 'pay_dev_${DateTime.now().millisecondsSinceEpoch}',
+      signature: 'dev',
+      couponCode: _couponApplied,
+      token: token,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) {
+      await context.read<AuthService>().refreshMe();
+      if (!mounted) return;
+      _snack('Payment successful (test mode). Premium unlocked.');
+      widget.onUnlocked?.call();
+    } else {
+      _snack('Test payment could not be verified.');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,6 +32,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const Color _chevron = Color(0xFFB4C4C1);
   static const Color _rowLine = Color(0xFFF2F5F4);
 
+  // Developer / testing options (7 taps on the version). Debug builds only: a
+  // release build has no tap counter and no section, so they can't be used
+  // to unlock premium or read the device id.
   int _versionTaps = 0;
   bool _devUnlocked = false;
   String _deviceId = '…';
@@ -39,13 +43,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    DeviceId.get().then((String id) {
-      if (mounted) setState(() => _deviceId = id);
-    });
+    if (kDebugMode) {
+      DeviceId.get().then((String id) {
+        if (mounted) setState(() => _deviceId = id);
+      });
+    }
   }
 
   void _onVersionTap() {
-    if (_devUnlocked) return;
+    if (!kDebugMode || _devUnlocked) return;
     _versionTaps++;
     if (_versionTaps >= 7) {
       setState(() => _devUnlocked = true);
@@ -179,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ]),
 
-              if (_devUnlocked) ...<Widget>[
+              if (kDebugMode && _devUnlocked) ...<Widget>[
                 _sectionLabel('Developer / Testing'),
                 _menuCard(<Widget>[
                   _switchRow(
@@ -215,7 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               Center(
                 child: GestureDetector(
-                  onTap: _onVersionTap,
+                  onTap: kDebugMode ? _onVersionTap : null,
                   behavior: HitTestBehavior.opaque,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),

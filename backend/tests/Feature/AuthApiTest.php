@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ApiToken;
+use App\Models\Entitlement;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -110,7 +111,7 @@ class AuthApiTest extends TestCase
             ->assertStatus(401);
     }
 
-    public function test_forgot_password_returns_ok_with_dev_code_in_debug(): void
+    public function test_forgot_password_returns_ok_with_dev_code_in_testing_env(): void
     {
         $this->register();
 
@@ -120,13 +121,72 @@ class AuthApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('ok', true);
 
-        // APP_DEBUG is true under phpunit env by default (config app.debug).
+        // dev_code is echoed only in the local/testing environments (phpunit runs as 'testing').
         $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $res->json('dev_code'));
 
         $this->assertDatabaseHas('password_reset_codes', [
             'email' => 'user@example.com',
             'code' => $res->json('dev_code'),
         ]);
+    }
+
+    public function test_forgot_password_never_echoes_the_code_outside_local_and_testing(): void
+    {
+        $this->register();
+        config(['app.debug' => true]); // APP_DEBUG alone must not expose the code
+
+        foreach (['production', 'staging'] as $env) {
+            $this->app['env'] = $env;
+            $this->postJson('/api/v1/auth/forgot-password', ['email' => 'user@example.com'])
+                ->assertOk()
+                ->assertJsonPath('ok', true)
+                ->assertJsonMissingPath('dev_code');
+        }
+
+        $this->assertDatabaseHas('password_reset_codes', ['email' => 'user@example.com']);
+    }
+
+    public function test_signing_in_with_another_users_device_id_leaves_their_plan_alone(): void
+    {
+        // A pays yearly; the app last reported A's phone as dev-A.
+        $owner = User::factory()->create(['is_admin' => false]);
+        $paid = Entitlement::create([
+            'user_id' => $owner->id,
+            'device_id' => 'dev-A',
+            'product_id' => 'premium_yearly',
+            'source' => 'razorpay',
+            'status' => 'active',
+            'is_premium' => true,
+            'expiry_time' => now()->addYear(),
+        ]);
+
+        // B signs up and signs in sending A's device id: B gets B's own trial.
+        $token = $this->register(['email' => 'b@example.com', 'device_id' => 'dev-A'])
+            ->assertCreated()
+            ->assertJsonPath('entitlement.source', 'trial')
+            ->json('token');
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'b@example.com',
+            'password' => 'secret123',
+            'device_id' => 'dev-A',
+        ])
+            ->assertOk()
+            ->assertJsonPath('entitlement.source', 'trial')
+            ->assertJsonPath('entitlement.expiry_time', null);
+        $this->withToken($token)->getJson('/api/v1/entitlement?device_id=dev-A')
+            ->assertOk()
+            ->assertJsonPath('source', 'trial');
+
+        // A's paid plan is neither taken over nor stripped.
+        $paid->refresh();
+        $this->assertSame($owner->id, $paid->user_id);
+        $this->assertSame('razorpay', $paid->source);
+        $this->assertTrue($paid->isActivePaid());
+        $this->assertSame(1, Entitlement::where('source', 'razorpay')->count());
+        $this->withToken($owner->issueToken('t'))->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('entitlement.premium', true)
+            ->assertJsonPath('entitlement.source', 'razorpay');
     }
 
     public function test_forgot_password_generic_for_unknown_email(): void

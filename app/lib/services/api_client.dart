@@ -198,8 +198,10 @@ class ApiClient {
   Future<void> logout(String token) => _post('/auth/logout', <String, dynamic>{},
       token: token);
 
-  Future<Map<String, dynamic>?> me(String token) =>
-      _get('/auth/me', token: token);
+  /// Current user + entitlement, with the HTTP status (0 = network failure)
+  /// so a rejected token (401) can be told apart from being offline.
+  Future<({int status, Map<String, dynamic>? body})> me(String token) =>
+      getResult('/auth/me', token: token);
 
   Future<({int status, Map<String, dynamic>? body})> forgotPassword(
           String email) =>
@@ -365,14 +367,15 @@ class ApiClient {
         'plan_id': planId,
       }, token: token);
 
-  /// Create a Razorpay order for a plan (with optional coupon).
-  Future<Map<String, dynamic>?> createOrder({
+  /// Create a Razorpay order for a plan (with optional coupon). Returns the
+  /// HTTP status too: 503 means the server isn't taking payments right now.
+  Future<({int status, Map<String, dynamic>? body})> createOrder({
     required String deviceId,
     required int planId,
     String? couponCode,
     String? token,
   }) =>
-      _post('/order/create', <String, dynamic>{
+      postResult('/order/create', <String, dynamic>{
         'device_id': deviceId,
         'plan_id': planId,
         if (couponCode != null && couponCode.isNotEmpty)

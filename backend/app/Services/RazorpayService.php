@@ -10,14 +10,19 @@ use RuntimeException;
 /**
  * Razorpay order creation + signature verification.
  *
- * Mirrors GooglePlayVerifier's dev-fallback style: when keys are NOT configured
- * (AppSetting or env), it returns synthetic orders and treats signatures as
- * valid so the whole flow is testable without a real Razorpay account.
- *
  * Keys are read from AppSetting first (admin-editable), then config/env.
+ *
+ * Without keys nothing can be charged or verified. Only the local and testing
+ * environments then fall back to synthetic orders and accept any signature, so
+ * the flow can be exercised without a Razorpay account. Every other environment
+ * fails closed: no order is created and no payment verifies, so a blank key in
+ * the admin panel can never hand out a subscription.
  */
 class RazorpayService
 {
+    /** Key id the dev fallback hands the app in place of a real one. */
+    public const DEV_KEY_ID = 'rzp_test_dev';
+
     public function keyId(): string
     {
         return (string) (AppSetting::get('razorpay_key_id', '') ?: config('services.razorpay.key_id', ''));
@@ -32,6 +37,18 @@ class RazorpayService
     public function keysConfigured(): bool
     {
         return $this->keyId() !== '' && $this->keySecret() !== '';
+    }
+
+    /** Synthetic orders and unchecked signatures: local dev and tests only. */
+    public function devFallbackAllowed(): bool
+    {
+        return app()->environment('local', 'testing');
+    }
+
+    /** Whether orders can be taken at all: real keys, or the dev fallback. */
+    public function paymentsAvailable(): bool
+    {
+        return $this->keysConfigured() || $this->devFallbackAllowed();
     }
 
     /**
@@ -78,26 +95,33 @@ class RazorpayService
             throw new RuntimeException('Razorpay order creation failed: ' . ($response->json('error.description') ?? $response->status()));
         }
 
+        // No keys outside local/testing: refuse rather than hand out a fake order.
+        if (! $this->devFallbackAllowed()) {
+            Log::error('Razorpay keys are not configured; refusing to create an order.');
+            throw new RuntimeException('Razorpay keys are not configured.');
+        }
+
         // Dev fallback — no real charge, fully testable.
         return [
             'order_id' => 'order_dev_' . uniqid(),
             'amount' => $amountPaise,
             'currency' => 'INR',
-            'key_id' => $this->keyId() !== '' ? $this->keyId() : 'rzp_test_dev',
+            'key_id' => self::DEV_KEY_ID,
         ];
     }
 
     /**
-     * Verify the Razorpay checkout signature.
-     * In dev fallback (no keys) this returns true so the flow can be exercised.
+     * Verify the Razorpay checkout signature. Without keys only the dev
+     * fallback (local/testing) accepts it; every other environment rejects it.
      */
     public function verifySignature(string $orderId, string $paymentId, string $signature): bool
     {
         if (! $this->keysConfigured()) {
-            // Fail CLOSED in production: without keys we cannot verify a real
-            // payment, so never grant premium. Only local/testing may bypass
-            // so the flow stays exercisable without a Razorpay account.
-            return ! app()->environment('production');
+            // Fail CLOSED: without keys we cannot verify a real payment, so
+            // never grant premium. Only local/testing may bypass so the flow
+            // stays exercisable without a Razorpay account. (Checking for
+            // 'production' alone left staging or a mistyped APP_ENV open.)
+            return $this->devFallbackAllowed();
         }
 
         $expected = hash_hmac('sha256', $orderId . '|' . $paymentId, $this->keySecret());

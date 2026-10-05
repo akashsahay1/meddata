@@ -9,6 +9,13 @@ import 'settings_service.dart';
 /// screen (needs widget lifecycle); this service only does the API calls and
 /// keeps the cached entitlement (premium + trial) in SettingsService.
 class SubscriptionService extends ChangeNotifier {
+  /// Key id the server sends when it has no Razorpay keys (its dev fallback,
+  /// local only): there is nothing real to pay with then.
+  static const String devKeyId = 'rzp_test_dev';
+
+  /// Whether [keyId] is a real Razorpay key (neither missing nor [devKeyId]).
+  static bool isRealKey(String keyId) => keyId.isNotEmpty && keyId != devKeyId;
+
   final SettingsService _settings;
   final ApiClient _api;
   final String deviceId;
@@ -71,7 +78,8 @@ class SubscriptionService extends ChangeNotifier {
       _api.validateCoupon(
           code: code, planId: planId, token: tokenProvider?.call());
 
-  Future<Map<String, dynamic>?> createOrder(int planId, String? couponCode,
+  Future<({int status, Map<String, dynamic>? body})> createOrder(
+          int planId, String? couponCode,
           {String? token}) =>
       _api.createOrder(
           deviceId: deviceId,

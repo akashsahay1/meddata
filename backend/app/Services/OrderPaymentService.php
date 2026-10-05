@@ -25,8 +25,10 @@ class OrderPaymentService
     public function __construct(private readonly EntitlementService $entitlements) {}
 
     /**
-     * Mark the order paid and activate the owner's entitlement. Safe to call
-     * twice for the same order (coupon use and emails happen once).
+     * Mark the order paid and activate the owner's entitlement. An order
+     * activates exactly once: calling this again for a paid order (a retried
+     * or replayed verify/callback) returns the current entitlement without
+     * extending it, counting the coupon or emailing again.
      * Returns null if the order's plan no longer exists.
      */
     public function markPaid(Payment $payment, string $razorpayPaymentId, ?string $deviceId = null): ?Entitlement
@@ -37,35 +39,48 @@ class OrderPaymentService
             return null;
         }
 
-        $alreadyPaid = $payment->status === 'paid';
-        $payment->update(['status' => 'paid', 'razorpay_payment_id' => $razorpayPaymentId]);
+        // The order row is locked so two concurrent callbacks for the same
+        // order can't both activate it.
+        $activated = DB::transaction(function () use ($payment, $razorpayPaymentId, $deviceId, $user, $plan) {
+            $order = Payment::whereKey($payment->id)->lockForUpdate()->first();
+            if (! $order || $order->status === 'paid') {
+                return null;
+            }
+            $order->update(['status' => 'paid', 'razorpay_payment_id' => $razorpayPaymentId]);
 
-        // Count a coupon use exactly once, atomically, respecting max_uses.
-        if (! $alreadyPaid && $payment->coupon_id) {
-            $this->consumeCoupon($payment->coupon_id);
+            // Count a coupon use exactly once, atomically, respecting max_uses.
+            if ($order->coupon_id) {
+                $this->consumeCoupon($order->coupon_id);
+            }
+
+            $ent = $this->entitlements->forUser($user, $deviceId);
+            $wasPaid = $ent->isActivePaid();
+
+            $ent->fill([
+                'plan_id' => $plan->id,
+                'product_id' => $plan->product_id,
+                'source' => 'razorpay',
+                'is_premium' => true,
+                'status' => 'active',
+                'expiry_time' => $this->expiryForPlan($plan),
+                'razorpay_payment_id' => $razorpayPaymentId,
+                'razorpay_order_id' => $order->razorpay_order_id,
+                'coupon_id' => $order->coupon_id,
+            ]);
+            $ent->save();
+
+            return [$order, $ent, $wasPaid];
+        });
+
+        // Paid before: the signature is genuine but already used, so a replay
+        // (say, a month later) must not start the plan over again.
+        if (! $activated) {
+            return $this->entitlements->forUser($user, $deviceId);
         }
 
-        $expiry = $this->expiryForPlan($plan);
-        $ent = $this->entitlements->forUser($user, $deviceId);
-        $wasPaid = $ent->isActivePaid();
-
-        $ent->fill([
-            'plan_id' => $plan->id,
-            'product_id' => $plan->product_id,
-            'source' => 'razorpay',
-            'is_premium' => true,
-            'status' => 'active',
-            'expiry_time' => $expiry,
-            'razorpay_payment_id' => $razorpayPaymentId,
-            'razorpay_order_id' => $payment->razorpay_order_id,
-            'coupon_id' => $payment->coupon_id,
-        ]);
-        $ent->save();
-
-        if (! $alreadyPaid) {
-            $this->sendReceiptEmails($user, $plan, (float) $payment->amount, $payment->currency,
-                $razorpayPaymentId, optional($expiry)->toIso8601String(), $wasPaid);
-        }
+        [$order, $ent, $wasPaid] = $activated;
+        $this->sendReceiptEmails($user, $plan, (float) $order->amount, $order->currency,
+            $razorpayPaymentId, optional($ent->expiry_time)->toIso8601String(), $wasPaid);
 
         return $ent;
     }

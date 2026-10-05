@@ -27,9 +27,10 @@ class GooglePlayVerifier
             return $this->verifyWithGoogle($productId, $purchaseToken);
         }
 
-        // Fail CLOSED in production: without service-account credentials we
-        // cannot verify a real purchase, so never grant premium.
-        if (app()->environment('production')) {
+        // Fail CLOSED: without service-account credentials we cannot verify a
+        // real purchase, so never grant premium. Only local dev and the test
+        // suite may accept it (any other APP_ENV, e.g. staging, is refused).
+        if (! app()->environment('local', 'testing')) {
             return ['valid' => false, 'expiry' => null, 'status' => 'unverified'];
         }
 
@@ -70,10 +71,8 @@ class GooglePlayVerifier
         // $expiry = Carbon::createFromTimestampMs($sub->getExpiryTimeMillis());
         // return ['valid' => true, 'expiry' => $expiry, 'status' => $expiry->isFuture() ? 'active' : 'expired'];
 
-        return [
-            'valid' => true,
-            'expiry' => $this->fallbackExpiry($productId),
-            'status' => 'active',
-        ];
+        // Not implemented yet: until it is, configured credentials must not
+        // turn any client-supplied token into premium. Fail closed.
+        return ['valid' => false, 'expiry' => null, 'status' => 'unverified'];
     }
 }

@@ -35,6 +35,14 @@ class PaymentController extends Controller
 
         $user = $request->user();
 
+        // No Razorpay keys (outside local/testing): there is nothing to pay
+        // with, so don't hand out an order that could never be verified.
+        if (! $this->razorpay->paymentsAvailable()) {
+            Log::error('Order refused for user '.$user->id.': Razorpay keys are not configured.');
+
+            return response()->json(['message' => 'Payments are not available right now.'], 503);
+        }
+
         $plan = Plan::find($data['plan_id']);
         if (! $plan || ! $plan->is_active) {
             return response()->json(['message' => 'Plan not found.'], 422);
@@ -124,9 +132,13 @@ class PaymentController extends Controller
             return response()->json(['premium' => false, 'status' => 'invalid'], 422);
         }
 
+        // Report the plan as it stands: re-sending an order that was paid
+        // long ago must not tell the app it is premium again.
+        $active = $ent->isActivePaid();
+
         return response()->json([
-            'premium' => true,
-            'status' => 'active',
+            'premium' => $active,
+            'status' => $active ? 'active' : 'expired',
             'expiry_time' => optional($ent->expiry_time)->toIso8601String(),
         ]);
     }
