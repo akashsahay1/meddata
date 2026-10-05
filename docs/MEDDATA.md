@@ -41,6 +41,7 @@ app/lib/
 ├── l10n/           EN + HI localization
 ├── presentation/
 │   ├── screens/    Home, Inventory, ProductDetail, AddEdit, Alerts, Settings, Login/Signup,
+│   │               billing/ (NewBill, Bills, BillDetail, ShopSettings), import/ (ImportWizard), InvoiceScan,
 │   │               Subscribe, LockScreen, Onboarding, SyncIssues, RazorpayCheckout, Reports
 │   └── widgets/    MedicineListTile, StatusChip, SummaryTile, SyncBadge, UIKit
 ├── services/       AuthService, SubscriptionService, NotificationService, SettingsService,
@@ -112,7 +113,7 @@ Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of un
 
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage).
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale` and `sale_cancel`.
 
 ---
 
@@ -175,6 +176,10 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 | POST | `/payment/verify` | Verify Razorpay payment |
 | POST | `/backup` | Upload backup |
 | GET | `/backup/latest` | Download latest backup |
+| GET | `/bills` | Bills by date range/search/status, paginated, with range total |
+| POST | `/bills` | Create bill (201; 200 + `replayed` on retry; 409 price changed; 422 stock/batch) |
+| GET | `/bills/{id}` | Bill with items + GST summary (other shop → 404) |
+| POST | `/bills/{id}/cancel` | Cancel bill: stock back, number stays used |
 | GET | `/medicines/search` | Search master catalog (`?q=` name prefix or `?barcode=`) |
 | POST | `/invoices/scan` | Upload purchase invoice photo/PDF for AI reading (202) |
 | GET | `/invoices/scan/{id}` | Scan status + extracted lines |
@@ -250,11 +255,12 @@ php artisan queue:work database   # needed for AI invoice reading
 ### Tests
 
 ```bash
-# Backend (77 tests: sync, catalog, browser payment, payment security, invoice scans, admin)
+# Backend (110 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
 cd backend && php artisan test
 
-# App tests (180 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
-#   Excel/CSV import, widget tests for Add/Edit + Home/Inventory + import wizard,
+# App tests (222 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+#   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
+#   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
 cd app && flutter test
 
@@ -314,17 +320,19 @@ cd app && flutter test test/integration/
   - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Claude (`claude-opus-5-5`, effort medium, fixed JSON schema via `output_config.format`, server-side refusal fallback `fallbacks: "default"`) → `GET /invoices/scan/{id}`, shop-scoped
   - Dates/numbers/GSTIN/HSN normalised; each line matched to the shop's products and the master catalog (barcode, then exact name, then loose name); retries with backoff; clear failure codes (`not_configured`, `refused`, `too_long`, `unreadable_output`, `no_items`, `auth`, `busy`, `stalled` after 15 min); files deleted after 30 days
   - App "Scan invoice" button on Add Medicine: camera/gallery/PDF on phones, file picker on desktop; online-only; editable review (fix/remove lines, duplicate-batch warning) → adds through `MedicineProvider.addFromInvoice` → `MedicineRepository.insert` like a manual add (known medicine = new batch); free-plan limit respected
-  - [ ] Follow-up: save HSN/GST% from scanned lines once billing adds them to `Medicine`
+  - [ ] Follow-up: save HSN/GST% from scanned lines (billing has now added them to `Medicine`)
 
-### P3 — GST billing ⬜ Planned
+### P3 — GST billing ✅ Done (Oct 2026)
 
-- [ ] Counter sale screen: earliest-expiry batch auto-selected first (FEFO)
-- [ ] Tax calculation: CGST/SGST (intra-state) / IGST (inter-state)
-- [ ] Invoice PDF generation: A4 format + 80mm thermal printer format
-- [ ] WhatsApp invoice sharing
-- [ ] **Billing is online-only**: bill created on server, invoice number assigned server-side (per-shop, per-financial-year, gap-free series like `PREFIX/26-27/000042`)
-- [ ] Price re-verification at bill time: if batch price changed since device loaded it → bill refused, device shows "₹X is now ₹Y"
-- [ ] Internet check: if offline → bill screen blocked. Inventory continues to work offline.
+- [x] Counter sale screen ("New bill" on Home, Bills tab): FEFO — earliest-expiry batch with stock auto-selected, spills to the next batch, batch can be changed, expired batches never sold; qty/line discount, optional customer name/phone/GSTIN/state, payment cash/UPI/card/credit (credit needs a customer name)
+- [x] Tax calculation from MRP-inclusive prices: CGST = SGST intra-state, IGST inter-state (customer state ≠ shop state); half-up paise rounding, total rounded to the rupee; same maths in the app preview (`app/lib/domain/gst.dart`) and the server (`App\Support\GstMath`), with shared test vectors
+- [x] Invoice PDF: A4 tax invoice + 80mm thermal receipt (shop details, GSTIN, HSN/batch/expiry, GST summary by rate, amount in words, round-off); ₹ printed via embedded GoogleSansFlex subsets (also fixes the reports PDF)
+- [x] WhatsApp sharing: PDF via the share sheet; on phones a wa.me text summary to the customer's number
+- [x] **Online-only billing**: `POST /bills` with a device-made uuid (retry-safe: a repeat returns the same bill); gap-free invoice numbers per shop per FY, `PREFIX/26-27/000042` (prefix ≤3 letters/digits, default `INV`, so the number fits GST's 16 characters), allocated under a shop row lock; a refused bill uses no number
+- [x] Price re-verification: any batch edit since the device loaded it → 409, the line shows "₹X is now ₹Y", accept and retry; 422 shows stock left or an expired/deleted batch
+- [x] Internet check: offline → bill screen blocked; inventory keeps working offline. After a bill the app syncs so local stock drops
+- [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
+- Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
 ### P4 — Accounting ⬜ Planned
 
@@ -362,6 +370,10 @@ cd app && flutter test test/integration/
 | Price safety | `edit_version` conflict check + `price_changes` audit — no "main device", any device can edit prices |
 | Windows payment | Browser-based Razorpay checkout (no in-app payment on desktop) |
 | Offline billing | Blocked — Internet required for bills. Inventory works offline |
+| Default GST rate | 5% (`default_gst_rate_bp` = 500) for products with no rate; editable per shop — **confirm** |
+| Invoice number | `PREFIX/YY-YY/NNNNNN`, prefix ≤3 chars (default `INV`), gap-free per shop per FY |
+| Phone navigation | Home · Inventory · + · Bills · Alerts; Profile from the Home avatar — **confirm** |
+| Bill refusal | Any edit to a batch since the device loaded it refuses the bill (409), even if the price is unchanged |
 | Schema changes | Wipe DB + re-upload (no upgrade migrations while there are no real users) |
 | Master catalog | Shop's new medicines auto-added without moderation (max 200/shop/day) |
 | AI invoice | Server-side processing, not on-device |
@@ -396,6 +408,10 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `8ad5fe8` | App: New bill button contrast; tests follow billing + secure token |
+| `d53c7f0` | App: GST billing — counter sale, invoices (A4 + 80 mm), bills list |
+| `fc395d5` | Backend: GST billing — bills API, invoice series, Filament Bills |
+| `ea61dfa` | Docs: import wizard done (P2 complete) |
 | `893fddf` | App: Excel/CSV stock import wizard |
 | `910f0d6` | Android release signing from key.properties; docs |
 | `ad51dd5` | README: final update |
