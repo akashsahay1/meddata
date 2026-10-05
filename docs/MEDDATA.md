@@ -258,7 +258,7 @@ php artisan queue:work database   # needed for AI invoice reading
 # Backend (110 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
 cd backend && php artisan test
 
-# App tests (222 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (302 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -298,7 +298,9 @@ cd app && flutter test test/integration/
 - [x] App: test-mode payment and the 7-tap Developer section exist only in debug builds; release shows "Payments are not available right now"
 - [x] App: auth token in `flutter_secure_storage` (moved from shared_preferences on first launch); logs out only on a 401, never when offline; logout clears cached premium/trial
 - [x] Verified with tests: logging in with another user's device_id can't take over their plan; forgot-password `dev_code` only in local/testing
-- [ ] Follow-up: a 401 during sync doesn't log out yet (checked at app start and after payment only)
+- [x] A 401 during background sync, billing or invoice reading signs out (`AuthService.sessionRejected`); offline, timeouts and 5xx never do; unsynced changes stay on the device and upload when the same account signs in again; the login screen says the session expired (`test/session_expiry_test.dart`)
+- [ ] Follow-up: local data is tied to the account by **email**, so changing the email in Profile (or a different account signing in) wipes changes not yet synced — tie it to the user id or ask first
+- [ ] Follow-up: Login / Forgot password loading spinners are white on the disabled button (invisible)
 
 ### P1 — Products, batches, sync, Windows 🔧 12/14 done
 
@@ -362,8 +364,8 @@ cd app && flutter test test/integration/
 - [~] ~~Supplier management UI~~ — replaced by P4 parties (customers + suppliers)
 - [x] ~~Bulk CSV import of medicines~~ → replaced by the P2 import wizard
 - [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
-- [ ] Accessibility coverage for screens added since the audit (invoice scan, import wizard, billing)
-- [ ] Contrast below WCAG AA in brand colours (white on orange buttons 2.8:1, status pills 2.2–3.4:1, Subscribe plan toggle 4.0:1) — needs a design decision
+- [x] Accessibility coverage for screens added since the audit (billing, invoice scan + review, all import wizard steps, signed-in Profile): 48dp targets, labels, contrast, no overflow at 1.3x/1.5x, spoken statuses and amounts
+- [~] Contrast in brand colours: orange primary buttons now use ink text app-wide (5.0:1; orange unchanged). Status pills (2.2–3.4:1) and the Subscribe plan toggle (4.0:1) still need a design decision
 - [x] Widget tests (Add/Edit 14, Home/Inventory 8) + smoke test add → list → expiry alerts scheduled (`test/integration/smoke_add_to_alert_test.dart`, no server needed)
 - [x] Fix: clearing a batch's manufacture date on Edit now saves (and syncs)
 - [x] Final README update
@@ -419,6 +421,8 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `e16b12c` | App: accessibility coverage for billing, invoice scan, import wizard |
+| `145e2a0` | App: a 401 from sync, billing or invoice reading signs out |
 | `5d8836b` | Docs: P3 GST billing done |
 | `8ad5fe8` | App: New bill button contrast; tests follow billing + secure token |
 | `d53c7f0` | App: GST billing — counter sale, invoices (A4 + 80 mm), bills list |
