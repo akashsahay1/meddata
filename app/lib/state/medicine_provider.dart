@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../data/db/database_helper.dart';
 import '../data/models/medicine.dart';
 import '../data/models/stock_movement.dart';
 import '../data/repositories/medicine_repository.dart';
@@ -239,6 +240,41 @@ class MedicineProvider extends ChangeNotifier {
       return AddResult.duplicate;
     }
     await _repo.insert(m);
+    await load();
+    return AddResult.success;
+  }
+
+  /// How many new medicines adding [items] would create: one per name + unit
+  /// + brand the shop doesn't have yet (the repository's own test for
+  /// "new batch of an existing product").
+  int countNewProducts(Iterable<Medicine> items) {
+    String key(String name, String unit, String brand) =>
+        '${DatabaseHelper.normName(name)}|$unit|${brand.trim().toLowerCase()}';
+    final Set<String> known = <String>{
+      for (final ProductStock p in _products) key(p.name, p.unit, p.brand),
+    };
+    return items
+        .where((Medicine m) => known.add(key(m.name, m.unit, m.brand)))
+        .length;
+  }
+
+  /// Whether the free plan has room for [newProducts] more medicines.
+  bool canAddProducts(int newProducts) =>
+      newProducts <= 0 ||
+      Entitlement(isPremium: isPremium)
+          .canAddMedicine(_products.length + newProducts - 1);
+
+  /// Adds the reviewed lines of a scanned purchase invoice, each one exactly
+  /// like a manual add (a batch joins its product, stock is an opening
+  /// movement, everything is queued for sync), then reloads once. Nothing is
+  /// added when the new medicines don't fit the free plan.
+  Future<AddResult> addFromInvoice(List<Medicine> items) async {
+    if (!canAddProducts(countNewProducts(items))) {
+      return AddResult.blockedByFreeLimit;
+    }
+    for (final Medicine m in items) {
+      await _repo.insert(m);
+    }
     await load();
     return AddResult.success;
   }

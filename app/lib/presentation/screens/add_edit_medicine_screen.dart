@@ -16,6 +16,7 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
 import 'barcode_scan_screen.dart';
+import 'invoice_scan_screen.dart';
 import 'upgrade_screen.dart';
 
 class AddEditMedicineScreen extends StatefulWidget {
@@ -509,20 +510,37 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            _isEdit
-                ? 'Edit Medicine'
-                : (widget.newBatchOf != null ? 'Add batch' : 'Add Medicine'),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.2,
-              color: AppColors.ink,
+          Expanded(
+            child: Text(
+              _isEdit
+                  ? 'Edit Medicine'
+                  : (widget.newBatchOf != null ? 'Add batch' : 'Add Medicine'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
+                color: AppColors.ink,
+              ),
             ),
           ),
+          if (_isNewProduct)
+            TextButton.icon(
+              onPressed: _scanInvoice,
+              icon: const Icon(Icons.document_scanner_outlined, size: 18),
+              label: const Text('Scan invoice'),
+            ),
         ],
       ),
     );
+  }
+
+  /// A whole supplier bill at once: read with AI, checked, then added.
+  void _scanInvoice() {
+    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+      builder: (_) => const InvoiceScanScreen(),
+    ));
   }
 
   Widget _fieldLabel(String text) {

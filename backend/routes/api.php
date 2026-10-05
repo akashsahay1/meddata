@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EntitlementController;
+use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\MedicineController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PurchaseController;
@@ -77,5 +78,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('backup/latest', [BackupController::class, 'latest']);
 
         Route::get('medicines/search', [MedicineController::class, 'search']);
+
+        // AI purchase-invoice reading: upload (rate-limited per account in the
+        // controller), then poll until it is read.
+        Route::post('invoices/scan', [InvoiceScanController::class, 'store']);
+        Route::get('invoices/scan/{id}', [InvoiceScanController::class, 'show'])->whereNumber('id');
     });
 });
