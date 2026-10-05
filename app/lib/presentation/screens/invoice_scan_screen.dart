@@ -9,15 +9,20 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants.dart';
 import '../../core/formatters.dart';
 import '../../core/platform.dart';
+import '../../data/models/accounting.dart';
 import '../../data/models/medicine.dart';
+import '../../domain/accounting.dart';
 import '../../domain/invoice_draft.dart';
 import '../../domain/product_stock.dart';
+import '../../services/accounting_api.dart';
 import '../../services/auth_service.dart';
+import '../../services/billing_api.dart' show ApiOutcome;
 import '../../services/invoice_scan_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'accounts/party_picker.dart';
 import 'upgrade_screen.dart';
 
 /// Add stock from a supplier's purchase invoice: a photo (camera or gallery
@@ -25,10 +30,18 @@ import 'upgrade_screen.dart';
 /// every line is reviewed and fixed here before it is added the same way as
 /// a manual add (a known medicine gets a new batch). Online only.
 class InvoiceScanScreen extends StatefulWidget {
-  const InvoiceScanScreen({super.key, this.service, this.initialScan});
+  const InvoiceScanScreen({
+    super.key,
+    this.service,
+    this.initialScan,
+    this.accountingApi,
+  });
 
   /// Replaced in tests.
   final InvoiceScanService? service;
+
+  /// Supplier accounts and purchase entries (replaced in tests).
+  final AccountingApi? accountingApi;
 
   /// Start from a scan that was already uploaded (tests).
   @visibleForTesting
@@ -47,6 +60,21 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   late final InvoiceScanService _service =
       (widget.service ?? InvoiceScanService())
         ..onUnauthorized = context.read<AuthService>().sessionRejected;
+  late final AccountingApi _accounts = widget.accountingApi ?? AccountingApi();
+
+  // ---- Purchase entry (online, with a supplier chosen) ----
+  /// The supplier the purchase is recorded for; null = only add to stock.
+  Party? _supplier;
+
+  /// The server answered the supplier lookup (purchase entries possible).
+  bool _accountsOnline = false;
+  final TextEditingController _invoiceNo = TextEditingController();
+  DateTime? _invoiceDate;
+
+  /// Same ids on a retry after no answer: no second purchase, no second
+  /// new medicine.
+  String _purchaseId = const Uuid().v4();
+  final Map<String, String> _newProductIds = <String, String>{};
 
   _Stage _stage = _Stage.pick;
 
@@ -114,6 +142,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   @override
   void dispose() {
     _scanId = null; // stops polling
+    _invoiceNo.dispose();
     super.dispose();
   }
 
@@ -230,8 +259,13 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       setState(() {
         _draft = draft;
         _stage = _Stage.review;
+        _invoiceNo.text = draft.invoiceNo;
+        _invoiceDate = draft.invoiceDate;
+        _purchaseId = const Uuid().v4();
+        _newProductIds.clear();
       });
       _checkDuplicates();
+      _findSupplier();
     } else if (scan.isFailed) {
       setState(() {
         _stage = _Stage.pick;
@@ -291,6 +325,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     setState(() {
       _scanId = null;
       _draft = null;
+      _supplier = null;
       _duplicates = <String>{};
       _error = null;
       _pollProblem = null;
@@ -430,6 +465,202 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
         SnackBar(
           content: Text(
             'Added ${items.length} item${items.length == 1 ? '' : 's'}$from',
+          ),
+        ),
+      );
+  }
+
+  // ---- Purchase entry ----------------------------------------------------------
+
+  /// Looks the bill's supplier up among the shop's suppliers (by GSTIN,
+  /// else an exact name). Also tells whether purchase entries are possible
+  /// (the server is reachable).
+  Future<void> _findSupplier() async {
+    final InvoiceDraft? draft = _draft;
+    final String? token;
+    try {
+      token = context.read<AuthService>().token;
+    } on ProviderNotFoundException {
+      return; // signed-out shells (tests): only adding to stock
+    }
+    if (draft == null || token == null) return;
+    final String gstin = draft.supplierGstin.trim().toUpperCase();
+    final String name = draft.supplierName.trim();
+    final ApiOutcome<ApiPage<Party>> r = await _accounts.parties(
+      token,
+      type: 'supplier',
+      query: gstin.isNotEmpty ? gstin : (name.isNotEmpty ? name : null),
+    );
+    if (!mounted || _draft != draft) return;
+    Party? found;
+    for (final Party p in r.value?.items ?? const <Party>[]) {
+      final bool sameGstin = gstin.isNotEmpty && p.gstin == gstin;
+      final bool sameName =
+          gstin.isEmpty && p.name.toLowerCase() == name.toLowerCase();
+      if (sameGstin || sameName) found = p;
+    }
+    setState(() {
+      _accountsOnline = r.isOk;
+      _supplier ??= found;
+    });
+  }
+
+  Future<void> _chooseSupplier() async {
+    final InvoiceDraft? draft = _draft;
+    final Party? p = await pickParty(
+      context,
+      suppliers: true,
+      api: _accounts,
+      name: draft == null || draft.supplierName.isEmpty
+          ? null
+          : draft.supplierName,
+      gstin: draft == null || draft.supplierGstin.isEmpty
+          ? null
+          : draft.supplierGstin.toUpperCase(),
+    );
+    if (p != null && mounted) {
+      setState(() {
+        _supplier = p;
+        _accountsOnline = true;
+      });
+    }
+  }
+
+  Future<void> _pickInvoiceDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    final DateTime? d = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: today,
+      initialDate: _invoiceDate == null || _invoiceDate!.isAfter(today)
+          ? today
+          : _invoiceDate!,
+    );
+    if (d != null) setState(() => _invoiceDate = d);
+  }
+
+  /// Records the supplier's bill on the server: it creates the batches and
+  /// the stock movements, which come back to this device by sync. Nothing
+  /// is added locally, so the stock is counted once.
+  Future<void> _recordPurchase() async {
+    final InvoiceDraft draft = _draft!;
+    final Party supplier = _supplier!;
+    final int invalid = draft.lines
+        .where((InvoiceDraftLine l) => !l.isValid)
+        .length;
+    if (invalid > 0) {
+      _toast(
+        invalid == 1
+            ? 'Fix the item marked in red first (tap it to edit, or remove it).'
+            : 'Fix the $invalid items marked in red first (tap to edit, or remove them).',
+      );
+      return;
+    }
+    final String invoiceNo = _invoiceNo.text.trim();
+    final DateTime? invoiceDate = _invoiceDate;
+    if (invoiceNo.isEmpty || invoiceDate == null) {
+      _toast("Enter the supplier's invoice number and date.");
+      return;
+    }
+    if (invoiceDate.isAfter(DateTime.now())) {
+      _toast('The invoice date is in the future - check it.');
+      return;
+    }
+    final MedicineProvider mp = context.read<MedicineProvider>();
+    final DateTime now = DateTime.now();
+    final int newOnes = mp.countNewProducts(
+      draft.lines.map(
+        (InvoiceDraftLine l) => l.toMedicine(id: l.id, now: now),
+      ),
+    );
+    if (!mp.canAddProducts(newOnes)) {
+      _openUpgrade();
+      return;
+    }
+    final int dupes = draft.lines
+        .where((InvoiceDraftLine l) => _duplicates.contains(l.id))
+        .length;
+    if (dupes > 0 && !(await _confirmDuplicates(dupes))) return;
+    if (!mounted) return;
+    final AuthService auth = context.read<AuthService>();
+    final SyncEngine sync = context.read<SyncEngine>();
+    final String? token = auth.token;
+    if (token == null) return;
+
+    setState(() => _stage = _Stage.saving);
+    // Medicines and batches this device hasn't sent yet go first, so the
+    // purchase can refer to them.
+    if (sync.pending > 0) {
+      await sync.syncNow();
+      final DateTime until = DateTime.now().add(const Duration(seconds: 15));
+      while (sync.status == SyncStatus.syncing &&
+          DateTime.now().isBefore(until)) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+    }
+    final DocResult<Purchase> r = await _accounts.createPurchase(
+      token,
+      PurchaseFromInvoice.body(
+        id: _purchaseId,
+        partyId: supplier.id,
+        invoiceNo: invoiceNo,
+        invoiceDate: invoiceDate,
+        lines: draft.lines,
+        newProductId: (InvoiceDraftLine l) =>
+            _newProductIds.putIfAbsent(l.id, () => const Uuid().v4()),
+        deviceId: auth.deviceId,
+        scanId: _scanId,
+      ),
+    );
+    if (!mounted) return;
+    if (!r.isOk) {
+      setState(() => _stage = _Stage.review);
+      switch (r.error) {
+        case 'plan_limit':
+          _openUpgrade();
+        case 'duplicate_invoice':
+          await showDialog<void>(
+            context: context,
+            builder: (BuildContext ctx) => AlertDialog(
+              title: const Text('Already entered'),
+              content: Text(
+                'Invoice $invoiceNo from ${supplier.name} is already recorded, '
+                'so its stock was not added again.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        default:
+          _toast(
+            r.isOffline
+                ? "Couldn't reach the server, so the purchase is not confirmed. "
+                      "Tap Record purchase again - it won't be added twice."
+                : (r.message ?? 'Could not record the purchase.'),
+          );
+      }
+      return;
+    }
+    // Pull the new batches and stock now.
+    await sync.syncNow();
+    await mp.load();
+    if (!mounted) return;
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final int n = draft.lines.length;
+    Navigator.of(context).pop();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            r.replayed
+                ? 'This purchase was already recorded.'
+                : 'Purchase $invoiceNo recorded: $n item${n == 1 ? '' : 's'} added to stock',
           ),
         ),
       );
@@ -731,6 +962,12 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             ],
           ),
         ),
+        // Online: record the bill in a supplier's account. Offline the
+        // items are only added to stock, as before.
+        if (_accountsOnline || _supplier != null) ...<Widget>[
+          const SizedBox(height: 10),
+          _purchaseCard(),
+        ],
         if (draft.notes.isNotEmpty) ...<Widget>[
           const SizedBox(height: 10),
           _Notice(
@@ -786,6 +1023,106 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     );
   }
 
+  /// Record the bill as a purchase from a supplier (online), or only add
+  /// the items to stock.
+  Widget _purchaseCard() {
+    final Party? supplier = _supplier;
+    final bool editable = _stage == _Stage.review;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Purchase entry',
+            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink),
+          ),
+          const SizedBox(height: 4),
+          if (supplier == null) ...<Widget>[
+            Text(
+              _accountsOnline
+                  ? 'Choose the supplier to record this bill in their account '
+                        '(stock is added on the server for all devices). '
+                        'Without one, the items are only added to stock.'
+                  : 'Items will only be added to stock. Recording the bill '
+                        "in a supplier's account needs internet.",
+              style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+            ),
+            if (_accountsOnline)
+              TextButton.icon(
+                onPressed: editable ? _chooseSupplier : null,
+                icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                label: const Text('Choose supplier'),
+              ),
+          ] else ...<Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    'Supplier: ${supplier.name}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: editable ? _chooseSupplier : null,
+                  child: const Text('Change'),
+                ),
+                IconButton(
+                  tooltip: 'Only add to stock',
+                  onPressed: editable
+                      ? () => setState(() => _supplier = null)
+                      : null,
+                  icon: const Icon(Icons.close, size: 18),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextField(
+                controller: _invoiceNo,
+                enabled: editable,
+                maxLength: 32,
+                decoration: const InputDecoration(
+                  labelText: "Supplier's invoice no.",
+                  counterText: '',
+                ),
+              ),
+            ),
+            Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                enabled: editable,
+                leading: const Icon(
+                  Icons.event_outlined,
+                  color: AppColors.green,
+                ),
+                title: const Text('Invoice date'),
+                subtitle: Text(
+                  _invoiceDate == null ? 'Not set' : Fmt.date(_invoiceDate!),
+                ),
+                onTap: _pickInvoiceDate,
+              ),
+            ),
+            const Text(
+              'Stock is added once, on the server, and reaches every device '
+              "by sync. The bill goes into the supplier's account with its input GST.",
+              style: TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _reviewBar() {
     final int count = _draft?.lines.length ?? 0;
     final bool saving = _stage == _Stage.saving;
@@ -818,9 +1155,13 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
               flex: 2,
               child: PrimaryButton(
                 label: saving
-                    ? 'Adding…'
+                    ? (_supplier != null ? 'Recording…' : 'Adding…')
+                    : _supplier != null
+                    ? 'Record purchase ($count)'
                     : 'Add $count item${count == 1 ? '' : 's'}',
-                onPressed: saving || count == 0 ? null : _addToStock,
+                onPressed: saving || count == 0
+                    ? null
+                    : (_supplier != null ? _recordPurchase : _addToStock),
               ),
             ),
           ],

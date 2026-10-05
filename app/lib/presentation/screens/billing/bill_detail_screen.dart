@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/inr.dart';
+import '../../../data/models/accounting.dart' show NoteRef;
 import '../../../data/models/bill.dart';
 import '../../../data/repositories/billing_repository.dart';
 import '../../../services/auth_service.dart';
@@ -15,6 +16,8 @@ import '../../../state/medicine_provider.dart';
 import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
+import '../accounts/note_detail_screen.dart';
+import '../accounts/return_screen.dart';
 import 'billing_widgets.dart';
 
 /// One bill as the server has it: items, GST, totals. Print or share the
@@ -152,6 +155,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     if (!ok && mounted) _toast('Could not open WhatsApp.');
   }
 
+  /// A sale return (credit note) against this bill; reloads it after.
+  Future<void> _returnItems() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => ReturnScreen.sale(bill: _bill!)));
+    if (mounted) await _load();
+  }
+
   Future<void> _cancel() async {
     final TextEditingController reason = TextEditingController();
     final bool? go = await showDialog<bool>(
@@ -270,6 +280,29 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 ),
               ),
             ],
+            if (bill.returns.isNotEmpty) ...<Widget>[
+              const BillingSectionLabel('Returns'),
+              BillingCard(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: <Widget>[
+                    for (final NoteRef n in bill.returns)
+                      Material(
+                        type: MaterialType.transparency,
+                        child: ListTile(
+                          leading: const Icon(Icons.assignment_return_outlined, color: AppColors.green),
+                          title: Text('Credit note ${n.noteNo}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text(DateFormat('dd MMM yyyy').format(n.date)),
+                          trailing: Text('-${Inr.format(n.totalPaise)}',
+                              style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink)),
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                              builder: (_) => NoteDetailScreen(noteId: n.id, sale: true))),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             if (bill.customerName != null || bill.customerPhone != null || bill.customerGstin != null) ...<Widget>[
               const BillingSectionLabel('Customer'),
               _customerCard(bill),
@@ -382,6 +415,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         _ActionButton(icon: Icons.share_outlined, label: 'Share PDF', onPressed: _busy ? null : _share),
         if (hasPhone)
           _ActionButton(icon: Icons.chat_outlined, label: 'WhatsApp customer', onPressed: _busy ? null : _whatsApp),
+        if (bill.canReturn)
+          _ActionButton(icon: Icons.assignment_return_outlined, label: 'Return items', onPressed: _busy ? null : _returnItems),
       ],
     );
   }
@@ -432,6 +467,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   '${registered ? ' · GST ${Inr.percent(i.gstRateBp)}' : ''}',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),
                 ),
+                if (i.returnedQty > 0)
+                  Text('${i.returnedQty} returned',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.statusRed)),
               ],
             ),
           ),

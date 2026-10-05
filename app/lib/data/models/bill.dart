@@ -1,4 +1,5 @@
 import '../../domain/gst.dart';
+import 'accounting.dart' show NoteRef;
 
 /// How a bill was paid. Credit = the customer pays later (udhaar).
 enum PaymentMode {
@@ -65,6 +66,7 @@ class SellerDetails {
 
 class BillItem {
   const BillItem({
+    this.id = 0,
     required this.lineNo,
     required this.productId,
     required this.batchId,
@@ -84,9 +86,11 @@ class BillItem {
     required this.sgstPaise,
     required this.igstPaise,
     required this.totalPaise,
+    this.returnedQty = 0,
   });
 
   factory BillItem.fromJson(Map<String, dynamic> j) => BillItem(
+        id: _int(j['id']),
         lineNo: _int(j['line_no']),
         productId: _str(j['product_id']) ?? '',
         batchId: _str(j['batch_id']) ?? '',
@@ -106,8 +110,11 @@ class BillItem {
         sgstPaise: _int(j['sgst_paise']),
         igstPaise: _int(j['igst_paise']),
         totalPaise: _int(j['total_paise']),
+        returnedQty: _int(j['returned_qty']),
       );
 
+  /// Server id of the line (sale returns refer to it).
+  final int id;
   final int lineNo;
   final String productId;
   final String batchId;
@@ -127,6 +134,11 @@ class BillItem {
   final int sgstPaise;
   final int igstPaise;
   final int totalPaise;
+
+  /// Units already returned on credit notes.
+  final int returnedQty;
+
+  int get returnableQty => qty - returnedQty;
 }
 
 /// Taxable value and tax at one GST rate (the invoice's tax summary).
@@ -165,6 +177,7 @@ class Bill {
     this.createdAt,
     required this.status,
     required this.paymentMode,
+    this.partyId,
     this.customerName,
     this.customerPhone,
     this.customerGstin,
@@ -185,6 +198,7 @@ class Bill {
     this.cancelReason,
     required this.items,
     required this.taxSummary,
+    this.returns = const <NoteRef>[],
   });
 
   factory Bill.fromJson(Map<String, dynamic> j) => Bill(
@@ -194,6 +208,7 @@ class Bill {
         createdAt: _date(j['created_at']),
         status: _str(j['status']) ?? 'final',
         paymentMode: PaymentMode.from(_str(j['payment_mode'])),
+        partyId: _str(j['party_id']),
         customerName: _str(j['customer_name']),
         customerPhone: _str(j['customer_phone']),
         customerGstin: _str(j['customer_gstin']),
@@ -221,6 +236,10 @@ class Bill {
           for (final Object? t in (j['tax_summary'] as List<dynamic>?) ?? <dynamic>[])
             BillTaxRow.fromJson(Map<String, dynamic>.from(t! as Map)),
         ],
+        returns: <NoteRef>[
+          for (final Object? r in (j['returns'] as List<dynamic>?) ?? <dynamic>[])
+            NoteRef.fromJson(Map<String, dynamic>.from(r! as Map)),
+        ],
       );
 
   final String id;
@@ -229,6 +248,9 @@ class Bill {
   final DateTime? createdAt;
   final String status;
   final PaymentMode paymentMode;
+
+  /// The customer's account, when the bill was made for one.
+  final String? partyId;
   final String? customerName;
   final String? customerPhone;
   final String? customerGstin;
@@ -250,7 +272,13 @@ class Bill {
   final List<BillItem> items;
   final List<BillTaxRow> taxSummary;
 
+  /// Credit notes against this bill (when loaded on its own).
+  final List<NoteRef> returns;
+
   bool get isCancelled => status == 'cancelled';
+
+  /// Some units can still be returned.
+  bool get canReturn => !isCancelled && items.any((BillItem i) => i.returnableQty > 0);
   int get taxPaise => cgstPaise + sgstPaise + igstPaise;
   int get unitCount => items.fold(0, (int s, BillItem i) => s + i.qty);
 

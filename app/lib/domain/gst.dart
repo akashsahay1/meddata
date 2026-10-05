@@ -50,6 +50,38 @@ class GstMath {
     );
   }
 
+  /// A purchase line (mirrors GstMath::purchaseLine): supplier rates are
+  /// before GST, so tax is added on top of the taxable value.
+  ///   taxable = rate x qty - discount
+  ///   inter-state: IGST = taxable x rate%; intra: CGST = SGST = taxable x rate% / 2
+  static GstLine purchaseLine({
+    required int ratePaise,
+    required int qty,
+    int discountBp = 0,
+    required int gstRateBp,
+    required bool interState,
+  }) {
+    final int gross = ratePaise * qty;
+    final int discount = roundDiv(gross * discountBp, 10000);
+    final int taxable = gross - discount;
+    int cgst = 0, sgst = 0, igst = 0;
+    if (interState) {
+      igst = roundDiv(taxable * gstRateBp, 10000);
+    } else {
+      cgst = sgst = roundDiv(taxable * gstRateBp, 20000);
+    }
+    return GstLine(
+      grossPaise: gross,
+      discountPaise: discount,
+      ratePaise: ratePaise,
+      taxablePaise: taxable,
+      cgstPaise: cgst,
+      sgstPaise: sgst,
+      igstPaise: igst,
+      totalPaise: taxable + cgst + sgst + igst,
+    );
+  }
+
   static GstTotals totals(Iterable<GstLine> lines) {
     int gross = 0, discount = 0, taxable = 0, cgst = 0, sgst = 0, igst = 0, net = 0;
     for (final GstLine l in lines) {

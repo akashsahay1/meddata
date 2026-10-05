@@ -18,6 +18,9 @@ import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'accounts/gst_reports_screen.dart';
+import 'accounts/parties_screen.dart';
+import 'accounts/purchases_screen.dart';
 import 'billing/shop_settings_screen.dart';
 import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
@@ -121,6 +124,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   label: 'Shop & invoice details',
                   onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                       builder: (_) => const ShopSettingsScreen())),
+                ),
+              ]),
+
+              // Accounts (online, like billing)
+              _sectionLabel('Accounts'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.people_outline,
+                  label: 'Parties (customers & suppliers)',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const PartiesScreen())),
+                ),
+                _menuRow(
+                  icon: Icons.local_shipping_outlined,
+                  label: 'Purchases',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const PurchasesScreen())),
+                ),
+                _menuRow(
+                  icon: Icons.account_balance_outlined,
+                  label: 'GST returns (GSTR-1 / 3B)',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const GstReportsScreen())),
                 ),
               ]),
 

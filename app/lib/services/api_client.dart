@@ -249,6 +249,30 @@ class ApiClient {
     }
   }
 
+  /// PATCH returning the HTTP status (0 = network failure).
+  Future<({int status, Map<String, dynamic>? body})> patchResult(
+          String path, Map<String, dynamic> body, {String? token}) =>
+      _patchResult(path, body, token: token);
+
+  /// DELETE returning the HTTP status (0 = network failure).
+  Future<({int status, Map<String, dynamic>? body})> deleteResult(String path,
+      {String? token}) async {
+    try {
+      final http.Response res = await _http.delete(Uri.parse('$baseUrl$path'),
+          headers: <String, String>{
+            'Accept': 'application/json',
+            if (token != null) 'Authorization': 'Bearer $token',
+          }).timeout(_timeout);
+      Map<String, dynamic>? parsed;
+      try {
+        parsed = jsonDecode(res.body) as Map<String, dynamic>;
+      } catch (_) {}
+      return (status: res.statusCode, body: parsed);
+    } catch (_) {
+      return (status: 0, body: null);
+    }
+  }
+
   // ---- Shop + multi-device sync -------------------------------------------
 
   Future<({int status, Map<String, dynamic>? body})> currentShop(String token) =>

@@ -13,12 +13,15 @@ import '../../../data/repositories/billing_repository.dart';
 import '../../../domain/fefo.dart';
 import '../../../domain/gst.dart';
 import '../../../domain/product_stock.dart';
+import '../../../data/models/accounting.dart';
+import '../../../services/accounting_api.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/billing_api.dart';
 import '../../../state/bill_cart.dart';
 import '../../../state/medicine_provider.dart';
 import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
+import '../accounts/party_picker.dart';
 import '../barcode_lookup.dart';
 import 'bill_detail_screen.dart';
 import 'billing_widgets.dart';
@@ -31,10 +34,13 @@ enum _Gate { checking, ready, offline, failed }
 /// never from an expired one. Billing is online-only: the server re-checks
 /// every price and the stock, works out the GST and numbers the invoice.
 class NewBillScreen extends StatefulWidget {
-  const NewBillScreen({super.key, this.api, this.repository});
+  const NewBillScreen({super.key, this.api, this.repository, this.accountingApi});
 
   final BillingApi? api;
   final BillingRepository? repository;
+
+  /// For choosing the customer's account (tests replace it).
+  final AccountingApi? accountingApi;
 
   @override
   State<NewBillScreen> createState() => _NewBillScreenState();
@@ -106,6 +112,36 @@ class _NewBillScreenState extends State<NewBillScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ---- customer account -------------------------------------------------------
+
+  /// Choose the customer's account (or add one from what was typed): it
+  /// fills in the customer fields; a credit bill needs one.
+  Future<void> _chooseParty() async {
+    final Party? p = await pickParty(
+      context,
+      suppliers: false,
+      api: widget.accountingApi,
+      name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+      phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+      gstin: Gstin.normalize(_gstin.text).isEmpty ? null : Gstin.normalize(_gstin.text),
+    );
+    if (p == null || !mounted) return;
+    _cart.setParty(p);
+    _name.text = _cart.customerName;
+    _phone.text = _cart.customerPhone;
+    _gstin.text = _cart.customerGstin;
+    _address.text = _cart.customerAddress;
+    setState(() {
+      _formSeed++;
+      _showCustomer = true;
+    });
+  }
+
+  void _clearParty() {
+    _cart.setParty(null);
+    setState(() {});
   }
 
   // ---- online check -----------------------------------------------------------
@@ -813,6 +849,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
                   ),
                 ),
               ),
+              _partyRow(),
               if (_showCustomer || hasAny) ...<Widget>[
                 const SizedBox(height: 6),
                 TextField(
@@ -821,9 +858,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
                   textCapitalization: TextCapitalization.words,
                   decoration: InputDecoration(
                       counterText: '',
-                      labelText: _cart.paymentMode == PaymentMode.credit
-                          ? 'Name (needed for credit)'
-                          : 'Name'),
+                      labelText: 'Name'),
                   onChanged: (String v) => _cart.update(() => _cart.customerName = v),
                 ),
                 const SizedBox(height: 10),
@@ -893,6 +928,38 @@ class _NewBillScreenState extends State<NewBillScreen> {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  /// The customer's account: chosen (with "Change" / clear) or a button to
+  /// choose one; flagged when a credit bill still needs one.
+  Widget _partyRow() {
+    final Party? p = _cart.party;
+    final bool needed = _cart.paymentMode == PaymentMode.credit && p == null;
+    if (p == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: _chooseParty,
+          style: TextButton.styleFrom(foregroundColor: needed ? AppColors.statusRed : null),
+          icon: const Icon(Icons.badge_outlined, size: 18),
+          label: Text(needed ? 'Choose customer account (needed for credit)' : 'Choose customer account'),
+        ),
+      );
+    }
+    return Row(
+      children: <Widget>[
+        const Icon(Icons.badge_outlined, size: 18, color: AppColors.green),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('Account: ${p.name}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.ink)),
+        ),
+        TextButton(onPressed: _chooseParty, child: const Text('Change')),
+        IconButton(tooltip: 'Remove customer account', icon: const Icon(Icons.close, size: 18), onPressed: _clearParty),
       ],
     );
   }

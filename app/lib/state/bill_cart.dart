@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../data/models/accounting.dart';
 import '../data/models/bill.dart';
 import '../domain/fefo.dart';
 import '../domain/gst.dart';
@@ -70,6 +71,10 @@ class BillCart extends ChangeNotifier {
   final List<CartItem> items = <CartItem>[];
   final Map<String, List<SaleBatch>> _batches = <String, List<SaleBatch>>{};
 
+  /// The customer's account (needed for a credit bill). Choosing one fills
+  /// in the customer fields; they can still be changed for this bill.
+  Party? party;
+
   String customerName = '';
   String customerPhone = '';
   String customerGstin = '';
@@ -85,6 +90,19 @@ class BillCart extends ChangeNotifier {
   /// Change customer/payment fields and refresh listeners.
   void update(VoidCallback change) {
     change();
+    notifyListeners();
+  }
+
+  /// Choose (or clear, with null) the customer's account.
+  void setParty(Party? p) {
+    party = p;
+    if (p != null) {
+      customerName = p.name;
+      customerPhone = p.phone ?? '';
+      customerGstin = p.gstin ?? '';
+      customerAddress = p.address ?? '';
+      customerStateCode = p.gstin == null ? p.stateCode : null;
+    }
     notifyListeners();
   }
 
@@ -213,8 +231,8 @@ class BillCart extends ChangeNotifier {
     if (phone.isNotEmpty && !RegExp(r'^[0-9+\-\s()]{6,20}$').hasMatch(phone)) {
       return "The customer's phone number is not valid.";
     }
-    if (paymentMode == PaymentMode.credit && customerName.trim().isEmpty) {
-      return "Enter the customer's name for a credit bill.";
+    if (paymentMode == PaymentMode.credit && party == null) {
+      return "Choose the customer's account for a credit bill.";
     }
     return null;
   }
@@ -226,6 +244,7 @@ class BillCart extends ChangeNotifier {
       'id': _billId,
       'device_id': deviceId,
       'payment_mode': paymentMode.name,
+      'party_id': party?.id,
       'customer_name': opt(customerName),
       'customer_phone': opt(customerPhone),
       'customer_gstin': opt(Gstin.normalize(customerGstin)),
@@ -300,6 +319,7 @@ class BillCart extends ChangeNotifier {
     items.clear();
     _batches.clear();
     customerName = customerPhone = customerGstin = customerAddress = '';
+    party = null;
     customerStateCode = null;
     paymentMode = PaymentMode.cash;
     _billId = _uuid.v4();
