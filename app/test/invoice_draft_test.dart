@@ -254,6 +254,52 @@ void main() {
       expect(m.purchasePrice, 1.2);
     });
 
+    test('HSN and GST% from the bill are saved on a new medicine', () {
+      InvoiceDraftLine l(double? gst) => InvoiceDraftLine(
+            id: 'l1',
+            name: 'AZITHRAL 500',
+            expiry: DateTime(2027, 6, 30),
+            quantity: 3,
+            mrp: 120,
+            rate: 80,
+            gstPercent: gst,
+            hsn: ' 30042019 ',
+            unit: 'Strips',
+          );
+      final Medicine m = l(12).toMedicine(id: 'n1', now: now);
+      expect(m.hsn, '30042019');
+      expect(m.gstRateBp, 1200);
+
+      // 0% is a real rate; none / nonsense leaves the shop default.
+      expect(l(0).toMedicine(id: 'n2', now: now).gstRateBp, 0);
+      expect(l(2.5).gstRateBp, 250);
+      expect(l(null).toMedicine(id: 'n3', now: now).gstRateBp, isNull);
+      expect(l(140).gstRateBp, isNull);
+    });
+
+    test('a known medicine keeps its own HSN and GST rate', () {
+      final ProductStock base = product('p-azi', 'Azithral 500');
+      final Medicine first = base.first;
+      final ProductStock withGst = ProductStock('p-azi', <Medicine>[
+        first.copyWith(hsn: '3004', gstRateBp: 500),
+      ]);
+      InvoiceDraftLine l(ProductStock p) => InvoiceDraftLine(
+            id: 'l2',
+            name: 'AZITHRAL 500',
+            expiry: DateTime(2027, 6, 30),
+            quantity: 1,
+            gstPercent: 12,
+            hsn: '30042019',
+            unit: 'Strips',
+            product: p,
+          );
+      final Medicine kept = l(withGst).toMedicine(id: 'k', now: now);
+      expect(<Object?>[kept.hsn, kept.gstRateBp], <Object?>['3004', 500]);
+      // Without its own, the product takes the bill's.
+      final Medicine filled = l(base).toMedicine(id: 'f', now: now);
+      expect(<Object?>[filled.hsn, filled.gstRateBp], <Object?>['30042019', 1200]);
+    });
+
     test('"add as a new medicine" ignores the match', () {
       final InvoiceDraftLine l = line(
         match: product('p-dolo', 'Dolo 650'),

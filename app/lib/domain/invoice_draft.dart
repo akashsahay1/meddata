@@ -138,7 +138,21 @@ class InvoiceDraftLine {
       notes: p?.first.notes ?? '',
       createdAt: now,
       updatedAt: now,
+      // GST details are the product's: a known medicine keeps its own and
+      // only takes the bill's where it has none.
+      hsn: (p != null && p.first.hsn.trim().isNotEmpty)
+          ? p.first.hsn
+          : hsn.trim(),
+      gstRateBp: p?.first.gstRateBp ?? gstRateBp,
     );
+  }
+
+  /// [gstPercent] as basis points (12% -> 1200); null when the bill shows
+  /// none or an impossible rate, so the shop's default rate applies.
+  int? get gstRateBp {
+    final double? g = gstPercent;
+    if (g == null || g.isNaN || g < 0 || g > 100) return null;
+    return (g * 100).round();
   }
 
   InvoiceDraftLine copyWith({
