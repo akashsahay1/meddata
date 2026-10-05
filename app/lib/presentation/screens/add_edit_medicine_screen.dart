@@ -30,12 +30,16 @@ class AddEditMedicineScreen extends StatefulWidget {
   /// entry it matched (if any) to prefill the product details from.
   final String? initialBarcode;
   final Map<String, dynamic>? catalogMatch;
+
+  /// Backend for the name typeahead and barcode lookup (tests pass a fake).
+  final ApiClient? api;
   const AddEditMedicineScreen({
     super.key,
     this.existing,
     this.newBatchOf,
     this.initialBarcode,
     this.catalogMatch,
+    this.api,
   });
 
   @override
@@ -61,7 +65,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 365));
 
   // Medicine-name autocomplete against the backend master list.
-  final ApiClient _api = ApiClient();
+  late final ApiClient _api = widget.api ?? ApiClient();
   final FocusNode _nameFocus = FocusNode();
   Timer? _searchDebounce;
 
@@ -209,7 +213,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       final bool addBatch = await _confirmAddBatch(own) ?? false;
       if (!addBatch || !mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-        builder: (_) => AddEditMedicineScreen(newBatchOf: own.first),
+        builder: (_) =>
+            AddEditMedicineScreen(newBatchOf: own.first, api: widget.api),
       ));
       return;
     }
@@ -266,7 +271,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     final String name = _name.text.trim();
     final String batch = _batch.text.trim();
 
-    final Medicine medicine = (widget.existing ??
+    Medicine medicine = (widget.existing ??
             Medicine(
               id: const Uuid().v4(),
               name: name,
@@ -292,6 +297,12 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       notes: _notes.text.trim(),
       updatedAt: now,
     );
+    // copyWith keeps the old value for a null, so a manufacture date the
+    // user cleared while editing has to be dropped explicitly.
+    if (_mfgDate == null && medicine.mfgDate != null) {
+      medicine = Medicine.fromMap(
+          <String, Object?>{...medicine.toMap(), 'mfg_date': null});
+    }
 
     if (_isEdit) {
       await mp.update(medicine);
