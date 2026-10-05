@@ -50,6 +50,7 @@ class AuthService extends ChangeNotifier {
   /// this flag is left over from an earlier install and is ignored.
   static const String _kTokenSaved = 'auth_token_secure';
   static const String _kEmail = 'auth_email';
+  static const String _kUserId = 'auth_user_id';
   static const String _kName = 'auth_name';
   static const String _kAvatar = 'auth_avatar_url';
 
@@ -59,10 +60,12 @@ class AuthService extends ChangeNotifier {
   final String deviceId;
 
   String? _token;
+  String? _userId;
   String? _email;
   String? _name;
   String? _avatarUrl;
   bool _sessionExpired = false;
+  String? _loginHint;
 
   AuthService(this._settings, this.deviceId,
       [ApiClient? api, TokenStore? tokens])
@@ -70,6 +73,11 @@ class AuthService extends ChangeNotifier {
         _tokens = tokens ?? const SecureTokenStore();
 
   String? get token => _token;
+
+  /// The account's id on the server. Unlike the email it never changes, so
+  /// the data on this device is tied to it. Null until a login or /auth/me
+  /// answered (an older build did not keep it).
+  String? get userId => _userId;
   String? get email => _email;
   String? get name => _name;
   String? get avatarUrl => _avatarUrl;
@@ -79,9 +87,14 @@ class AuthService extends ChangeNotifier {
   /// the next sign-in, so the login screen can say why it is showing.
   bool get sessionExpired => _sessionExpired;
 
+  /// Email to fill in on the login screen: the account whose changes are
+  /// waiting on this device ([signInAgainAs]). Cleared by the next sign-in.
+  String? get loginHint => _loginHint;
+
   Future<void> init() async {
     final SharedPreferences p = await SharedPreferences.getInstance();
     _token = await _loadToken(p);
+    _userId = _nonEmpty(p.getString(_kUserId));
     _email = p.getString(_kEmail);
     _name = p.getString(_kName);
     final String? avatar = p.getString(_kAvatar);
@@ -132,10 +145,12 @@ class AuthService extends ChangeNotifier {
   Future<void> _persistProfile() async {
     final SharedPreferences p = await SharedPreferences.getInstance();
     if (_token == null) {
+      await p.remove(_kUserId);
       await p.remove(_kEmail);
       await p.remove(_kName);
       await p.remove(_kAvatar);
     } else {
+      await p.setString(_kUserId, _userId ?? '');
       await p.setString(_kEmail, _email ?? '');
       await p.setString(_kName, _name ?? '');
       await p.setString(_kAvatar, _avatarUrl ?? '');
@@ -191,11 +206,13 @@ class AuthService extends ChangeNotifier {
       _token = b['token'] as String;
       final Map<String, dynamic>? user =
           (b['user'] as Map?)?.cast<String, dynamic>();
+      _userId = _idFrom(user);
       _email = user?['email'] as String?;
       _name = user?['name'] as String?;
       _avatarUrl = user?['avatar_url'] as String?;
       _applyEntitlement((b['entitlement'] as Map?)?.cast<String, dynamic>());
       _sessionExpired = false;
+      _loginHint = null;
       await _saveToken(await SharedPreferences.getInstance(), _token!);
       await _persistProfile();
       notifyListeners();
@@ -221,6 +238,7 @@ class AuthService extends ChangeNotifier {
     final Map<String, dynamic>? user =
         (me['user'] as Map?)?.cast<String, dynamic>();
     if (user != null) {
+      _userId = _idFrom(user) ?? _userId;
       _email = user['email'] as String? ?? _email;
       _name = user['name'] as String? ?? _name;
       _avatarUrl = user['avatar_url'] as String?;
@@ -252,10 +270,20 @@ class AuthService extends ChangeNotifier {
     if (t != null) await _api.logout(t); // best-effort server revoke
   }
 
+  /// Signs out so [email] can sign in again: changes it made on this device
+  /// have not been uploaded yet, and only its login can upload them. The
+  /// login screen fills in [email] ([loginHint]).
+  Future<void> signInAgainAs(String email) async {
+    await logout();
+    _loginHint = email.isEmpty ? null : email;
+    notifyListeners();
+  }
+
   /// Forgets the session on this device: the token, the cached profile and
   /// the cached plan (the next account to sign in gets its own from the server).
   Future<void> _signOutLocally() async {
     _token = null;
+    _userId = null;
     _email = null;
     _name = null;
     _avatarUrl = null;
@@ -297,6 +325,7 @@ class AuthService extends ChangeNotifier {
       final Map<String, dynamic>? user =
           (r.body?['user'] as Map?)?.cast<String, dynamic>();
       if (user != null) {
+        _userId = _idFrom(user) ?? _userId;
         _name = user['name'] as String? ?? _name;
         _email = user['email'] as String? ?? _email;
       }
@@ -355,6 +384,12 @@ class AuthService extends ChangeNotifier {
     if (r.status >= 200 && r.status < 300) return null;
     return _errorFrom(r.body) ?? 'Could not change password.';
   }
+
+  static String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
+
+  /// The user's server id from a `user` object (a number; kept as text).
+  static String? _idFrom(Map<String, dynamic>? user) =>
+      _nonEmpty(user?['id']?.toString());
 
   String? _errorFrom(Map<String, dynamic>? body) {
     if (body == null) return null;

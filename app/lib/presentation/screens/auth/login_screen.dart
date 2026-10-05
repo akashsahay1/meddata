@@ -23,6 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
 
   @override
+  void initState() {
+    super.initState();
+    // Signed out to upload another account's waiting changes: its email.
+    _email.text = context.read<AuthService>().loginHint ?? '';
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _password.dispose();
@@ -45,6 +52,18 @@ class _LoginScreenState extends State<LoginScreen> {
     // On success the AuthService notifies → the root gate rebuilds to the app.
   }
 
+  String _subtitle(BuildContext context) {
+    final String? hint = context.select((AuthService a) => a.loginHint);
+    final bool expired = context.select((AuthService a) => a.sessionExpired);
+    if (hint != null) {
+      return 'Log in as $hint to upload the changes saved on this device.';
+    }
+    // Signed out because the server refused the saved login.
+    return expired
+        ? 'Your session has expired. Please log in again.'
+        : 'Log in to your Meddata account';
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -60,10 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: <Widget>[
                   AuthHeader(
                     title: 'Welcome back',
-                    // Signed out because the server refused the saved login.
-                    subtitle: context.select((AuthService a) => a.sessionExpired)
-                        ? 'Your session has expired. Please log in again.'
-                        : 'Log in to your Meddata account',
+                    subtitle: _subtitle(context),
                   ),
                   const SizedBox(height: 30),
                   Container(

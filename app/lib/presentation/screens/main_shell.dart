@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
+import 'account_switch_dialog.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'billing/bills_screen.dart';
@@ -46,7 +47,15 @@ class _MainShellState extends State<MainShell> {
   /// too (second device / reinstall): ask what to do with the local ones.
   Future<void> _onSync() async {
     final SyncEngine? sync = _sync;
-    if (sync == null || !sync.needsLocalDataChoice || _asking || !mounted) return;
+    if (sync == null || _asking || !mounted) return;
+    if (sync.accountSwitch != null) {
+      // Another account's changes are still waiting to upload.
+      _asking = true;
+      await askAboutPreviousAccountChanges(context, sync);
+      _asking = false;
+      return;
+    }
+    if (!sync.needsLocalDataChoice) return;
     _asking = true;
     final LocalDataChoice? choice = await showDialog<LocalDataChoice>(
       context: context,

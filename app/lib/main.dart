@@ -55,7 +55,10 @@ Future<void> main() async {
   final MedicineProvider medicines = MedicineProvider()..load();
   final SyncEngine sync = SyncEngine(
     tokenProvider: () => auth.token,
-    userKeyProvider: () => auth.email,
+    // Local data belongs to the account's server id, so changing the email
+    // keeps it; the email is only shown in messages.
+    userKeyProvider: () => auth.userId,
+    userEmailProvider: () => auth.email,
     deviceId: () async => deviceId,
   )
     ..onDataChanged = medicines.load

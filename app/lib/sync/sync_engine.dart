@@ -15,6 +15,20 @@ enum SyncStatus { idle, syncing, offline, error }
 /// server has data too (e.g. second device, or reinstall).
 enum LocalDataChoice { merge, discard }
 
+/// A different account signed in on a device that still has changes from the
+/// account it was linked to, not uploaded yet. Sync waits until the user
+/// signs back in to [previousAccount] to upload them, or removes them
+/// ([SyncEngine.discardPreviousAccountChanges]).
+class AccountSwitch {
+  const AccountSwitch(this.previousAccount, this.pendingChanges);
+
+  /// Email of the account the local data belongs to ('' if unknown).
+  final String previousAccount;
+
+  /// Changes made on this device that the server has not accepted yet.
+  final int pendingChanges;
+}
+
 /// A pushed change the server refused because another device changed the
 /// same row first (a "conflict"), or rejected outright.
 class SyncIssue {
@@ -43,6 +57,7 @@ class SyncEngine extends ChangeNotifier {
   SyncEngine({
     required this.tokenProvider,
     required this.userKeyProvider,
+    this.userEmailProvider,
     ApiClient? api,
     DatabaseHelper? db,
     Future<String> Function()? deviceId,
@@ -52,8 +67,14 @@ class SyncEngine extends ChangeNotifier {
 
   final String? Function() tokenProvider;
 
-  /// Identifies the signed-in account (email); local data is tied to it.
+  /// The signed-in account's stable server id (it survives an email
+  /// change); local data is tied to it. Null while not known yet (an older
+  /// build's login before /auth/me answered): sync then waits.
   final String? Function() userKeyProvider;
+
+  /// The signed-in account's email: shown when another account's changes
+  /// are waiting, and used to move an older build's email link to the id.
+  final String? Function()? userEmailProvider;
   final ApiClient _api;
   final DatabaseHelper _db;
   final Future<String> Function()? _deviceIdFn;
@@ -70,6 +91,11 @@ class SyncEngine extends ChangeNotifier {
   /// Set when this device has inventory and the server shop does too; the
   /// UI must ask the user and call [resolveLocalData].
   bool needsLocalDataChoice = false;
+
+  /// Set when another account's changes are still waiting on this device;
+  /// the UI must ask the user (sign back in to that account, or call
+  /// [discardPreviousAccountChanges]). Nothing is deleted until then.
+  AccountSwitch? accountSwitch;
 
   SyncStatus status = SyncStatus.idle;
   DateTime? lastSuccess;
@@ -100,6 +126,10 @@ class SyncEngine extends ChangeNotifier {
     _periodic?.cancel();
     _debounce?.cancel();
     Outbox.onEnqueued = null;
+    // Signed out: questions about the local data are asked again for the
+    // next account (they depend on who signs in).
+    needsLocalDataChoice = false;
+    accountSwitch = null;
   }
 
   @override
@@ -152,18 +182,68 @@ class SyncEngine extends ChangeNotifier {
 
   // ---- account linking ---------------------------------------------------
 
+  /// sync_state keys: the account the local data belongs to (stable server
+  /// user id) and its email at the last sync (for messages). Older builds
+  /// linked by email under [_kLegacyLink].
+  static const String _kLinked = 'linked_account';
+  static const String _kLinkedEmail = 'linked_email';
+  static const String _kLegacyLink = 'linked_user';
+
+  static bool _sameEmail(String? a, String? b) =>
+      a != null && b != null && a.trim().toLowerCase() == b.trim().toLowerCase();
+
+  /// Makes sure the local data belongs to the signed-in account before
+  /// anything is pushed or pulled. Returns false to skip this cycle.
   Future<bool> _ensureLinked(String token) async {
     final Database db = await _db.database;
     final String? me = userKeyProvider();
-    final String? linked = await _state(db, 'linked_user');
-    if (linked != null && linked == me) return true;
+    final String? myEmail = userEmailProvider?.call();
+    String? linked = await _state(db, _kLinked);
+    String? linkedEmail = await _state(db, _kLinkedEmail);
+    final String? legacy = await _state(db, _kLegacyLink);
+    final bool hasLegacy = linked == null && legacy != null && legacy.isNotEmpty;
+
+    if (hasLegacy) {
+      // Linked by an older build, by email: move the link to the id.
+      final bool mine = legacy == me || _sameEmail(legacy, myEmail);
+      if (mine && (me == null || me.isEmpty)) return true; // id not known yet
+      if (mine) {
+        await _link(db);
+        linked = me;
+      }
+      linkedEmail ??= legacy;
+    }
+    // Who is signed in is not known yet (refreshed from /auth/me soon).
+    if (me == null || me.isEmpty) return false;
+
+    if (linked == me) {
+      // Same account, perhaps with a new email: keep everything.
+      if (myEmail != null && myEmail.isNotEmpty && myEmail != linkedEmail) {
+        await _setState(db, _kLinkedEmail, myEmail);
+      }
+      return true;
+    }
     if (needsLocalDataChoice) return false;
 
-    if (linked != null && linked != me) {
-      // Another account used this device before: its data is on the server
-      // under that account, not this one.
+    if ((linked != null && linked.isNotEmpty) || hasLegacy) {
+      // Another account used this device: its data is on the server under
+      // that account. Changes it has not uploaded yet exist only here, so
+      // they are never removed without asking.
+      final int waiting = await _unsyncedChanges(db);
+      if (waiting > 0) {
+        final AccountSwitch? was = accountSwitch;
+        if (was == null ||
+            was.pendingChanges != waiting ||
+            was.previousAccount != (linkedEmail ?? '')) {
+          accountSwitch = AccountSwitch(linkedEmail ?? '', waiting);
+          notifyListeners();
+        }
+        return false;
+      }
       await _db.clearAll();
+      onDataChanged?.call();
     }
+    accountSwitch = null;
 
     final ({int status, Map<String, dynamic>? body}) r =
         await _api.currentShop(token);
@@ -180,8 +260,34 @@ class SyncEngine extends ChangeNotifier {
       return false;
     }
     if (localHasData) await _queueAllLocal(db);
-    await _setState(db, 'linked_user', me ?? '');
+    await _link(db);
     return true;
+  }
+
+  /// Ties the local data to the signed-in account.
+  Future<void> _link(Database db) async {
+    await _setState(db, _kLinked, userKeyProvider() ?? '');
+    await _setState(db, _kLinkedEmail, userEmailProvider?.call() ?? '');
+    await db.delete('sync_state', where: 'key = ?', whereArgs: <Object?>[_kLegacyLink]);
+  }
+
+  /// Changes made on this device that the server has not accepted yet
+  /// (waiting to upload, or in conflict). Rejected ones never will be.
+  static Future<int> _unsyncedChanges(DatabaseExecutor db) async =>
+      Sqflite.firstIntValue(await db.rawQuery(
+          "SELECT COUNT(*) FROM outbox WHERE status IN ('pending', 'conflict')")) ??
+      0;
+
+  /// Answer to [accountSwitch] once the user chose, and confirmed, to remove
+  /// the previous account's changes that were never uploaded: clears this
+  /// device and links it to the signed-in account.
+  Future<void> discardPreviousAccountChanges() async {
+    if (accountSwitch == null) return;
+    await _db.clearAll();
+    accountSwitch = null;
+    notifyListeners();
+    onDataChanged?.call();
+    await syncNow();
   }
 
   /// Answer to [needsLocalDataChoice]: merge = upload this device's items
@@ -193,7 +299,7 @@ class SyncEngine extends ChangeNotifier {
     } else {
       await _queueAllLocal(db);
     }
-    await _setState(db, 'linked_user', userKeyProvider() ?? '');
+    await _link(db);
     needsLocalDataChoice = false;
     notifyListeners();
     await syncNow();

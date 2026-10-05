@@ -86,6 +86,35 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('entitlement.premium', true);
     }
 
+    /** The app ties the data on a device to user.id, so it must not change with the email. */
+    public function test_user_id_is_stable_across_login_me_and_an_email_change(): void
+    {
+        $id = $this->register()->json('user.id');
+        $this->assertIsInt($id);
+
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'user@example.com',
+            'password' => 'secret123',
+        ])->assertOk()->assertJsonPath('user.id', $id)->json('token');
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->patchJson('/api/v1/auth/profile', ['email' => 'new@example.com'])
+            ->assertOk()
+            ->assertJsonPath('user.id', $id)
+            ->assertJsonPath('user.email', 'new@example.com');
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/v1/auth/me')
+            ->assertOk()
+            ->assertJsonPath('user.id', $id)
+            ->assertJsonPath('user.email', 'new@example.com');
+
+        $this->postJson('/api/v1/auth/login', [
+            'email' => 'new@example.com',
+            'password' => 'secret123',
+        ])->assertOk()->assertJsonPath('user.id', $id);
+    }
+
     public function test_me_without_token_returns_401(): void
     {
         $this->getJson('/api/v1/auth/me')

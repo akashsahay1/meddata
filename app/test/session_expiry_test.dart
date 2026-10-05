@@ -64,7 +64,7 @@ class _SyncServer extends ApiClient {
         status: 200,
         body: <String, dynamic>{
           'token': 'tok-2',
-          'user': <String, dynamic>{'email': email, 'name': 'Akash'},
+          'user': <String, dynamic>{'id': 7, 'email': email, 'name': 'Akash'},
         },
       );
 
@@ -76,6 +76,7 @@ Future<AuthService> _signedIn(ApiClient api) async {
   SharedPreferences.setMockInitialValues(<String, Object>{
     'auth_token_secure': true,
     'auth_email': 'owner@example.com',
+    'auth_user_id': '7',
   });
   final SettingsService settings = SettingsService();
   await settings.init();
@@ -113,7 +114,8 @@ void main() {
       auth = await _signedIn(server);
       sync = SyncEngine(
         tokenProvider: () => auth.token,
-        userKeyProvider: () => auth.email,
+        userKeyProvider: () => auth.userId,
+        userEmailProvider: () => auth.email,
         api: server,
         db: db,
         deviceId: () async => 'phone-1',
