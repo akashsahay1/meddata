@@ -38,7 +38,10 @@ return new class extends Migration
             $table->unsignedInteger('seq');
             $table->date('bill_date');
 
-            // Customer as typed on this bill (P4 can add a nullable party_id).
+            // The customer's party (accounts) when chosen; credit bills need
+            // one. The customer fields below are copied onto the bill.
+            $table->uuid('party_id')->nullable();
+            // Customer as printed on this bill.
             $table->string('customer_name', 100)->nullable();
             $table->string('customer_phone', 20)->nullable();
             $table->string('customer_gstin', 15)->nullable();
@@ -70,6 +73,7 @@ return new class extends Migration
             $table->unique(['shop_id', 'fy', 'seq']);
             $table->unique(['shop_id', 'invoice_no']);
             $table->index(['shop_id', 'bill_date']);
+            $table->index(['shop_id', 'party_id']);
         });
 
         // One row per batch sold. Names, HSN, batch and prices are copied

@@ -8,11 +8,16 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EntitlementController;
+use App\Http\Controllers\Api\GstReportController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\MedicineController;
+use App\Http\Controllers\Api\PartyController;
+use App\Http\Controllers\Api\PartyPaymentController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\PurchaseEntryController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ReturnController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\TrialController;
@@ -75,6 +80,29 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
         // Reports from server data: profit from bills (P4).
         Route::get('reports/profit', [ReportController::class, 'profit']);
+
+        // Accounting (online-only): parties, purchases, payments, returns, GST summaries.
+        Route::get('parties', [PartyController::class, 'index']);
+        Route::post('parties', [PartyController::class, 'store']);
+        Route::get('parties/{party}', [PartyController::class, 'show'])->whereUuid('party');
+        Route::patch('parties/{party}', [PartyController::class, 'update'])->whereUuid('party');
+        Route::delete('parties/{party}', [PartyController::class, 'destroy'])->whereUuid('party');
+        Route::get('parties/{party}/ledger', [PartyController::class, 'ledger'])->whereUuid('party');
+        Route::get('purchases', [PurchaseEntryController::class, 'index']);
+        Route::post('purchases', [PurchaseEntryController::class, 'store']);
+        Route::get('purchases/{purchase}', [PurchaseEntryController::class, 'show'])->whereUuid('purchase');
+        Route::post('purchases/{purchase}/cancel', [PurchaseEntryController::class, 'cancel'])->whereUuid('purchase');
+        Route::get('payments', [PartyPaymentController::class, 'index']);
+        Route::post('payments', [PartyPaymentController::class, 'store']);
+        Route::post('payments/{payment}/cancel', [PartyPaymentController::class, 'cancel'])->whereUuid('payment');
+        Route::get('sale-returns', [ReturnController::class, 'saleIndex']);
+        Route::post('sale-returns', [ReturnController::class, 'saleStore']);
+        Route::get('sale-returns/{id}', [ReturnController::class, 'saleShow'])->whereUuid('id');
+        Route::get('purchase-returns', [ReturnController::class, 'purchaseIndex']);
+        Route::post('purchase-returns', [ReturnController::class, 'purchaseStore']);
+        Route::get('purchase-returns/{id}', [ReturnController::class, 'purchaseShow'])->whereUuid('id');
+        Route::get('gst/gstr1', [GstReportController::class, 'gstr1']);
+        Route::get('gst/gstr3b', [GstReportController::class, 'gstr3b']);
 
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 

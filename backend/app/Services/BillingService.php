@@ -6,7 +6,10 @@ use App\Exceptions\BillRefused;
 use App\Models\Batch;
 use App\Models\Bill;
 use App\Models\BillItem;
+use App\Models\Party;
+use App\Models\PartyPayment;
 use App\Models\Product;
+use App\Models\SaleReturn;
 use App\Models\Shop;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -74,6 +77,19 @@ class BillingService
             if ($bill->isCancelled()) {
                 return [$bill, []];
             }
+            // A credit note or a payment refers to this bill; undo those first.
+            if (SaleReturn::where('bill_id', $bill->id)->exists()) {
+                throw new BillRefused(422, [
+                    'message' => 'This bill has a sale return (credit note), so it can’t be cancelled.',
+                    'error' => 'has_returns',
+                ]);
+            }
+            if (PartyPayment::where('bill_id', $bill->id)->where('status', PartyPayment::STATUS_ACTIVE)->exists()) {
+                throw new BillRefused(422, [
+                    'message' => 'Cancel the payments received against this bill first.',
+                    'error' => 'has_payments',
+                ]);
+            }
 
             foreach ($bill->items as $item) {
                 $this->move($shop, $user, $deviceId, $item->batch_id, $item->product_id,
@@ -127,6 +143,17 @@ class BillingService
         $this->checkPrices($lines, $batches, $products);
         $this->checkStock($lines, $batches, $products);
 
+        // A chosen customer account fills in what the bill doesn't say.
+        $party = $this->party($shop, $data['party_id'] ?? null);
+        if ($party) {
+            foreach (['name' => 'customer_name', 'phone' => 'customer_phone', 'gstin' => 'customer_gstin',
+                'state_code' => 'customer_state_code', 'address' => 'customer_address'] as $from => $to) {
+                if (($data[$to] ?? null) === null && $party->{$from} !== null) {
+                    $data[$to] = $party->{$from};
+                }
+            }
+        }
+
         $customerGstin = $data['customer_gstin'] ?? null;
         $placeOfSupply = ($data['customer_state_code'] ?? null)
             ?: ($customerGstin ? substr($customerGstin, 0, 2) : null)
@@ -174,6 +201,7 @@ class BillingService
             'fy' => $fy,
             'seq' => $seq,
             'bill_date' => $now->toDateString(),
+            'party_id' => $party?->id,
             'customer_name' => $data['customer_name'] ?? null,
             'customer_phone' => $data['customer_phone'] ?? null,
             'customer_gstin' => $customerGstin,
@@ -194,6 +222,23 @@ class BillingService
         $stock = $this->refreshBatches($shop, $batches->keys());
 
         return [$bill->load('items'), true, $stock];
+    }
+
+    /** The bill's customer account: the shop's, not deleted, a customer. */
+    private function party(Shop $shop, ?string $id): ?Party
+    {
+        if ($id === null) {
+            return null;
+        }
+        $party = Party::where('shop_id', $shop->id)->find(strtolower($id));
+        if (! $party || ! $party->isCustomer()) {
+            throw new BillRefused(422, [
+                'message' => 'The customer account was not found. Choose the customer again.',
+                'error' => 'party_not_found',
+            ]);
+        }
+
+        return $party;
     }
 
     /** Next number in the shop's series for this financial year (caller holds the shop lock). */

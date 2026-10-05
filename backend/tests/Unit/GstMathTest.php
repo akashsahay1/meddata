@@ -66,6 +66,33 @@ class GstMathTest extends TestCase
         ], $totals);
     }
 
+    /** Shared vector with app/test/gst_math_test.dart (purchase lines add GST on top). */
+    public function test_purchase_line_adds_gst_to_the_rate(): void
+    {
+        $this->assertSame([
+            'gross_paise' => 50000, 'discount_paise' => 5000, 'rate_paise' => 5000, 'taxable_paise' => 45000,
+            'cgst_paise' => 2700, 'sgst_paise' => 2700, 'igst_paise' => 0, 'total_paise' => 50400,
+        ], GstMath::purchaseLine(5000, 10, 1000, 1200, false));
+        $line = GstMath::purchaseLine(3333, 3, 500, 1200, false);
+        $this->assertSame([9999, 500, 9499, 570, 570, 10639], [$line['gross_paise'], $line['discount_paise'],
+            $line['taxable_paise'], $line['cgst_paise'], $line['sgst_paise'], $line['total_paise']]);
+        $line = GstMath::purchaseLine(3333, 3, 500, 1200, true);
+        $this->assertSame([9999, 500, 9499, 1140, 10639], [$line['gross_paise'], $line['discount_paise'],
+            $line['taxable_paise'], $line['igst_paise'], $line['total_paise']]);
+    }
+
+    public function test_remainder_makes_partial_returns_add_up(): void
+    {
+        $line = GstMath::line(11250, 3, 1000, 1200, false);
+        $one = GstMath::line(11250, 1, 1000, 1200, false);
+        $rest = GstMath::remainder($line, [$one]);
+        foreach (['gross_paise', 'discount_paise', 'taxable_paise', 'cgst_paise', 'sgst_paise', 'total_paise'] as $key) {
+            $this->assertSame($line[$key], $one[$key] + $rest[$key], $key);
+        }
+        $this->assertSame([22500, 2250, 18080, 1085, 20250],
+            [$rest['gross_paise'], $rest['discount_paise'], $rest['taxable_paise'], $rest['cgst_paise'], $rest['total_paise']]);
+    }
+
     public function test_round_off_is_half_up(): void
     {
         $roundOff = fn (int $net) => GstMath::totals([['gross_paise' => $net, 'discount_paise' => 0,

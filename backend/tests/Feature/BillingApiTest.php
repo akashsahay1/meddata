@@ -292,13 +292,20 @@ class BillingApiTest extends TestCase
         $this->bill($token, [$this->line($dolo, 0)], ['payment_mode' => 'cheque'])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['lines.0.qty_units', 'payment_mode']);
-        // A credit sale needs the customer's name; GSTINs are checked.
-        $this->bill($token, [$this->line($dolo)], ['payment_mode' => 'credit', 'customer_gstin' => '27AAPFU0939F1ZX'])
+        // A credit sale goes on a customer's account (a typed name is not
+        // enough); GSTINs are checked.
+        $this->bill($token, [$this->line($dolo)], ['payment_mode' => 'credit', 'customer_name' => 'Ramesh', 'customer_gstin' => '27AAPFU0939F1ZX'])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['customer_name', 'customer_gstin']);
-        $this->bill($token, [$this->line($dolo)], ['payment_mode' => 'credit', 'customer_name' => 'Ramesh'])
+            ->assertJsonValidationErrors(['party_id', 'customer_gstin']);
+        $party = $this->withToken($token)->postJson('/api/v1/parties', ['type' => 'customer', 'name' => 'Ramesh'])
+            ->assertCreated()->json('party.id');
+        $this->bill($token, [$this->line($dolo)], ['payment_mode' => 'credit', 'party_id' => $party])
             ->assertCreated()
-            ->assertJsonPath('bill.payment_mode', 'credit');
+            ->assertJsonPath('bill.payment_mode', 'credit')
+            ->assertJsonPath('bill.party_id', $party)
+            ->assertJsonPath('bill.customer_name', 'Ramesh');
+        // A cash bill still takes just a typed name.
+        $this->bill($token, [$this->line($dolo)], ['customer_name' => 'Walk-in Suresh'])->assertCreated();
     }
 
     // ---- idempotency + numbering -------------------------------------------
