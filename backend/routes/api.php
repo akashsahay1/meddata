@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\MedicineController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\TrialController;
@@ -71,6 +72,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('bills', [BillController::class, 'store']);
         Route::get('bills/{bill}', [BillController::class, 'show'])->whereUuid('bill');
         Route::post('bills/{bill}/cancel', [BillController::class, 'cancel'])->whereUuid('bill');
+
+        // Reports from server data: profit from bills (P4).
+        Route::get('reports/profit', [ReportController::class, 'profit']);
 
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
