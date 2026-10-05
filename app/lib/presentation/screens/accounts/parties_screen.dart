@@ -27,7 +27,8 @@ class PartiesScreen extends StatefulWidget {
 }
 
 class _PartiesScreenState extends State<PartiesScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   final TextEditingController _search = TextEditingController();
   Timer? _debounce;
   _Filter _filter = _Filter.all;

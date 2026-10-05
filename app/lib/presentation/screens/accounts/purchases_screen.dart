@@ -29,7 +29,8 @@ class PurchasesScreen extends StatefulWidget {
 }
 
 class _PurchasesScreenState extends State<PurchasesScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   final TextEditingController _search = TextEditingController();
   final ScrollController _scroll = ScrollController();
   Timer? _debounce;

@@ -33,7 +33,8 @@ class PartyDetailScreen extends StatefulWidget {
 }
 
 class _PartyDetailScreenState extends State<PartyDetailScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   PartyDetail? _detail;
   Ledger? _ledger;
   String? _failure;

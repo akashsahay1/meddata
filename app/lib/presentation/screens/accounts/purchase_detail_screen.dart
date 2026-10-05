@@ -30,7 +30,8 @@ class PurchaseDetailScreen extends StatefulWidget {
 }
 
 class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   Purchase? _purchase;
   ApiOutcome<Purchase>? _failure;
   bool _busy = false;

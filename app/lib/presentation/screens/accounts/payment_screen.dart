@@ -40,7 +40,8 @@ class PaymentScreen extends StatefulWidget {
 }
 
 class _PaymentScreenState extends State<PaymentScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   final TextEditingController _amount = TextEditingController();
   final TextEditingController _reference = TextEditingController();
   final TextEditingController _notes = TextEditingController();

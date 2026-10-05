@@ -32,7 +32,8 @@ class NoteDetailScreen extends StatefulWidget {
 }
 
 class _NoteDetailScreenState extends State<NoteDetailScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   late ReturnNote? _note = widget.note;
   ApiOutcome<ReturnNote>? _failure;
   bool _busy = false;

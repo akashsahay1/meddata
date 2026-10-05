@@ -31,7 +31,8 @@ class GstReportsScreen extends StatefulWidget {
 }
 
 class _GstReportsScreenState extends State<GstReportsScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   late final List<DateTime> _months = recentMonths(widget.now ?? DateTime.now());
   late DateTime _month = _months.first;
   bool _gstr1 = true;

@@ -11,6 +11,7 @@ import 'package:med_stock/data/db/database_helper.dart';
 import 'package:med_stock/data/models/medicine.dart';
 import 'package:med_stock/data/repositories/medicine_repository.dart';
 import 'package:med_stock/presentation/screens/billing/bills_screen.dart';
+import 'package:med_stock/services/accounting_api.dart';
 import 'package:med_stock/services/api_client.dart';
 import 'package:med_stock/services/auth_service.dart';
 import 'package:med_stock/services/billing_api.dart';
@@ -242,6 +243,35 @@ void main() {
       await tester.pumpAndSettle();
       expect(app.auth.isLoggedIn, isFalse);
       expect(app.auth.sessionExpired, isTrue);
+    });
+  });
+
+  group('accounting', () {
+    /// Answers every call with [status].
+    AccountingApi api(int status, List<String> rejected) => AccountingApi(
+          ApiClient(MockClient((http.Request r) async {
+            if (status == 0) throw http.ClientException('no route to host');
+            return http.Response('{"message":"x"}', status);
+          })),
+          rejected.add,
+        );
+
+    test('a 401 on any call reports the token; other failures do not', () async {
+      final List<String> rejected = <String>[];
+      final AccountingApi unauthorized = api(401, rejected);
+      await unauthorized.parties('tok');
+      await unauthorized.party('tok', 'p1');
+      await unauthorized.ledger('tok', 'p1');
+      await unauthorized.purchases('tok');
+      await unauthorized.recordPayment('tok', <String, Object?>{});
+      await unauthorized.gstReport('tok', '2026-10', gstr1: true);
+      expect(rejected, List<String>.filled(6, 'tok'));
+
+      rejected.clear();
+      await api(0, rejected).parties('tok');
+      await api(500, rejected).purchases('tok');
+      await api(403, rejected).party('tok', 'p1');
+      expect(rejected, isEmpty);
     });
   });
 

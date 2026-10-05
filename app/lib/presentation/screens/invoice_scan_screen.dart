@@ -60,7 +60,8 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   late final InvoiceScanService _service =
       (widget.service ?? InvoiceScanService())
         ..onUnauthorized = context.read<AuthService>().sessionRejected;
-  late final AccountingApi _accounts = widget.accountingApi ?? AccountingApi();
+  late final AccountingApi _accounts = (widget.accountingApi ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
 
   // ---- Purchase entry (online, with a supplier chosen) ----
   /// The supplier the purchase is recorded for; null = only add to stock.

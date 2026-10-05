@@ -27,7 +27,8 @@ Future<Party?> pickParty(
     isScrollControlled: true,
     builder: (BuildContext ctx) => _PartyPicker(
       suppliers: suppliers,
-      api: api ?? AccountingApi(),
+      api: (api ?? AccountingApi())
+        ..onUnauthorized = context.read<AuthService>().sessionRejected,
       name: name,
       phone: phone,
       gstin: gstin,

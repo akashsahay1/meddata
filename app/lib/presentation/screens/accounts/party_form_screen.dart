@@ -40,7 +40,8 @@ class PartyFormScreen extends StatefulWidget {
 }
 
 class _PartyFormScreenState extends State<PartyFormScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
   late final TextEditingController _name = TextEditingController(
     text: widget.party?.name ?? widget.name ?? '',

@@ -35,7 +35,8 @@ class ReturnScreen extends StatefulWidget {
 }
 
 class _ReturnScreenState extends State<ReturnScreen> {
-  late final AccountingApi _api = widget.api ?? AccountingApi();
+  late final AccountingApi _api = (widget.api ?? AccountingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   late final ReturnDraft _draft =
       widget.bill != null ? ReturnDraft.forBill(widget.bill!) : ReturnDraft.forPurchase(widget.purchase!);
   final TextEditingController _reason = TextEditingController();
