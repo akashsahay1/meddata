@@ -9,6 +9,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:med_stock/data/models/bill.dart';
 import 'package:med_stock/data/models/medicine.dart';
 import 'package:med_stock/data/repositories/billing_repository.dart';
+import 'package:med_stock/presentation/screens/accounts/gst_reports_screen.dart';
+import 'package:med_stock/presentation/screens/accounts/parties_screen.dart';
+import 'package:med_stock/presentation/screens/accounts/party_detail_screen.dart';
+import 'package:med_stock/presentation/screens/accounts/party_form_screen.dart';
+import 'package:med_stock/presentation/screens/accounts/purchase_detail_screen.dart';
+import 'package:med_stock/presentation/screens/accounts/purchases_screen.dart';
 import 'package:med_stock/presentation/screens/add_edit_medicine_screen.dart';
 import 'package:med_stock/presentation/screens/auth/forgot_password_screen.dart';
 import 'package:med_stock/presentation/screens/auth/login_screen.dart';
@@ -113,6 +119,14 @@ final List<_Screen> _otherScreens = <_Screen>[
   _Screen('Onboarding', (_) => const OnboardingScreen()),
   _Screen('Lock', (_) => const LockScreen()),
   _Screen('Upgrade', (_) => const UpgradeScreen()),
+  // Accounts (signed out here: their "log in again" state; with data they
+  // are checked in accounts_screens_test.dart).
+  _Screen('Parties', (_) => const PartiesScreen()),
+  _Screen('New party', (_) => const PartyFormScreen()),
+  _Screen('Party detail', (_) => const PartyDetailScreen(partyId: 'p-1')),
+  _Screen('Purchases', (_) => const PurchasesScreen()),
+  _Screen('Purchase detail', (_) => const PurchaseDetailScreen(purchaseId: 'x')),
+  _Screen('GST returns', (_) => const GstReportsScreen()),
 ];
 
 /// The shop's server for the billing screens: shop details, one page of

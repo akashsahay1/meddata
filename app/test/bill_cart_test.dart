@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:med_stock/data/models/accounting.dart';
 import 'package:med_stock/data/models/bill.dart';
 import 'package:med_stock/domain/fefo.dart';
 import 'package:med_stock/domain/gst.dart';
@@ -116,7 +117,19 @@ void main() {
       c.customerGstin = '';
       c.paymentMode = PaymentMode.credit;
     });
-    expect(c.problem(), "Enter the customer's name for a credit bill.");
+    // A credit bill goes on a customer's account; a typed name is not enough.
+    c.update(() => c.customerName = 'Ramesh');
+    expect(c.problem(), "Choose the customer's account for a credit bill.");
+    c.setParty(const Party(
+        id: 'p-1', type: PartyType.customer, name: 'Ramesh Kumar', phone: '9876543210', gstin: '29AABCU9603R1ZJ',
+        stateCode: '29'));
+    expect(c.problem(), isNull);
+    // The party fills the customer fields and goes with the bill.
+    expect((c.customerName, c.customerPhone, c.customerGstin, c.placeOfSupply), ('Ramesh Kumar', '9876543210', '29AABCU9603R1ZJ', '29'));
+    expect(c.requestBody()['party_id'], 'p-1');
+    c.reset();
+    expect(c.party, isNull);
+    expect(c.requestBody()['party_id'], isNull);
   });
 
   test('server answers: new prices, less stock, unsellable batches', () async {
