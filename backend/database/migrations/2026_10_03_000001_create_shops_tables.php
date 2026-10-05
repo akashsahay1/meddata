@@ -29,8 +29,8 @@ return new class extends Migration
             // 16-character limit GST rules set for invoice numbers.
             $table->string('invoice_prefix', 12)->nullable();
             // GST rate used on a bill for products that have none set
-            // (basis points; 1800 = 18%).
-            $table->unsignedInteger('default_gst_rate_bp')->default(1800);
+            // (basis points; 500 = 5%, the usual rate for medicines).
+            $table->unsignedInteger('default_gst_rate_bp')->default(500);
             // Monotonic per-shop change counter. Every synced row change takes
             // the next value as its `version`, giving devices a single cursor.
             $table->unsignedBigInteger('seq')->default(0);

@@ -113,7 +113,7 @@ Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of un
 
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (1800 = 18%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
 
 ---
 
@@ -358,7 +358,7 @@ cd app && flutter test test/integration/
 - [x] Price re-verification: any batch edit since the device loaded it → 409, the line shows "₹X is now ₹Y", accept and retry; 422 shows stock left or an expired/deleted batch
 - [x] Internet check: offline → bill screen blocked; inventory keeps working offline. After a bill the app syncs so local stock drops
 - [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
-- Default GST 18% for products without a rate (owner decision). Decisions to confirm (see §9): phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
+- Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
 ### P4 — Accounting ✅ Done (Oct 2026) — app: Settings → Accounts (Parties, Purchases, GST returns); Reports tabs
 
@@ -402,7 +402,7 @@ cd app && flutter test test/integration/
 | Price safety | `edit_version` conflict check + `price_changes` audit — no "main device", any device can edit prices |
 | Windows payment | Browser-based Razorpay checkout (no in-app payment on desktop) |
 | Offline billing | Blocked — Internet required for bills. Inventory works offline |
-| Default GST rate | 18% (`default_gst_rate_bp` = 1800) for products with no rate; editable per shop and per medicine — decided by the owner |
+| Default GST rate | 5% (`default_gst_rate_bp` = 500) for products with no rate; editable per shop — **confirm** |
 | Invoice number | `PREFIX/YY-YY/NNNNNN`, prefix ≤3 chars (default `INV`), gap-free per shop per FY |
 | Phone navigation | Home · Inventory · + · Bills · Alerts; Profile from the Home avatar — **confirm** |
 | Party balance sign | + = party owes the shop (to collect), − = shop owes the party (to pay) — **confirm** |

@@ -464,7 +464,7 @@ class BillingApiTest extends TestCase
         $token = $this->token();
 
         $shop = $this->shop($token, ['state_code' => null]);
-        $this->assertSame(['Sahay Medicals Pvt Ltd', '27AAPFU0939F1ZV', '27', 'MED', 1800],
+        $this->assertSame(['Sahay Medicals Pvt Ltd', '27AAPFU0939F1ZV', '27', 'MED', 500],
             [$shop['legal_name'], $shop['gstin'], $shop['state_code'], $shop['invoice_prefix'], $shop['default_gst_rate_bp']]);
 
         $patch = fn (array $data) => $this->withToken($token)->patchJson('/api/v1/shops/current', $data);

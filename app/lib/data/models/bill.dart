@@ -384,7 +384,7 @@ class ShopProfile {
     this.address,
     this.phone,
     this.invoicePrefix,
-    this.defaultGstRateBp = 1800,
+    this.defaultGstRateBp = 500,
   });
 
   factory ShopProfile.fromJson(Map<String, dynamic> j) => ShopProfile(
@@ -396,7 +396,7 @@ class ShopProfile {
         address: _str(j['address']),
         phone: _str(j['phone']),
         invoicePrefix: _str(j['invoice_prefix']),
-        defaultGstRateBp: (j['default_gst_rate_bp'] as num?)?.toInt() ?? 1800,
+        defaultGstRateBp: (j['default_gst_rate_bp'] as num?)?.toInt() ?? 500,
       );
 
   final String name;

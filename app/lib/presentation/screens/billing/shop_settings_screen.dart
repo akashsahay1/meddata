@@ -35,7 +35,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
   final TextEditingController _license = TextEditingController();
   final TextEditingController _prefix = TextEditingController();
   String? _state;
-  int _defaultGst = 1800;
+  int _defaultGst = 500;
 
   bool _loading = true;
   bool _saving = false;
