@@ -180,6 +180,7 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 | POST | `/bills` | Create bill (201; 200 + `replayed` on retry; 409 price changed; 422 stock/batch) |
 | GET | `/bills/{id}` | Bill with items + GST summary (other shop → 404) |
 | POST | `/bills/{id}/cancel` | Cancel bill: stock back, number stays used |
+| GET | `/reports/profit` | Profit by day/product/category from bills (`from`, `to`) |
 | GET | `/medicines/search` | Search master catalog (`?q=` name prefix or `?barcode=`) |
 | POST | `/invoices/scan` | Upload purchase invoice photo/PDF for AI reading (202) |
 | GET | `/invoices/scan/{id}` | Scan status + extracted lines |
@@ -255,10 +256,10 @@ php artisan queue:work database   # needed for AI invoice reading
 ### Tests
 
 ```bash
-# Backend (110 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
+# Backend (119 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
 cd backend && php artisan test
 
-# App tests (302 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (344 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -333,7 +334,7 @@ cd app && flutter test test/integration/
   - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Claude (`claude-opus-5-5`, effort medium, fixed JSON schema via `output_config.format`, server-side refusal fallback `fallbacks: "default"`) → `GET /invoices/scan/{id}`, shop-scoped
   - Dates/numbers/GSTIN/HSN normalised; each line matched to the shop's products and the master catalog (barcode, then exact name, then loose name); retries with backoff; clear failure codes (`not_configured`, `refused`, `too_long`, `unreadable_output`, `no_items`, `auth`, `busy`, `stalled` after 15 min); files deleted after 30 days
   - App "Scan invoice" button on Add Medicine: camera/gallery/PDF on phones, file picker on desktop; online-only; editable review (fix/remove lines, duplicate-batch warning) → adds through `MedicineProvider.addFromInvoice` → `MedicineRepository.insert` like a manual add (known medicine = new batch); free-plan limit respected
-  - [ ] Follow-up: save HSN/GST% from scanned lines (billing has now added them to `Medicine`)
+  - [x] Scanned HSN and GST% saved on new medicines (a known medicine keeps its own)
 
 ### P3 — GST billing ✅ Done (Oct 2026)
 
@@ -347,16 +348,17 @@ cd app && flutter test test/integration/
 - [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
 - Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
-### P4 — Accounting 🔧 In progress (parties/ledgers/payments/returns/GSTR; stock valuation/profit/expiry loss)
+### P4 — Accounting 🔧 In progress — reports done; parties/ledgers/payments/returns/GSTR in progress
 
 - [ ] Parties table: unified customers + suppliers
 - [ ] Ledgers: per-party running balance
 - [ ] Payments in/out tracking
 - [ ] Sale returns and purchase returns
 - [ ] GSTR-1 / GSTR-3B style reports (get output reviewed by a CA)
-- [ ] Stock valuation report
-- [ ] Profit calculation
-- [ ] Expiry loss tracking
+- [x] Stock valuation report (Reports → Valuation): stock per batch at purchase rate (cost) and MRP, by category; expired and near-expiry shown apart; as of today or any past date, worked out from the local stock ledger (works offline)
+- [x] Profit calculation (Reports → Profit): `GET /reports/profit?from&to` (final bills only, ≤366 days) — revenue = taxable value after discount, cost = qty × batch purchase rate (excl. GST, current rate); profit and margin by day, product, category; sales with no purchase rate flagged, never counted as 100% margin
+- [x] Expiry loss tracking (Reports → Expiry): value expiring in 30/60/90 days; expired-unsold value per expiry month (written off vs still on the shelf); "Write off" records an `expiry_writeoff` movement through the repository + outbox so it syncs and leaves valuation. PDF (₹ font) + CSV export per tab
+  - To confirm: purchase rate is excl. GST (the manual field may need an "(excl. GST)" hint); profit uses the batch's current purchase rate and ignores free-quantity schemes; expiry loss grouped by expiry month; profit not yet adjusted for sale returns
 
 ### Remaining from original task list
 
@@ -421,6 +423,10 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `94bb058` | App: Reports - stock valuation, profit and expiry loss tabs |
+| `5af1b98` | App: invoice scan saves HSN and GST rate per line |
+| `50c2d57` | Backend: profit report endpoint (GET /reports/profit) |
+| `dd734bf` | Docs: sync 401, a11y coverage |
 | `e16b12c` | App: accessibility coverage for billing, invoice scan, import wizard |
 | `145e2a0` | App: a 401 from sync, billing or invoice reading signs out |
 | `5d8836b` | Docs: P3 GST billing done |
