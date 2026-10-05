@@ -2,7 +2,7 @@
 
 > Multi-device pharmacy inventory app for phones + Windows  
 > Repo: `D:\meddata` (branch `main`)  
-> Last updated: 5 Oct 2026 (P0b, P2, P3 done; P4 in progress)
+> Last updated: 5 Oct 2026 (P0b, P2, P3, P4 done)
 
 ---
 
@@ -113,7 +113,7 @@ Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of un
 
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale` and `sale_cancel`.
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
 
 ---
 
@@ -180,6 +180,17 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 | POST | `/bills` | Create bill (201; 200 + `replayed` on retry; 409 price changed; 422 stock/batch) |
 | GET | `/bills/{id}` | Bill with items + GST summary (other shop → 404) |
 | POST | `/bills/{id}/cancel` | Cancel bill: stock back, number stays used |
+| GET/POST | `/parties` | List (type, search, balances) / create (retry-safe uuid; 422 bad/duplicate GSTIN) |
+| GET/PATCH/DELETE | `/parties/{id}` | Party with balance and open documents / update / soft delete (422 `balance_not_zero`) |
+| GET | `/parties/{id}/ledger` | Running-balance ledger (`from`, `to`) |
+| GET/POST | `/payments` | Payments in/out (422 `over_allocated`, `not_payable`) |
+| POST | `/payments/{id}/cancel` | Cancel a payment |
+| GET/POST | `/purchases` | Supplier bills; server adds the stock (422 `duplicate_invoice`, `party_not_supplier`, `plan_limit`, …) |
+| GET | `/purchases/{id}` | Purchase with outstanding and returned qty |
+| POST | `/purchases/{id}/cancel` | Takes the stock back out (422 `has_returns`, `has_payments`, `insufficient_stock`) |
+| GET/POST | `/sale-returns`, GET `/sale-returns/{id}` | Credit notes (422 `return_exceeds_sold`, `bill_cancelled`) |
+| GET/POST | `/purchase-returns`, GET `/purchase-returns/{id}` | Debit notes (422 `return_exceeds_bought`, `insufficient_stock`) |
+| GET | `/gst/gstr1`, `/gst/gstr3b` | Monthly GST summaries (`month=Y-m`), for CA review |
 | GET | `/reports/profit` | Profit by day/product/category from bills (`from`, `to`) |
 | GET | `/medicines/search` | Search master catalog (`?q=` name prefix or `?barcode=`) |
 | POST | `/invoices/scan` | Upload purchase invoice photo/PDF for AI reading (202) |
@@ -256,10 +267,10 @@ php artisan queue:work database   # needed for AI invoice reading
 ### Tests
 
 ```bash
-# Backend (120 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
-cd backend && php artisan test
+# Backend (143 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
+cd backend && php artisan test   # accounting: parties, purchases, payments, returns, ledgers, GSTR
 
-# App tests (356 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (398 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -281,8 +292,8 @@ cd app && flutter test test/integration/
 | P1 Products, batches, sync, Windows | 🔧 12/14 — remaining 2 need a Windows PC with Visual Studio and a real phone |
 | P2 Onboarding (barcode lookup, Excel/CSV import, AI invoice reading) | ✅ Done |
 | P3 GST billing | ✅ Done — a few decisions to confirm (§9) |
-| P4 Accounting | 🔧 In progress |
-| Needs the owner | Windows build + installer, real-device tests (sync, notifications), deploy checklist (§10), brand-colour contrast decision, confirm billing decisions (§9) |
+| P4 Accounting (parties, ledgers, payments, purchases, returns, GSTR, valuation, profit, expiry loss) | ✅ Done — decisions to confirm, GSTR needs CA review |
+| Needs the owner | Windows build + installer, real-device tests (sync, notifications), deploy checklist (§10), brand-colour contrast decision (status pills, plan toggle), confirm billing/accounting decisions (§8 P3/P4, §9), CA review of GSTR output |
 
 ### P0 — Security cleanup ✅ Done
 
@@ -349,22 +360,27 @@ cd app && flutter test test/integration/
 - [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
 - Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
-### P4 — Accounting 🔧 In progress — reports done; parties/ledgers/payments/returns/GSTR in progress
+### P4 — Accounting ✅ Done (Oct 2026) — app: Settings → Accounts (Parties, Purchases, GST returns); Reports tabs
 
-- [ ] Parties table: unified customers + suppliers
-- [ ] Ledgers: per-party running balance
-- [ ] Payments in/out tracking
-- [ ] Sale returns and purchase returns
-- [ ] GSTR-1 / GSTR-3B style reports (get output reviewed by a CA)
+- [x] Parties: customers + suppliers in one table (type, phone, GSTIN → state, address, opening balance; **+ = owed to the shop, − = shop owes**; one party per GSTIN); CRUD API, app list/search/balance, detail, add/edit; Filament read-only Parties
+- [x] Bills link to a customer party (picker / add on New bill fills the customer); credit bills need one; cash bills still take a typed name
+- [x] Purchases (supplier bills): the **server** creates/attaches batches and records `purchase` / `purchase_free` movements, which devices pull — stock is counted once; retry-safe uuid; the same supplier invoice can't be entered twice; input CGST/SGST or IGST by supplier state; cancel takes the stock out (`purchase_cancel`; refused once sold, returned or paid). The AI invoice scan records a purchase when online with a supplier chosen (found by GSTIN), else adds stock locally as before
+- [x] Ledgers: per-party running balance (opening, credit bills, purchases, payments in/out, credit notes on account, debit notes; cancelled ones left out); `GET /parties/{id}/ledger`; "Statement of account" PDF to print/share
+- [x] Payments in/out: cash/UPI/card/bank/cheque, reference, date, notes, optionally against a credit bill / purchase (no over-allocation); cancel instead of delete
+- [x] Sale returns: credit notes `CN/YY-YY/NNNNNN` (gap-free), qty ≤ sold − returned, stock back, GST reversed with GstMath, PDF. Purchase returns: debit notes `DN/...` against a purchase or from stock, stock out, input GST reversed. A bill with a credit note or payment can't be cancelled
+- [x] GSTR-1 (B2B by GSTIN, B2CL, B2CS, CDNR/CDNUR, nil, HSN, documents) and GSTR-3B (outward tax, ITC less debit notes, set-off, cash payable) per month; app screen with month picker and CSV/JSON export, labelled "for review by your CA"
+- [x] Accounting calls sign out on a 401, like billing
+- Decisions to confirm (§9): only credit bills go on a party's account (cash/UPI/card don't); purchase rates are before GST and the total is rounded to the rupee (may differ from the supplier's printed total by paise); free goods can't be on debit notes; GSTR basis — B2CL = inter-state > ₹1,00,000, ITC by supplier invoice date, CN against B2CS netted, HSN summary uses the stock unit (not UQC), a bill cancelled after its month isn't adjusted — **have a CA review the GSTR output**
 - [x] Stock valuation report (Reports → Valuation): stock per batch at purchase rate (cost) and MRP, by category; expired and near-expiry shown apart; as of today or any past date, worked out from the local stock ledger (works offline)
 - [x] Profit calculation (Reports → Profit): `GET /reports/profit?from&to` (final bills only, ≤366 days) — revenue = taxable value after discount, cost = qty × batch purchase rate (excl. GST, current rate); profit and margin by day, product, category; sales with no purchase rate flagged, never counted as 100% margin
 - [x] Expiry loss tracking (Reports → Expiry): value expiring in 30/60/90 days; expired-unsold value per expiry month (written off vs still on the shelf); "Write off" records an `expiry_writeoff` movement through the repository + outbox so it syncs and leaves valuation. PDF (₹ font) + CSV export per tab
-  - To confirm: purchase rate is excl. GST (the manual field may need an "(excl. GST)" hint); profit uses the batch's current purchase rate and ignores free-quantity schemes; expiry loss grouped by expiry month; profit not yet adjusted for sale returns
+  - To confirm: purchase rate is excl. GST (the manual field may need an "(excl. GST)" hint); profit uses the batch's current purchase rate and ignores free-quantity schemes; expiry loss grouped by expiry month
+- [ ] Follow-up: profit report doesn't yet subtract sale returns (credit notes)
 
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
-- [~] ~~Supplier management UI~~ — replaced by P4 parties (customers + suppliers)
+- [x] ~~Supplier management UI~~ — replaced by P4 parties (customers + suppliers)
 - [x] ~~Bulk CSV import of medicines~~ → replaced by the P2 import wizard
 - [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
 - [x] Accessibility coverage for screens added since the audit (billing, invoice scan + review, all import wizard steps, signed-in Profile): 48dp targets, labels, contrast, no overflow at 1.3x/1.5x, spoken statuses and amounts
@@ -389,6 +405,8 @@ cd app && flutter test test/integration/
 | Default GST rate | 5% (`default_gst_rate_bp` = 500) for products with no rate; editable per shop — **confirm** |
 | Invoice number | `PREFIX/YY-YY/NNNNNN`, prefix ≤3 chars (default `INV`), gap-free per shop per FY |
 | Phone navigation | Home · Inventory · + · Bills · Alerts; Profile from the Home avatar — **confirm** |
+| Party balance sign | + = party owes the shop (to collect), − = shop owes the party (to pay) — **confirm** |
+| Purchases add stock on the server | A purchase entry creates the batches/movements server-side; devices pull them (never counted twice) |
 | Bill refusal | Any edit to a batch since the device loaded it refuses the bill (409), even if the price is unchanged |
 | Schema changes | Wipe DB + re-upload (no upgrade migrations while there are no real users) |
 | Master catalog | Shop's new medicines auto-added without moderation (max 200/shop/day) |
@@ -424,6 +442,10 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `0b37e34` | App: accounting calls sign out on a 401, like billing |
+| `e8b09b7` | App tests: accounting logic, accounts screens, scan-to-purchase, a11y |
+| `3d183ef` | App: accounts - parties, ledgers, payments, purchases, returns, GST reports |
+| `4d579bd` | Backend: P4 accounting - parties, purchases, payments, returns, ledgers, GSTR-1/3B |
 | `48770bf` | App: visible loading spinner on Log in and Send reset code |
 | `4ff9f15` | App: tie local data to the account id, ask before dropping unsynced changes |
 | `94bb058` | App: Reports - stock valuation, profit and expiry loss tabs |
