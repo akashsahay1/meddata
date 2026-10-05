@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import '../screens/sync_issues_screen.dart';
+import 'ui_kit.dart';
 
 /// Small chip showing whether this device is in step with the shop:
 /// synced / syncing / offline / N pending / N need attention. Tapping it
@@ -17,13 +18,16 @@ class SyncBadge extends StatelessWidget {
     final SyncEngine sync = context.watch<SyncEngine>();
     final (IconData icon, String label, Color color) = describe(sync);
     final Color fg = onDark && color == AppColors.statusGreen ? Colors.white : color;
-    return Semantics(
-      button: true,
+    void open() => Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => const SyncIssuesScreen()));
+    // The chip stays small; its touch area is 48dp tall.
+    return TapTarget(
       label: 'Sync: $label',
+      tooltip: false,
+      onTap: open,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const SyncIssuesScreen())),
+        onTap: open,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(

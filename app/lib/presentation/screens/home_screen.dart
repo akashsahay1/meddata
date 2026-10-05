@@ -142,11 +142,14 @@ class _Header extends StatelessWidget {
                 ),
               ),
               const SyncBadge(onDark: true),
-              const SizedBox(width: 10),
+              // The avatar's touch area adds 6dp on its left: 10dp apart.
+              const SizedBox(width: 4),
               _AvatarButton(onTap: onProfile),
             ],
           ),
-          const SizedBox(height: 20),
+          // 2dp less than the design's 20: the pill below is 2dp taller
+          // (48dp touch target), so it keeps its place.
+          const SizedBox(height: 18),
           Material(
             color: Colors.white.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(14),
@@ -154,17 +157,21 @@ class _Header extends StatelessWidget {
               onTap: onSearch,
               borderRadius: BorderRadius.circular(14),
               child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 14),
                 child: Row(
                   children: <Widget>[
-                    Icon(Icons.search, size: 18, color: AppColors.onDarkMuted),
+                    Icon(Icons.search, size: 18, color: _searchHint),
                     SizedBox(width: 10),
-                    Text(
-                      'Search or add medicine',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onDarkMuted,
+                    Flexible(
+                      child: Text(
+                        'Search or add medicine',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: _searchHint,
+                        ),
                       ),
                     ),
                   ],
@@ -178,22 +185,32 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// The search pill's hint: [AppColors.onDarkMuted] lightened to reach 4.5:1
+/// contrast on the pill (white at 12% over the green header).
+const Color _searchHint = Color(0xFFB8D7D3);
+
 class _AvatarButton extends StatelessWidget {
   final VoidCallback onTap;
   const _AvatarButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.greenMid,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
+    // 42dp avatar, 48dp touch area.
+    return TapTarget(
+      label: 'Profile',
+      onTap: onTap,
+      alignment: Alignment.centerRight,
+      child: Material(
+        color: AppColors.greenMid,
         borderRadius: BorderRadius.circular(14),
-        child: const SizedBox(
-          width: 42,
-          height: 42,
-          child: Icon(Icons.person_outline, size: 22, color: Colors.white),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: const SizedBox(
+            width: 42,
+            height: 42,
+            child: Icon(Icons.person_outline, size: 22, color: Colors.white),
+          ),
         ),
       ),
     );
@@ -301,13 +318,14 @@ class _DashboardBody extends StatelessWidget {
           const SizedBox(height: 14),
           _TrialBanner(daysLeft: settings.trialDaysLeft, onUpgrade: onUpgrade),
         ],
-        const SizedBox(height: 22),
+        // The header is 48dp tall ("See all" touch area); these gaps keep the
+        // title and the list where the design's 22 + 12 put them.
+        const SizedBox(height: 8),
         SectionHeader(
           title: 'Needs attention',
           actionLabel: 'See all',
           onAction: onAlerts,
         ),
-        const SizedBox(height: 12),
         if (attention.isEmpty)
           const _AllGoodCard()
         else
@@ -425,7 +443,8 @@ class _TrialBanner extends StatelessWidget {
       child: InkWell(
         onTap: onUpgrade,
         borderRadius: BorderRadius.circular(AppRadii.card),
-        child: Padding(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
           padding: const EdgeInsets.all(14),
           child: Row(
             children: <Widget>[

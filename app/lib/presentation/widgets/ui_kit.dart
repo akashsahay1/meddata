@@ -6,17 +6,82 @@ import '../../theme/app_theme.dart';
 /// so spacing, radii, colors and weights stay consistent with the design
 /// handoff. Nothing here holds state or talks to providers.
 
+/// Gives a small control a touch area of at least 48x48dp (the Android and
+/// Material minimum) without changing how it looks: [child] sits in a
+/// transparent box that answers taps too. For screen readers the box is one
+/// button named [label]; with [tooltip] the label also shows on long-press
+/// or mouse hover (use it for icon-only controls).
+class TapTarget extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final Widget child;
+  final bool tooltip;
+  final bool? selected;
+
+  /// Where [child] sits in the box when it is smaller than 48dp.
+  final AlignmentGeometry alignment;
+
+  const TapTarget({
+    super.key,
+    required this.label,
+    required this.onTap,
+    required this.child,
+    this.tooltip = true,
+    this.selected,
+    this.alignment = Alignment.center,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget target = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: kMinInteractiveDimension,
+          minHeight: kMinInteractiveDimension,
+        ),
+        child: Align(
+          alignment: alignment,
+          widthFactor: 1,
+          heightFactor: 1,
+          child: child,
+        ),
+      ),
+    );
+    if (tooltip) {
+      target =
+          Tooltip(message: label, excludeFromSemantics: true, child: target);
+    }
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: onTap != null,
+      selected: selected,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: target,
+    );
+  }
+}
+
 /// A small rounded status label, e.g. "In stock" / "Low" / "Expiring".
+/// Screen readers read [semanticsLabel] (default [text]), so a short label
+/// can be spoken in full, e.g. "Low" as "Low stock".
 class StatusPill extends StatelessWidget {
   final String text;
   final Color color;
   final Color bg;
+  final String? semanticsLabel;
 
   const StatusPill({
     super.key,
     required this.text,
     required this.color,
     required this.bg,
+    this.semanticsLabel,
   });
 
   /// Convenience constructors for the three canonical states.
@@ -30,13 +95,16 @@ class StatusPill extends StatelessWidget {
     text: text,
     color: AppColors.statusAmber,
     bg: AppColors.statusAmberBg,
+    semanticsLabel: text == 'Low' ? 'Low stock' : null,
   );
 
-  factory StatusPill.danger(String text) => StatusPill(
-    text: text,
-    color: AppColors.statusRed,
-    bg: AppColors.statusRedBg,
-  );
+  factory StatusPill.danger(String text, {String? semanticsLabel}) =>
+      StatusPill(
+        text: text,
+        color: AppColors.statusRed,
+        bg: AppColors.statusRedBg,
+        semanticsLabel: semanticsLabel,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +116,7 @@ class StatusPill extends StatelessWidget {
       ),
       child: Text(
         text,
+        semanticsLabel: semanticsLabel,
         style: TextStyle(
           fontSize: 11,
           height: 1.1,
@@ -77,6 +146,7 @@ class BrandMark extends StatelessWidget {
 }
 
 /// A square initials avatar (green glyph on a canvas tint), used on tiles.
+/// Decorative: screen readers skip it (the name is read from the tile).
 class InitialsAvatar extends StatelessWidget {
   final String text;
   final double size;
@@ -93,20 +163,22 @@ class InitialsAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: size * 0.36,
-          fontWeight: FontWeight.w800,
-          color: color,
+    return ExcludeSemantics(
+      child: Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: size * 0.36,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
       ),
     );
@@ -218,22 +290,23 @@ class MedicineTile extends StatelessWidget {
                     if (hasStatusRow)
                       Padding(
                         padding: const EdgeInsets.only(top: 7),
-                        child: Row(
+                        // Wraps the quantity under the status when large
+                        // text leaves no room beside it.
+                        child: Wrap(
+                          spacing: 10,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: <Widget>[
                             ?status,
-                            if (status != null && qtyLabel != null)
-                              const SizedBox(width: 10),
                             if (qtyLabel != null)
-                              Flexible(
-                                child: Text(
-                                  qtyLabel!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.muted,
-                                  ),
+                              Text(
+                                qtyLabel!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.muted,
                                 ),
                               ),
                           ],
@@ -396,43 +469,48 @@ class AlertCard extends StatelessWidget {
             border: Border.all(color: softBorder),
           ),
           padding: const EdgeInsets.all(15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Container(
-                    width: 34,
-                    height: 34,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: bg,
-                      borderRadius: BorderRadius.circular(11),
+          // Read as "Low on stock: 3" rather than "3, Low on stock".
+          child: Semantics(
+            label: '$label: $count',
+            excludeSemantics: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Container(
+                      width: 34,
+                      height: 34,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: bg,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(icon, size: 18, color: color),
                     ),
-                    child: Icon(icon, size: 18, color: color),
-                  ),
-                  Text(
-                    '$count',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: color,
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -441,6 +519,8 @@ class AlertCard extends StatelessWidget {
 }
 
 /// A section title row with an optional trailing action (e.g. "See all").
+/// With an action the row is 48dp tall (the action's touch area), so place
+/// it with ~14dp less space above and below than a plain title.
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? actionLabel;
@@ -468,9 +548,11 @@ class SectionHeader extends StatelessWidget {
           ),
         ),
         if (actionLabel != null)
-          GestureDetector(
+          TapTarget(
+            label: actionLabel!,
+            tooltip: false,
             onTap: onAction,
-            behavior: HitTestBehavior.opaque,
+            alignment: Alignment.centerRight,
             child: Text(
               actionLabel!,
               style: const TextStyle(

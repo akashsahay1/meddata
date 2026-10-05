@@ -50,6 +50,7 @@ class MedicineDetailScreen extends StatelessWidget {
         actions: <Widget>[
           _AppBarAction(
             icon: Icons.edit_outlined,
+            label: 'Edit medicine',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => AddEditMedicineScreen(existing: med),
@@ -58,10 +59,12 @@ class MedicineDetailScreen extends StatelessWidget {
           ),
           _AppBarAction(
             icon: Icons.delete_outline,
+            label: 'Delete medicine',
             color: AppColors.statusRed,
             onTap: () => _delete(context, med),
           ),
-          const SizedBox(width: 8),
+          // With the 48dp touch areas, the delete button keeps its place.
+          const SizedBox(width: 7),
         ],
       ),
       body: ListView(
@@ -181,18 +184,22 @@ class MedicineDetailScreen extends StatelessWidget {
 
 class _AppBarAction extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final Color color;
   const _AppBarAction({
     required this.icon,
+    required this.label,
     required this.onTap,
     this.color = AppColors.ink,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
+    // 38dp button, 48dp touch area.
+    return TapTarget(
+      label: label,
+      onTap: onTap,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(11),
@@ -313,6 +320,7 @@ class _QuantityCard extends StatelessWidget {
         children: <Widget>[
           _stepBtn(
             icon: Icons.remove,
+            label: 'Remove 1 from stock',
             filled: false,
             onTap: () =>
                 mp.adjustQuantity(medicine.id, -1, StockReason.sell),
@@ -344,6 +352,7 @@ class _QuantityCard extends StatelessWidget {
           ),
           _stepBtn(
             icon: Icons.add,
+            label: 'Add 1 to stock',
             filled: true,
             onTap: () =>
                 mp.adjustQuantity(medicine.id, 1, StockReason.restock),
@@ -355,24 +364,29 @@ class _QuantityCard extends StatelessWidget {
 
   Widget _stepBtn({
     required IconData icon,
+    required String label,
     required bool filled,
     required VoidCallback onTap,
   }) {
-    return InkWell(
+    return TapTarget(
+      label: label,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.input),
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          color: filled ? AppColors.orange : AppColors.canvas,
-          border: filled ? null : Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(AppRadii.input),
-        ),
-        child: Icon(
-          icon,
-          size: 24,
-          color: filled ? Colors.white : AppColors.green,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.input),
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: filled ? AppColors.orange : AppColors.canvas,
+            border: filled ? null : Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadii.input),
+          ),
+          child: Icon(
+            icon,
+            size: 24,
+            color: filled ? Colors.white : AppColors.green,
+          ),
         ),
       ),
     );

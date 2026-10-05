@@ -265,55 +265,71 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color = selected ? AppColors.green : AppColors.muted;
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            SizedBox(
-              height: 24,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: <Widget>[
-                  Icon(icon, size: 22, color: color),
-                  if (badgeCount > 0)
-                    Positioned(
-                      top: -4,
-                      right: -8,
-                      child: Container(
-                        constraints: const BoxConstraints(minWidth: 16),
-                        height: 16,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.statusRed,
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                        child: Text(
-                          badgeCount > 99 ? '99+' : '$badgeCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                            height: 1,
+      child: Semantics(
+        container: true,
+        button: true,
+        selected: selected,
+        label: badgeCount > 0 ? '$label, $badgeCount need attention' : label,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: ExcludeSemantics(
+            // Fills the bar's height, so the whole slot is the touch area
+            // (icon + label alone is under 48dp).
+            child: Column(
+              children: <Widget>[
+                SizedBox(
+                  height: 24,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: <Widget>[
+                      Icon(icon, size: 22, color: color),
+                      if (badgeCount > 0)
+                        Positioned(
+                          top: -4,
+                          right: -8,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 16),
+                            height: 16,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.statusRed,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadii.pill),
+                            ),
+                            child: Text(
+                              badgeCount > 99 ? '99+' : '$badgeCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                height: 1,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // One line, shrunk to fit rather than wrapped out of the bar
+                // when the phone uses large text.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: color,
                     ),
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -330,24 +346,34 @@ class _CenterAddButton extends StatelessWidget {
       child: Center(
         child: Transform.translate(
           offset: const Offset(0, -16),
-          child: GestureDetector(
+          child: Semantics(
+            button: true,
+            label: 'Add medicine',
             onTap: onTap,
-            child: Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppColors.orange,
-                borderRadius: BorderRadius.circular(AppRadii.fab),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0xCCFF6B2C),
-                    blurRadius: 24,
-                    offset: Offset(0, 12),
-                    spreadRadius: -10,
+            excludeSemantics: true,
+            child: Tooltip(
+              message: 'Add medicine',
+              excludeFromSemantics: true,
+              child: GestureDetector(
+                onTap: onTap,
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: AppColors.orange,
+                    borderRadius: BorderRadius.circular(AppRadii.fab),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0xCCFF6B2C),
+                        blurRadius: 24,
+                        offset: Offset(0, 12),
+                        spreadRadius: -10,
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Icon(Icons.add, color: Colors.white, size: 26),
+                ),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 26),
             ),
           ),
         ),

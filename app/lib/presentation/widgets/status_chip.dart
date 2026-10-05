@@ -11,7 +11,9 @@ export 'ui_kit.dart';
 /// Maps a computed [MedicineStatus] (+ quantity) to the right colored pill.
 StatusPill medicineStatusPill(MedicineStatus s, int quantity) {
   if (s.isExpired) return StatusPill.danger('Expired');
-  if (s.isExpiring) return StatusPill.danger('Expiring');
+  if (s.isExpiring) {
+    return StatusPill.danger('Expiring', semanticsLabel: 'Expiring soon');
+  }
   if (quantity == 0) return StatusPill.danger('Out of stock');
   if (s.isLowStock) return StatusPill.low();
   return StatusPill.inStock();
@@ -28,6 +30,9 @@ class StatusChip extends StatelessWidget {
   final Color color;
   final Color bg;
 
+  /// What screen readers say, when [label] alone is too short.
+  final String? semanticsLabel;
+
   const StatusChip({
     super.key,
     required this.label,
@@ -36,6 +41,7 @@ class StatusChip extends StatelessWidget {
     this.bold = true,
     this.color = AppColors.statusGreen,
     this.bg = AppColors.statusGreenBg,
+    this.semanticsLabel,
   });
 
   factory StatusChip.forExpiry(MedicineStatus s) {
@@ -50,6 +56,7 @@ class StatusChip extends StatelessWidget {
       case ExpiryState.expiring:
         return const StatusChip(
           label: 'Expiring',
+          semanticsLabel: 'Expiring soon',
           icon: Icons.schedule,
           color: AppColors.statusRed,
           bg: AppColors.statusRedBg,
@@ -66,6 +73,7 @@ class StatusChip extends StatelessWidget {
 
   static Widget lowStock() => const StatusChip(
         label: 'Low',
+        semanticsLabel: 'Low stock',
         icon: Icons.inventory_2_outlined,
         color: AppColors.statusAmber,
         bg: AppColors.statusAmberBg,
@@ -80,6 +88,7 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StatusPill(text: label, color: color, bg: bg);
+    return StatusPill(
+        text: label, color: color, bg: bg, semanticsLabel: semanticsLabel);
   }
 }

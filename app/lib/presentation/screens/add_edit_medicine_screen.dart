@@ -500,27 +500,32 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         color: AppColors.card,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
+      // 5dp less padding around the 38dp back button: its touch area is 48dp.
       padding: EdgeInsets.fromLTRB(
-          16, MediaQuery.of(context).padding.top + 12, 16, 12),
+          11, MediaQuery.of(context).padding.top + 7, 16, 7),
       child: Row(
         children: <Widget>[
-          InkWell(
+          TapTarget(
+            label: 'Back',
             onTap: () => Navigator.of(context).maybePop(),
-            borderRadius: BorderRadius.circular(11),
-            child: Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(11),
-                border: Border.all(color: AppColors.border),
+            child: InkWell(
+              onTap: () => Navigator.of(context).maybePop(),
+              borderRadius: BorderRadius.circular(11),
+              child: Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(11),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Icon(Icons.chevron_left,
+                    size: 22, color: AppColors.ink),
               ),
-              child: const Icon(Icons.chevron_left,
-                  size: 22, color: AppColors.ink),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 7),
           Expanded(
             child: Text(
               _isEdit
@@ -657,10 +662,12 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         .join(' · ');
     return InkWell(
       onTap: onTap,
-      child: Padding(
+      child: Container(
+        constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             Text(
               name,
@@ -771,6 +778,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   }
 
   Widget _barcodeField() {
+    // The scan button's 48dp touch area takes 4dp of the field's padding.
+    final bool scan = AppPlatform.supportsCamera;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -781,7 +790,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             borderRadius: BorderRadius.circular(AppRadii.input),
             border: Border.all(color: AppColors.border, width: 1.5),
           ),
-          padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+          padding: EdgeInsets.fromLTRB(
+              14, scan ? 2 : 6, scan ? 2 : 6, scan ? 2 : 6),
           child: Row(
             children: <Widget>[
               Expanded(
@@ -810,21 +820,25 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                 ),
               ),
               // On a PC a USB scanner types straight into the field.
-              if (AppPlatform.supportsCamera) ...<Widget>[
-              const SizedBox(width: 8),
-              InkWell(
+              if (scan) ...<Widget>[
+              const SizedBox(width: 4),
+              TapTarget(
+                label: 'Scan barcode',
                 onTap: _scanBarcode,
-                borderRadius: BorderRadius.circular(9),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppColors.green,
-                    borderRadius: BorderRadius.circular(9),
+                child: InkWell(
+                  onTap: _scanBarcode,
+                  borderRadius: BorderRadius.circular(9),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.green,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.qr_code_scanner,
+                        size: 20, color: Colors.white),
                   ),
-                  child: const Icon(Icons.qr_code_scanner,
-                      size: 20, color: Colors.white),
                 ),
               ),
               ],
@@ -904,50 +918,73 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     bool placeholder = false,
     VoidCallback? onClear,
   }) {
+    final String name = label.replaceAll(' *', '');
+    final Widget field = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.input),
+      // Read as one control, e.g. "Expiry date: 05 Oct 2027".
+      child: Semantics(
+        button: true,
+        label: '$name: $value',
+        excludeSemantics: true,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadii.input),
+            border: Border.all(color: AppColors.border, width: 1.5),
+          ),
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.calendar_today_outlined,
+                  size: 17, color: AppColors.muted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: placeholder ? AppColors.muted : AppColors.ink,
+                  ),
+                ),
+              ),
+              // Room for the clear button, which is drawn over this end.
+              if (onClear != null) const SizedBox(width: 20),
+            ],
+          ),
+        ),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _fieldLabel(label),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadii.input),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(AppRadii.input),
-              border: Border.all(color: AppColors.border, width: 1.5),
-            ),
-            child: Row(
-              children: <Widget>[
-                const Icon(Icons.calendar_today_outlined,
-                    size: 17, color: AppColors.muted),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: placeholder ? AppColors.muted : AppColors.ink,
-                    ),
+        // The field reads its label out itself.
+        ExcludeSemantics(child: _fieldLabel(label)),
+        if (onClear == null)
+          field
+        else
+          Stack(
+            children: <Widget>[
+              field,
+              // The small "x" with a 48dp touch area over the field's end.
+              Positioned(
+                top: 0,
+                bottom: 0,
+                right: 1.5,
+                child: TapTarget(
+                  label: 'Clear ${name.toLowerCase()}',
+                  onTap: onClear,
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(Icons.close, size: 16, color: AppColors.muted),
                   ),
                 ),
-                if (onClear != null)
-                  InkWell(
-                    onTap: onClear,
-                    borderRadius: BorderRadius.circular(20),
-                    child: const Padding(
-                      padding: EdgeInsets.all(2),
-                      child: Icon(Icons.close, size: 16, color: AppColors.muted),
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
       ],
     );
   }

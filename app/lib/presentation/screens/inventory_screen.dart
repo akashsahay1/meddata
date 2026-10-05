@@ -57,8 +57,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
         bottom: false,
         child: Column(
           children: <Widget>[
+            // The title row and the chips are 48dp tall (touch areas of the
+            // sync badge and the chips); the gaps around them are trimmed to
+            // match, so everything sits where the design puts it.
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+              padding: const EdgeInsets.fromLTRB(18, 1.5, 18, 4.5),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -78,7 +81,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       SyncBadge(),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 5.5),
                   TextField(
                     controller: _search,
                     onChanged: mp.setQuery,
@@ -100,6 +103,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               onPressed: () => scanAndOpen(context),
                             )
                           : IconButton(
+                              tooltip: 'Clear search',
                               icon: const Icon(Icons.close, size: 18),
                               onPressed: () {
                                 _search.clear();
@@ -108,7 +112,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6.5),
                   _FilterChips(mp: mp),
                 ],
               ),
@@ -194,12 +198,16 @@ class _FilterChips extends StatelessWidget {
 
   Widget _chip(MedicineFilter f, String label, int count, Color accent) {
     final bool selected = mp.filter == f;
-    return Semantics(
-      button: true,
+    void select() => mp.setFilter(f);
+    // Read as "Low stock, 3"; the chip is 48dp tall to touch.
+    return TapTarget(
+      label: '$label, $count',
+      tooltip: false,
       selected: selected,
+      onTap: select,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => mp.setFilter(f),
+        onTap: select,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

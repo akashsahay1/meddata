@@ -26,7 +26,9 @@ class AppColors {
 
   // Text
   static const Color ink = Color(0xFF0A302E); // primary text
-  static const Color muted = Color(0xFF66807D); // secondary text/labels
+  // Secondary text/labels. The design's #66807D, darkened a little (same
+  // hue) to reach WCAG AA 4.5:1 on cards (5.2:1) and the canvas (4.6:1).
+  static const Color muted = Color(0xFF5B726F);
   static const Color onDarkMuted = Color(0xFF9BC6C1); // muted text on green
   static const Color onDarkFaint = Color(0xFF7FA8A3);
 
