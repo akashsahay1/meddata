@@ -358,7 +358,7 @@ cd app && flutter test test/integration/
 - [x] Price re-verification: any batch edit since the device loaded it → 409, the line shows "₹X is now ₹Y", accept and retry; 422 shows stock left or an expired/deleted batch
 - [x] Internet check: offline → bill screen blocked; inventory keeps working offline. After a bill the app syncs so local stock drops
 - [x] Bills tab: date range/search, reprint/share, cancel (stock back via `sale_cancel` movements, number stays used); Shop & invoice details screen (legal name, address, GSTIN — state filled from it, DL no., invoice prefix, default GST rate); HSN and GST rate on medicines; Filament: read-only Bills + Shop "Edit invoice details"
-- Decisions to confirm (see §9): default GST 5% for products without a rate; phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
+- Default GST 5% for products without a rate (owner decision: retail medicines, OTC, AYUSH, vaccines, devices and kits are 5%; set 0% per medicine for exempt life-saving drugs, blood, contraceptives). Decisions to confirm (see §9): phone bottom bar is now Home · Inventory · + · Bills · Alerts (Profile opens from the Home avatar; the desktop rail shows all); shops without a GSTIN print "INVOICE" with no tax breakup; bill dates/FY use India time
 
 ### P4 — Accounting ✅ Done (Oct 2026) — app: Settings → Accounts (Parties, Purchases, GST returns); Reports tabs
 
@@ -402,7 +402,7 @@ cd app && flutter test test/integration/
 | Price safety | `edit_version` conflict check + `price_changes` audit — no "main device", any device can edit prices |
 | Windows payment | Browser-based Razorpay checkout (no in-app payment on desktop) |
 | Offline billing | Blocked — Internet required for bills. Inventory works offline |
-| Default GST rate | 5% (`default_gst_rate_bp` = 500) for products with no rate; editable per shop — **confirm** |
+| Default GST rate | 5% (`default_gst_rate_bp` = 500) for products with no rate — decided by the owner. Per medicine: 0% for exempt drugs (life-saving list, blood, contraceptives); the picker offers 0/5/12/18/28%. Editable per shop |
 | Invoice number | `PREFIX/YY-YY/NNNNNN`, prefix ≤3 chars (default `INV`), gap-free per shop per FY |
 | Phone navigation | Home · Inventory · + · Bills · Alerts; Profile from the Home avatar — **confirm** |
 | Party balance sign | + = party owes the shop (to collect), − = shop owes the party (to pay) — **confirm** |
