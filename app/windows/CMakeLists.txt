@@ -31,10 +31,6 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
-# permission_handler_windows still includes <experimental/coroutine>, which
-# MSVC 14.5x (Visual Studio 2026) rejects unless this is defined. Remove once
-# the plugin moves to C++20 <coroutine>.
-add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
 # Compilation settings that should be applied to most targets.
 #

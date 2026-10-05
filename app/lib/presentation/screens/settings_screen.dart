@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -475,13 +474,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final ImageSource source =
         action == 'camera' ? ImageSource.camera : ImageSource.gallery;
-    if (source == ImageSource.camera &&
-        !(await Permission.camera.request()).isGranted) {
-      if (mounted) _toast('Allow camera access in Settings to take a photo.');
-      return;
-    }
     final XFile? file;
     try {
+      // The picker asks for camera permission itself.
       // Downscale before upload: the avatar is shown at 64px.
       file = await ImagePicker().pickImage(
         source: source,
@@ -489,6 +484,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         maxHeight: 512,
         imageQuality: 85,
       );
+    } on PlatformException catch (e) {
+      debugPrint('[Avatar] pick failed: $e');
+      if (mounted) {
+        _toast(e.code == 'camera_access_denied'
+            ? 'Allow camera access in Settings to take a photo.'
+            : 'Could not open the photo picker.');
+      }
+      return;
     } catch (e) {
       debugPrint('[Avatar] pick failed: $e');
       if (mounted) _toast('Could not open the photo picker.');

@@ -2,7 +2,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -154,10 +153,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     try {
       switch (source) {
         case _Source.camera:
-          if (!(await Permission.camera.request()).isGranted) {
-            _toast('Allow camera access in Settings to photograph invoices.');
-            return;
-          }
+          // The picker asks for camera permission itself.
           file = await _pickImage(ImageSource.camera);
         case _Source.gallery:
           file = await _pickImage(ImageSource.gallery);
@@ -168,6 +164,12 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             ],
           );
       }
+    } on PlatformException catch (e) {
+      debugPrint('[InvoiceScan] pick failed: $e');
+      _toast(e.code == 'camera_access_denied'
+          ? 'Allow camera access in Settings to photograph invoices.'
+          : 'Could not open the picker.');
+      return;
     } catch (e) {
       debugPrint('[InvoiceScan] pick failed: $e');
       _toast('Could not open the picker.');

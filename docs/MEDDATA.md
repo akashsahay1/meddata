@@ -432,6 +432,7 @@ cd app && flutter test test/integration/
 - [ ] Cron: `* * * * * php artisan schedule:run` (daily cleanup of old invoice scans)
 - [ ] Android: create an upload keystore and `app/android/key.properties` (`storePassword`, `keyPassword`, `keyAlias`, `storeFile` relative to `android/app`); without it release builds are signed with the debug key
 - [ ] Build and test Windows installer (Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage)
+  - `permission_handler` was removed (its Windows plugin passes `/await`, which Visual Studio 2026 rejects): `mobile_scanner` and `image_picker` ask for camera permission themselves, and `app_settings` opens the app's settings page. After pulling, run `flutter clean` before `flutter build windows`
 - [ ] Cross-device testing: Windows ↔ phone sync, price conflicts, offline edits, USB barcode scanner
 
 ---

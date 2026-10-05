@@ -1,13 +1,14 @@
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
 
-/// Camera barcode scanner. Requests camera permission first and handles the
-/// denied / permanently-denied cases gracefully so the feature never "just
-/// silently fails". Returns the scanned string via Navigator.pop.
+/// Camera barcode scanner. The scanner asks for camera permission itself;
+/// a refusal is shown with a way to retry or open the app's settings, so the
+/// feature never "just silently fails". Returns the scanned string via
+/// Navigator.pop.
 class BarcodeScanScreen extends StatefulWidget {
   const BarcodeScanScreen({super.key});
 
@@ -15,43 +16,15 @@ class BarcodeScanScreen extends StatefulWidget {
   State<BarcodeScanScreen> createState() => _BarcodeScanScreenState();
 }
 
-enum _PermState { checking, granted, denied, permanentlyDenied }
-
 class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
-  MobileScannerController? _controller;
+  final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+  );
   bool _handled = false;
-  _PermState _perm = _PermState.checking;
-
-  @override
-  void initState() {
-    super.initState();
-    _requestPermission();
-  }
-
-  Future<void> _requestPermission() async {
-    setState(() => _perm = _PermState.checking);
-    PermissionStatus status = await Permission.camera.status;
-    if (!status.isGranted) {
-      status = await Permission.camera.request();
-    }
-    if (!mounted) return;
-    if (status.isGranted) {
-      setState(() {
-        _perm = _PermState.granted;
-        _controller = MobileScannerController(
-          detectionSpeed: DetectionSpeed.noDuplicates,
-        );
-      });
-    } else if (status.isPermanentlyDenied) {
-      setState(() => _perm = _PermState.permanentlyDenied);
-    } else {
-      setState(() => _perm = _PermState.denied);
-    }
-  }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -65,96 +38,83 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
     Navigator.of(context).pop(value);
   }
 
+  /// Asks again (Android/iOS show the prompt unless it was refused for good).
+  Future<void> _retry() async {
+    await _controller.stop();
+    await _controller.start();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool scanning = _perm == _PermState.granted;
-    // While the live camera is up, use a dark green surface so the reticle and
-    // controls read clearly over the feed. Otherwise keep the calm app canvas.
-    return Scaffold(
-      backgroundColor: scanning ? AppColors.greenDarkest : AppColors.canvas,
-      appBar: AppBar(
-        backgroundColor: scanning ? AppColors.greenDarkest : null,
-        foregroundColor: scanning ? Colors.white : null,
-        elevation: 0,
-        title: const Text('Scan barcode'),
-        actions: scanning && _controller != null
-            ? <Widget>[
-                _ScanAction(
-                  icon: Icons.flash_on,
-                  onTap: () => _controller!.toggleTorch(),
-                ),
-                _ScanAction(
-                  icon: Icons.cameraswitch_outlined,
-                  onTap: () => _controller!.switchCamera(),
-                ),
-                const SizedBox(width: 4),
-              ]
-            : null,
-      ),
-      body: _buildBody(),
+    return ValueListenableBuilder<MobileScannerState>(
+      valueListenable: _controller,
+      builder: (BuildContext context, MobileScannerState state, _) {
+        // While the live camera is up, use a dark green surface so the reticle
+        // and controls read clearly over the feed. Otherwise keep the calm app
+        // canvas.
+        final bool scanning = state.error == null;
+        return Scaffold(
+          backgroundColor:
+              scanning ? AppColors.greenDarkest : AppColors.canvas,
+          appBar: AppBar(
+            backgroundColor: scanning ? AppColors.greenDarkest : null,
+            foregroundColor: scanning ? Colors.white : null,
+            elevation: 0,
+            title: const Text('Scan barcode'),
+            actions: scanning
+                ? <Widget>[
+                    _ScanAction(
+                      icon: Icons.flash_on,
+                      onTap: () => _controller.toggleTorch(),
+                    ),
+                    _ScanAction(
+                      icon: Icons.cameraswitch_outlined,
+                      onTap: () => _controller.switchCamera(),
+                    ),
+                    const SizedBox(width: 4),
+                  ]
+                : null,
+          ),
+          body: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              MobileScanner(
+                controller: _controller,
+                onDetect: _onDetect,
+                errorBuilder: _error,
+              ),
+              if (scanning) ...const <Widget>[
+                IgnorePointer(child: _ScanReticle()),
+                Positioned(left: 32, right: 32, bottom: 48, child: _ScanHint()),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBody() {
-    switch (_perm) {
-      case _PermState.checking:
-        return const Center(
-          child: CircularProgressIndicator(
-            color: AppColors.orange,
-            strokeWidth: 3,
-          ),
-        );
-      case _PermState.granted:
-        return Stack(
-          alignment: Alignment.center,
-          children: <Widget>[
-            MobileScanner(
-              controller: _controller!,
-              onDetect: _onDetect,
-              errorBuilder:
-                  (BuildContext context, MobileScannerException error) {
-                return _PermMessage(
-                  icon: Icons.videocam_off_outlined,
-                  title: 'Camera error',
-                  body: 'Could not start the camera. Enter the barcode '
-                      'manually instead.',
-                  primaryLabel: 'Enter manually',
-                  onPrimary: () => Navigator.of(context).pop(),
-                );
-              },
-            ),
-            const IgnorePointer(child: _ScanReticle()),
-            const Positioned(
-              left: 32,
-              right: 32,
-              bottom: 48,
-              child: _ScanHint(),
-            ),
-          ],
-        );
-      case _PermState.denied:
-        return _PermMessage(
-          icon: Icons.photo_camera_outlined,
-          title: 'Camera permission needed',
-          body: 'Allow camera access to scan barcodes, or enter the barcode '
-              'manually.',
-          primaryLabel: 'Grant permission',
-          onPrimary: _requestPermission,
-          secondaryLabel: 'Enter manually',
-          onSecondary: () => Navigator.of(context).pop(),
-        );
-      case _PermState.permanentlyDenied:
-        return _PermMessage(
-          icon: Icons.no_photography_outlined,
-          title: 'Camera blocked',
-          body: 'Camera permission is turned off for this app. Open Settings '
-              'to enable it, or enter the barcode manually.',
-          primaryLabel: 'Open settings',
-          onPrimary: openAppSettings,
-          secondaryLabel: 'Enter manually',
-          onSecondary: () => Navigator.of(context).pop(),
-        );
+  Widget _error(BuildContext context, MobileScannerException error) {
+    if (error.errorCode == MobileScannerErrorCode.permissionDenied) {
+      return _PermMessage(
+        icon: Icons.no_photography_outlined,
+        title: 'Camera permission needed',
+        body: 'Allow camera access to scan barcodes. If you turned it off, '
+            'open Settings to enable it — or go back and enter the barcode '
+            'manually.',
+        primaryLabel: 'Try again',
+        onPrimary: _retry,
+        secondaryLabel: 'Open settings',
+        onSecondary: AppSettings.openAppSettings,
+      );
     }
+    return _PermMessage(
+      icon: Icons.videocam_off_outlined,
+      title: 'Camera error',
+      body: 'Could not start the camera. Enter the barcode manually instead.',
+      primaryLabel: 'Enter manually',
+      onPrimary: () => Navigator.of(context).pop(),
+    );
   }
 }
 

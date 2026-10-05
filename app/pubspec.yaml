@@ -48,9 +48,9 @@ dependencies:
   http: ^1.2.2
 
   # Runtime permissions (camera for barcode scan).
-  permission_handler: ^12.0.3
   webview_flutter: ^4.14.1
   url_launcher: ^6.3.2
+  app_settings: ^9.0.0
   image_picker: ^1.2.3
   sqflite_common_ffi: ^2.4.3
   # Auth token storage (Keychain / Android Keystore / Windows Credential
