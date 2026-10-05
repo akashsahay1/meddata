@@ -16,7 +16,7 @@ class Shop extends Model
     protected $hidden = ['seq'];
 
     /** Mirrors the column default so a just-created shop has it too. */
-    protected $attributes = ['default_gst_rate_bp' => 500];
+    protected $attributes = ['default_gst_rate_bp' => 1800];
 
     protected function casts(): array
     {

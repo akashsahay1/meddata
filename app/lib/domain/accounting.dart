@@ -200,7 +200,7 @@ class PurchaseFromInvoice {
   }
 
   /// The purchase preview total (tax added to the rates).
-  static GstTotals preview(List<InvoiceDraftLine> lines, {required bool interState, int defaultGstBp = 500}) =>
+  static GstTotals preview(List<InvoiceDraftLine> lines, {required bool interState, int defaultGstBp = 1800}) =>
       GstMath.totals(lines.map((InvoiceDraftLine l) => GstMath.purchaseLine(
             ratePaise: paise(l.rate),
             qty: l.quantity,

@@ -175,7 +175,7 @@ class BillCart extends ChangeNotifier {
 
   // ---- tax ------------------------------------------------------------------
 
-  int gstRateOf(SaleBatch b) => b.gstRateBp ?? _shop?.defaultGstRateBp ?? 500;
+  int gstRateOf(SaleBatch b) => b.gstRateBp ?? _shop?.defaultGstRateBp ?? 1800;
 
   /// Where the supply is taxed: the customer's state (chosen, or from the
   /// GSTIN), else the shop's own state.
