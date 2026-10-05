@@ -13,6 +13,8 @@ class StockMovement extends Model
     public const REASONS = [
         'opening', 'purchase', 'purchase_free', 'sale', 'sale_return',
         'purchase_return', 'adjust', 'expiry_writeoff', 'migration',
+        // A cancelled bill putting its stock back (ref_type 'bill').
+        'sale_cancel',
     ];
 
     public static function clientFields(): array

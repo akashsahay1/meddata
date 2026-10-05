@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BackupController;
+use App\Http\Controllers\Api\BillController;
 use App\Http\Controllers\Api\BrowserCheckoutController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\CouponController;
@@ -64,6 +65,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('sync/status', [SyncController::class, 'status']);
         Route::get('sync/pull', [SyncController::class, 'pull']);
         Route::post('sync/push', [SyncController::class, 'push']);
+
+        // GST billing (online-only; numbers and tax come from the server).
+        Route::get('bills', [BillController::class, 'index']);
+        Route::post('bills', [BillController::class, 'store']);
+        Route::get('bills/{bill}', [BillController::class, 'show'])->whereUuid('bill');
+        Route::post('bills/{bill}/cancel', [BillController::class, 'cancel'])->whereUuid('bill');
+
         Route::post('auth/change-password', [AuthController::class, 'changePassword']);
 
         Route::get('entitlement', [EntitlementController::class, 'show']);

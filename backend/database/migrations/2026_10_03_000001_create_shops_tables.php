@@ -16,13 +16,21 @@ return new class extends Migration
         Schema::create('shops', function (Blueprint $table) {
             $table->id();
             $table->foreignId('owner_user_id')->constrained('users')->cascadeOnDelete();
+            // Trade name (shown in the app); legal_name is the registered
+            // business name printed on tax invoices when it differs.
             $table->string('name');
+            $table->string('legal_name')->nullable();
             $table->string('gstin', 15)->nullable();
             $table->string('state_code', 2)->nullable();
             $table->string('drug_license_no')->nullable();
             $table->text('address')->nullable();
             $table->string('phone', 32)->nullable();
+            // Up to 3 characters so PREFIX/26-27/000042 stays within the
+            // 16-character limit GST rules set for invoice numbers.
             $table->string('invoice_prefix', 12)->nullable();
+            // GST rate used on a bill for products that have none set
+            // (basis points; 500 = 5%, the usual rate for medicines).
+            $table->unsignedInteger('default_gst_rate_bp')->default(500);
             // Monotonic per-shop change counter. Every synced row change takes
             // the next value as its `version`, giving devices a single cursor.
             $table->unsignedBigInteger('seq')->default(0);

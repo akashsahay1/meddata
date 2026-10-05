@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\ShopService;
+use App\Support\ShopDetails;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,20 +26,17 @@ class ShopController extends Controller
         ]);
     }
 
-    /** PATCH /shops/current */
+    /**
+     * PATCH /shops/current — the details printed on invoices (legal name,
+     * GSTIN, state, address, phone, drug licence no., invoice prefix) and
+     * the GST rate for products that have none.
+     */
     public function update(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'gstin' => ['sometimes', 'nullable', 'string', 'size:15'],
-            'state_code' => ['sometimes', 'nullable', 'string', 'size:2'],
-            'drug_license_no' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
-            'invoice_prefix' => ['sometimes', 'nullable', 'string', 'max:12'],
-        ]);
+        $request->replace(ShopDetails::prepare($request->all()));
+        $data = $request->validate(ShopDetails::rules());
         $shop = $this->shops->forUser($request->user());
-        $shop->fill($data)->save();
+        $shop->fill(ShopDetails::merge($shop->only(array_keys(ShopDetails::rules())), $data))->save();
 
         return response()->json(['shop' => $shop->toArray()]);
     }
