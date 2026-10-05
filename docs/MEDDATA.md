@@ -80,7 +80,7 @@ backend/
 
 | Platform | Min version | Notes |
 |----------|-------------|-------|
-| Android  | minSdk 23 (Android 6.0) | arm64-v8a + armeabi-v7a (32-bit) |
+| Android  | minSdk 24 (Android 7.0) | arm64-v8a + armeabi-v7a (32-bit). 24 is the effective floor: Flutter's default, and plugins such as flutter_secure_storage need it |
 | iOS      | 14.0 | |
 | Windows  | 10+ | sqflite FFI, side navigation, browser payment |
 
@@ -244,10 +244,10 @@ php artisan serve --host=0.0.0.0 --port=8000
 ### Tests
 
 ```bash
-# Backend (52 tests: sync, catalog, browser payment, admin)
+# Backend (58 tests: sync, catalog, browser payment, payment security, admin)
 cd backend && php artisan test
 
-# App unit tests (20 tests: repository, product stock, expiry, status)
+# App unit tests (27 tests: repository, product stock, expiry, status, auth token storage)
 cd app && flutter test
 
 # Two-device integration (3 tests: stock sync, price edit, offline, merge)
@@ -264,6 +264,16 @@ cd app && flutter test test/integration/
 - [x] Tests run on in-memory SQLite
 - [x] Admin login via .env ADMIN_EMAIL / ADMIN_PASSWORD
 - [x] ⚠️ Old passwords still in git history — rotate them
+
+### P0b — Security fixes ✅ Done (Oct 2026)
+
+- [x] Payments: no plan without a real Razorpay signature outside `APP_ENV` local/testing (`/order/create` → 503 without keys; `/payment/verify` and browser checkout refuse). Previously a blank Razorpay key in the admin panel let the app "pay" in test mode and get Premium for free
+- [x] A used payment can't be replayed to restart a plan (each order activates exactly once, row-locked); `/payment/verify` reports the plan's real state
+- [x] Legacy Google Play `/purchase/verify` fails closed (it accepted any token)
+- [x] App: test-mode payment and the 7-tap Developer section exist only in debug builds; release shows "Payments are not available right now"
+- [x] App: auth token in `flutter_secure_storage` (moved from shared_preferences on first launch); logs out only on a 401, never when offline; logout clears cached premium/trial
+- [x] Verified with tests: logging in with another user's device_id can't take over their plan; forgot-password `dev_code` only in local/testing
+- [ ] Follow-up: a 401 during sync doesn't log out yet (checked at app start and after payment only)
 
 ### P1 — Products, batches, sync, Windows 🔧 12/14 done
 
@@ -344,23 +354,27 @@ cd app && flutter test test/integration/
 - [ ] `php artisan migrate:fresh --seed` (schema changed, fresh DB required; no real users yet)
 - [ ] `php artisan medicines:import <csv>` (CSV path is now a required argument)
 - [ ] Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`
-- [ ] Set `APP_DEBUG=false` + run `php artisan config:cache`
+- [ ] Set `APP_ENV=production` (with `local` and no Razorpay keys the server still accepts fake payments) and `APP_DEBUG=false`, then run `php artisan config:cache`
+- [ ] Use live `rzp_live_` Razorpay keys (with `rzp_test_` keys anyone can "pay" with test cards)
 - [ ] Rotate old DB password and admin password (exposed in git history)
 - [ ] Set Support WhatsApp number in admin panel
 - [ ] Log in to admin, verify Shops + Master catalog pages
 - [ ] Add live site URL to Razorpay dashboard (for desktop browser payment `/api/v1/pay/...`)
 - [ ] Set up `queue:work` under supervisor (needed for P2 AI invoice)
-- [ ] Build and test Windows installer
+- [ ] Build and test Windows installer (Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage)
 - [ ] Cross-device testing: Windows ↔ phone sync, price conflicts, offline edits, USB barcode scanner
 
 ---
 
 ## 11. Commit history
 
-HEAD: `1635c23` on `origin/main` — all pushed, nothing uncommitted or unpushed.
+Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `c6b15b4` | Security: payment bypasses closed, debug-only test tools, secure token storage |
+| `7edea47` | App: barcode lookup — shop products first, then master catalog |
+| `bd2caa4` | Docs unified into docs/MEDDATA.md |
 | `1635c23` | App: Windows desktop support (build pending Visual Studio) |
 | `e7ce9e4` | Payments: desktop browser checkout |
 | `a778ff0` | Admin: demo tables removed; Shops + Master catalog pages |
