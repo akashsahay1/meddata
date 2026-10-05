@@ -137,10 +137,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
+                                  // Dark on the disabled (light grey)
+                                  // button; white would not show.
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white),
+                                    color: AppColors.ink,
                                   ),
                                 )
                               : Text(_codeSent
