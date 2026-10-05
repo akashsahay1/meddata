@@ -107,7 +107,7 @@ backend/
 | **inv_movements** | id, batch_id, product_id, delta_units, reason (add/sell/adjust/restock), ref_type, ref_id, occurred_at, synced |
 | **price_changes** | id, batch_id, field, old_paise, new_paise, device_id, created_at |
 | **outbox** | seq (auto), mutation_id, table_name, op (upsert/delete/movement), row_id, base_version, data (JSON), status (pending/conflict/rejected), result, created_at |
-| **sync_state** | key-value (cursor, linked_user) |
+| **sync_state** | key-value (cursor, linked_account = server user id, linked_email) |
 
 Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of unsynced `inv_movements`.
 
@@ -124,7 +124,7 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 1. **Push** — Send outbox mutations (batch of 200). Each carries `mutation_id` (dedup), `table`, `op`, `row_id`, `base_version`, `data`. Server responds per-mutation: `ok` (with new version), `conflict` (with server's current row), or `rejected`.
 2. **Pull** — Cursor-based: `GET sync/pull?since=<cursor>&limit=500`. Server returns changed products, batches, stock_movements, price_changes since cursor.
 3. **Conflicts** — On conflict, the server's row is applied locally immediately (so stale prices are never shown). The user's change stays in `issues` for "Use theirs / Keep mine" resolution.
-4. **Account linking** — First sync checks if server shop already has data. If both local and server have data → prompt user to merge or discard local.
+4. **Account linking** — Local data is linked to the server user id (an email change keeps it). First sync checks if server shop already has data. If both local and server have data → prompt user to merge or discard local. Another account's unsynced changes are never dropped without asking.
 5. **Stock** — Never overwritten by sync. Local stock = server_qty_units + unsynced local movements. Movements sync separately.
 
 ### Price safety flow
@@ -256,10 +256,10 @@ php artisan queue:work database   # needed for AI invoice reading
 ### Tests
 
 ```bash
-# Backend (119 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
+# Backend (120 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
 cd backend && php artisan test
 
-# App tests (344 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (356 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -300,8 +300,9 @@ cd app && flutter test test/integration/
 - [x] App: auth token in `flutter_secure_storage` (moved from shared_preferences on first launch); logs out only on a 401, never when offline; logout clears cached premium/trial
 - [x] Verified with tests: logging in with another user's device_id can't take over their plan; forgot-password `dev_code` only in local/testing
 - [x] A 401 during background sync, billing or invoice reading signs out (`AuthService.sessionRejected`); offline, timeouts and 5xx never do; unsynced changes stay on the device and upload when the same account signs in again; the login screen says the session expired (`test/session_expiry_test.dart`)
-- [ ] Follow-up: local data is tied to the account by **email**, so changing the email in Profile (or a different account signing in) wipes changes not yet synced — tie it to the user id or ask first
-- [ ] Follow-up: Login / Forgot password loading spinners are white on the disabled button (invisible)
+- [x] Local data is tied to the server user id, not the email (`sync_state.linked_account`): changing the email keeps everything and uploads waiting changes; an older email link migrates with no prompt (`test/account_link_test.dart`)
+- [x] Another account signing in while the device has changes not uploaded: sync stops and the app asks — sign back in to that account (login pre-filled) or remove them after a confirmation; with nothing waiting, the old copy is cleared as before
+- [x] Login / Forgot password loading spinners are visible (ink) on the disabled button
 
 ### P1 — Products, batches, sync, Windows 🔧 12/14 done
 
@@ -423,6 +424,8 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `48770bf` | App: visible loading spinner on Log in and Send reset code |
+| `4ff9f15` | App: tie local data to the account id, ask before dropping unsynced changes |
 | `94bb058` | App: Reports - stock valuation, profit and expiry loss tabs |
 | `5af1b98` | App: invoice scan saves HSN and GST rate per line |
 | `50c2d57` | Backend: profit report endpoint (GET /reports/profit) |
