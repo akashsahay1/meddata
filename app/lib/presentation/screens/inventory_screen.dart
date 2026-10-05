@@ -8,6 +8,7 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/sync_badge.dart';
+import 'barcode_lookup.dart';
 import 'product_detail_screen.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
@@ -92,7 +93,12 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       prefixIcon: const Icon(Icons.search,
                           size: 20, color: AppColors.muted),
                       suffixIcon: mp.query.isEmpty
-                          ? null
+                          ? IconButton(
+                              tooltip: 'Scan barcode',
+                              icon: const Icon(Icons.qr_code_scanner,
+                                  size: 20, color: AppColors.muted),
+                              onPressed: () => scanAndOpen(context),
+                            )
                           : IconButton(
                               icon: const Icon(Icons.close, size: 18),
                               onPressed: () {

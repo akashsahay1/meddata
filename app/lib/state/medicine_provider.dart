@@ -79,6 +79,17 @@ class MedicineProvider extends ChangeNotifier {
     return null;
   }
 
+  /// The shop's product with this barcode, if any (exact match, ignoring
+  /// surrounding spaces and letter case).
+  ProductStock? productByBarcode(String code) {
+    final String c = code.trim().toLowerCase();
+    if (c.isEmpty) return null;
+    for (final ProductStock p in _products) {
+      if (p.first.barcode.trim().toLowerCase() == c) return p;
+    }
+    return null;
+  }
+
   /// Batches that still hold stock (expiry alerts only matter for these).
   Iterable<Medicine> get _stocked => _all.where((Medicine m) => m.quantity > 0);
 

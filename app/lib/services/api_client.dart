@@ -133,6 +133,23 @@ class ApiClient {
     return const <Map<String, dynamic>>[];
   }
 
+  /// Look a barcode up in the medicines master list. Returns the first match,
+  /// or null when there is none or the server can't be reached.
+  Future<Map<String, dynamic>?> lookupBarcode(String barcode,
+      {String? token}) async {
+    final Map<String, dynamic>? body = await _get(
+      '/medicines/search',
+      query: <String, String>{'barcode': barcode},
+      token: token,
+    );
+    final Object? results = body?['results'];
+    if (results is List && results.isNotEmpty) {
+      final Object? first = results.first;
+      if (first is Map<String, dynamic>) return first;
+    }
+    return null;
+  }
+
   /// Remote config: trial_days, razorpay_key_id, and plan list for the paywall.
   Future<Map<String, dynamic>?> fetchConfig() => _get('/config');
 

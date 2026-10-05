@@ -9,6 +9,7 @@ import '../../core/constants.dart';
 import '../../core/platform.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
+import '../../domain/product_stock.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../state/medicine_provider.dart';
@@ -23,7 +24,18 @@ class AddEditMedicineScreen extends StatefulWidget {
   /// Add a new batch of this medicine: product details are prefilled, the
   /// batch fields (batch no, quantity, dates) start empty.
   final Medicine? newBatchOf;
-  const AddEditMedicineScreen({super.key, this.existing, this.newBatchOf});
+
+  /// New medicine from a scan: the barcode to fill in, and the master-catalog
+  /// entry it matched (if any) to prefill the product details from.
+  final String? initialBarcode;
+  final Map<String, dynamic>? catalogMatch;
+  const AddEditMedicineScreen({
+    super.key,
+    this.existing,
+    this.newBatchOf,
+    this.initialBarcode,
+    this.catalogMatch,
+  });
 
   @override
   State<AddEditMedicineScreen> createState() => _AddEditMedicineScreenState();
@@ -82,6 +94,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     _category = stored.isEmpty ? 'Uncategorised' : stored;
     _mfgDate = batchOnly ? null : m?.mfgDate;
     if (m != null && !batchOnly) _expiryDate = m.expiryDate;
+    if (m == null) {
+      _barcode.text = widget.initialBarcode?.trim() ?? '';
+      if (widget.catalogMatch != null) _applyCatalog(widget.catalogMatch!);
+    }
   }
 
   @override
@@ -172,7 +188,69 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     );
     if (code != null && code.isNotEmpty) {
       setState(() => _barcode.text = code);
+      await _lookupBarcode(code);
     }
+  }
+
+  /// Only a brand-new medicine looks its barcode up; editing a product or
+  /// adding a batch keeps the details already chosen.
+  bool get _isNewProduct => widget.existing == null && widget.newBatchOf == null;
+
+  /// After a scan (or Enter from a USB scanner): if the shop already has this
+  /// barcode, offer to add a batch to it instead; otherwise prefill the form
+  /// from the master catalog.
+  Future<void> _lookupBarcode(String raw) async {
+    final String code = raw.trim();
+    if (!mounted || !_isNewProduct || code.isEmpty) return;
+    final ProductStock? own =
+        context.read<MedicineProvider>().productByBarcode(code);
+    if (own != null) {
+      final bool addBatch = await _confirmAddBatch(own) ?? false;
+      if (!addBatch || !mounted) return;
+      Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+        builder: (_) => AddEditMedicineScreen(newBatchOf: own.first),
+      ));
+      return;
+    }
+    final String? token = context.read<AuthService>().token;
+    final Map<String, dynamic>? match =
+        await _api.lookupBarcode(code, token: token);
+    if (!mounted || match == null) return;
+    // Don't overwrite a name the user has already typed without asking.
+    if (_name.text.trim().isEmpty) {
+      setState(() => _applyCatalog(match));
+      return;
+    }
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Barcode matches ${match['name'] ?? 'a catalog medicine'}'),
+        action: SnackBarAction(
+          label: 'Use',
+          onPressed: () => setState(() => _applyCatalog(match)),
+        ),
+      ));
+  }
+
+  Future<bool?> _confirmAddBatch(ProductStock p) {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Already in inventory'),
+        content: Text('${p.name} has this barcode. '
+            'Add a new batch to it instead?'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Add batch'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -605,20 +683,27 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   }
 
   void _onNameSelected(Map<String, dynamic> m) {
-    setState(() {
-      _name.text = (m['name'] as String?) ?? _name.text;
-      _brand.text = (m['manufacturer'] as String?) ?? '';
-      final Object? price = m['price'];
-      if (price is num) {
-        _selling.text = price.toStringAsFixed(2);
-      }
-      final Object? unit = m['unit'];
-      if (unit is String) {
-        final String canonical = AppConstants.canonicalUnit(unit);
-        if (AppConstants.units.contains(canonical)) _unit = canonical;
-      }
-    });
+    setState(() => _applyCatalog(m));
     _nameFocus.unfocus();
+  }
+
+  /// Fill the product fields from a master-catalog entry.
+  void _applyCatalog(Map<String, dynamic> m) {
+    _name.text = (m['name'] as String?) ?? _name.text;
+    _brand.text = (m['manufacturer'] as String?) ?? '';
+    final Object? price = m['price'];
+    if (price is num) {
+      _selling.text = price.toStringAsFixed(2);
+    }
+    final Object? unit = m['unit'];
+    if (unit is String) {
+      final String canonical = AppConstants.canonicalUnit(unit);
+      if (AppConstants.units.contains(canonical)) _unit = canonical;
+    }
+    final Object? barcode = m['barcode'];
+    if (_barcode.text.trim().isEmpty && barcode is String) {
+      _barcode.text = barcode;
+    }
   }
 
   Widget _numberField(
@@ -673,6 +758,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
               Expanded(
                 child: TextFormField(
                   controller: _barcode,
+                  // A USB scanner types the code and presses Enter.
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: _lookupBarcode,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

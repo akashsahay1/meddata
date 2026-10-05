@@ -247,7 +247,7 @@ php artisan serve --host=0.0.0.0 --port=8000
 # Backend (52 tests: sync, catalog, browser payment, admin)
 cd backend && php artisan test
 
-# App unit tests (19 tests: repository, product stock, expiry, status)
+# App unit tests (20 tests: repository, product stock, expiry, status)
 cd app && flutter test
 
 # Two-device integration (3 tests: stock sync, price edit, offline, merge)
@@ -284,7 +284,9 @@ cd app && flutter test test/integration/
 
 ### P2 — Onboarding ⬜ Next
 
-- [ ] Barcode lookup: search shop products first, then master catalog
+- [x] Barcode lookup: search shop products first, then master catalog
+  - Inventory search has a scan button (camera on phones; on Windows a dialog a USB scanner types into). Shop's own product → opens it; else master-catalog match (`GET /medicines/search?barcode=`) → Add screen prefilled; else Add screen with only the barcode filled. The free-plan limit applies before a new medicine.
+  - Add screen (new medicine only): after a scan, or Enter from a USB scanner in the barcode field, a barcode the shop already has offers "Add batch" to that product; a catalog match prefills name, manufacturer, unit and MRP (asks first if a name is already typed).
 - [ ] Excel/CSV import wizard: column mapping UI, preview, row validation, batch import
 - [ ] AI invoice reading (server-side): photo/PDF → extract purchase entry. Needs queue worker on server (`supervisor` for `queue:work`)
 

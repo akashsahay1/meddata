@@ -60,6 +60,17 @@ void main() {
     expect(mp.visibleProducts.map((ProductStock p) => p.name), <String>['Cetirizine']);
   });
 
+  test('productByBarcode finds the shop product, ignoring case and spaces', () async {
+    await mp.add(batch('Dolo 650', 10, inDays(200)).copyWith(barcode: '8901234567890'));
+    await mp.add(batch('Crocin', 10, inDays(200)).copyWith(barcode: 'AbC-12'));
+    await mp.add(batch('ORS', 10, inDays(200)));
+
+    expect(mp.productByBarcode(' 8901234567890 ')?.name, 'Dolo 650');
+    expect(mp.productByBarcode('abc-12')?.name, 'Crocin');
+    expect(mp.productByBarcode('0000'), isNull);
+    expect(mp.productByBarcode('  '), isNull, reason: 'blank never matches a product without a barcode');
+  });
+
   test('expiry alerts only count batches that still have stock', () async {
     await mp.add(batch('ORS', 0, inDays(-5), low: 0)); // expired but empty
     await mp.add(batch('ORS', 20, inDays(10), low: 0), allowDuplicate: true); // expiring
