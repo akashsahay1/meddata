@@ -18,6 +18,9 @@ class MedicineRepository {
   MedicineRepository([DatabaseHelper? dbHelper])
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
+  /// The database this repository reads (reports query the same one).
+  DatabaseHelper get database => _dbHelper;
+
   static const Uuid _uuid = Uuid();
 
   /// Batch + product columns flattened into the shape [Medicine.fromMap]
@@ -187,6 +190,35 @@ class MedicineRepository {
       }
     });
     return getById(id);
+  }
+
+  /// Write off an expired batch: all its stock leaves as one
+  /// 'expiry_writeoff' movement, queued for sync like any adjustment, so it
+  /// drops out of stock value and is recorded as an expiry loss. Returns
+  /// the units written off (0 when the batch isn't expired yet - it can
+  /// still be sold on its expiry date - or has no stock).
+  Future<int> writeOffExpired(String id, {DateTime? now}) async {
+    final DateTime at = now ?? DateTime.now();
+    final int today =
+        DateTime(at.year, at.month, at.day).millisecondsSinceEpoch;
+    final Database db = await _dbHelper.database;
+    int units = 0;
+    await db.transaction((Transaction txn) async {
+      final Map<String, Object?>? b = await _row(txn, 'batches', id);
+      if (b == null || (b['is_deleted'] as int? ?? 0) == 1) return;
+      final DateTime exp = DateTime.fromMillisecondsSinceEpoch(
+          (b['expiry_date'] as int?) ?? 0);
+      if (!DateTime(exp.year, exp.month, exp.day)
+          .isBefore(DateTime.fromMillisecondsSinceEpoch(today))) {
+        return;
+      }
+      final int qty = await _qty(txn, id);
+      if (qty <= 0) return;
+      await _move(txn, id, b['product_id'] as String, -qty, 'expiry_writeoff',
+          at: at);
+      units = qty;
+    });
+    return units;
   }
 
   /// Delete a batch; the product goes too once it has no batches left.

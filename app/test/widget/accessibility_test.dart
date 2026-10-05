@@ -29,11 +29,13 @@ import 'package:med_stock/presentation/screens/sync_issues_screen.dart';
 import 'package:med_stock/presentation/screens/upgrade_screen.dart';
 import 'package:med_stock/services/billing_api.dart';
 import 'package:med_stock/services/invoice_scan_service.dart';
+import 'package:med_stock/services/auth_service.dart';
 import 'package:med_stock/theme/app_theme.dart';
 
 import '../billing_api_test.dart' show sampleBill;
 import '../import/import_wizard_screen_test.dart' show pumpUntil;
 import '../support/finders.dart';
+import '../support/reports_fixture.dart';
 import '../support/test_app.dart';
 
 /// A screen to check, built over the seeded shop ([TestApp.seedShop]).
@@ -103,6 +105,7 @@ final List<_Screen> _otherScreens = <_Screen>[
   // No bottom-bar tab for Profile on phones: it opens from the Home avatar.
   _Screen('Profile', (_) => const MainShell(), tab: 'Profile', byTooltip: true),
   _Screen('Reports', (_) => const ReportsScreen()),
+  ..._reportTabs,
   _Screen('Sync issues', (_) => const SyncIssuesScreen()),
   _Screen('Login', (_) => const LoginScreen()),
   _Screen('Sign up', (_) => const SignupScreen()),
@@ -277,6 +280,20 @@ final List<_Screen> _newScreens = <_Screen>[
   _wizard('Import: columns', 3),
   _wizard('Import: check rows', 4),
   _wizard('Import: done', 5),
+];
+
+/// The report tabs (stock valuation and expiry over the seeded shop; profit
+/// signed out, and signed in with a server report).
+AuthService? _profitAuth;
+final List<_Screen> _reportTabs = <_Screen>[
+  _Screen('Reports: valuation', (_) => const ReportsScreen(), tab: 'Valuation'),
+  _Screen('Reports: expiry', (_) => const ReportsScreen(), tab: 'Expiry'),
+  _Screen('Reports: profit signed out', (_) => const ReportsScreen(),
+      tab: 'Profit'),
+  _Screen('Reports: profit',
+      (_) => signedInReports(_profitAuth!, profitServer(), initialTab: 2),
+      prepare: (TestApp app) async =>
+          _profitAuth = await signedInAuth(app, profitServer())),
 ];
 
 double _contrast(Color a, Color b) {
@@ -606,6 +623,19 @@ void main() {
         final SemanticsHandle semantics = tester.ensureSemantics();
         final TestApp app =
             await start(tester, height: 2000, signedIn: screen.signedIn);
+        await show(tester, app, screen);
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+        semantics.dispose();
+      });
+    }
+  });
+
+  group('report tabs contrast', () {
+    for (final _Screen screen in _reportTabs) {
+      testWidgets('${screen.name} passes the text contrast guideline',
+          (WidgetTester tester) async {
+        final SemanticsHandle semantics = tester.ensureSemantics();
+        final TestApp app = await start(tester, height: 2400);
         await show(tester, app, screen);
         await expectLater(tester, meetsGuideline(textContrastGuideline));
         semantics.dispose();

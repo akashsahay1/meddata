@@ -7,6 +7,7 @@ import '../data/models/medicine.dart';
 import '../data/models/stock_import.dart';
 import '../data/models/stock_movement.dart';
 import '../data/repositories/medicine_repository.dart';
+import '../data/repositories/report_repository.dart';
 import '../domain/medicine_status.dart';
 import '../domain/product_stock.dart';
 
@@ -309,6 +310,17 @@ class MedicineProvider extends ChangeNotifier {
     await load();
   }
 
+  /// Writes off the stock of these expired batches (see
+  /// [MedicineRepository.writeOffExpired]); returns the units removed.
+  Future<int> writeOffExpired(Iterable<String> ids) async {
+    int units = 0;
+    for (final String id in ids) {
+      units += await _repo.writeOffExpired(id);
+    }
+    await load();
+    return units;
+  }
+
   /// Soft-deletes and returns the deleted medicine so the UI can offer undo.
   Future<Medicine?> delete(String id) async {
     final Medicine? m = await _repo.getById(id);
@@ -321,6 +333,9 @@ class MedicineProvider extends ChangeNotifier {
     await _repo.restore(id);
     await load();
   }
+
+  /// Stock report queries over the same inventory database.
+  ReportRepository get reports => ReportRepository(_repo.database);
 
   Future<List<StockMovement>> movementsFor(String id) =>
       _repo.movementsFor(id);

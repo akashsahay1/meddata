@@ -7,19 +7,53 @@ import 'package:provider/provider.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../services/invoice_pdf.dart';
+import '../../services/reports_api.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'reports/expiry_section.dart';
+import 'reports/profit_section.dart';
+import 'reports/stock_value_section.dart';
 import 'upgrade_screen.dart';
 
-class ReportsScreen extends StatelessWidget {
-  const ReportsScreen({super.key});
+/// Reports (Premium): an overview, stock valuation, profit and expiry loss,
+/// each a tab. Stock value and expiry read this device's inventory (work
+/// offline); profit comes from the server's bills.
+class ReportsScreen extends StatefulWidget {
+  const ReportsScreen({super.key, this.initialTab = 0, this.reportsApi});
+
+  /// 0 Overview, 1 Valuation, 2 Profit, 3 Expiry.
+  final int initialTab;
+  final ReportsApi? reportsApi;
+
+  @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(
+        length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3))
+      ..addListener(() {
+        if (!_tabs.indexIsChanging) setState(() {});
+      });
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final SettingsService settings = context.watch<SettingsService>();
-    final MedicineProvider mp = context.watch<MedicineProvider>();
 
     if (!settings.isPremium) {
       return Scaffold(
@@ -32,6 +66,53 @@ class ReportsScreen extends StatelessWidget {
       );
     }
 
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Reports'),
+        actions: <Widget>[
+          // The new tabs have their own PDF / CSV buttons.
+          if (_tabs.index == 0)
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: 'Export PDF',
+              onPressed: () => _OverviewSection._exportPdf(
+                  context.read<MedicineProvider>(), settings.currency),
+            ),
+          const SizedBox(width: 4),
+        ],
+        bottom: TabBar(
+          controller: _tabs,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
+          tabs: const <Widget>[
+            Tab(height: 48, text: 'Overview'),
+            Tab(height: 48, text: 'Valuation'),
+            Tab(height: 48, text: 'Profit'),
+            Tab(height: 48, text: 'Expiry'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabs,
+        children: <Widget>[
+          const _OverviewSection(),
+          const StockValueSection(),
+          ProfitSection(api: widget.reportsApi),
+          const ExpirySection(),
+        ],
+      ),
+    );
+  }
+}
+
+/// The original summary: counts, stock value and medicines per category.
+class _OverviewSection extends StatelessWidget {
+  const _OverviewSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final SettingsService settings = context.watch<SettingsService>();
+    final MedicineProvider mp = context.watch<MedicineProvider>();
     final String cur = settings.currency;
     final Map<String, int> byCategory = _byCategory(mp.visibleAllForAlerts);
     final int maxCat =
@@ -40,118 +121,105 @@ class ReportsScreen extends StatelessWidget {
     final Color expSoon = mp.expiringCount > 0 ? AppColors.statusRed : AppColors.muted;
     final Color expired = mp.expiredCount > 0 ? AppColors.statusRed : AppColors.muted;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Reports'),
-        actions: <Widget>[
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Export PDF',
-            onPressed: () => _exportPdf(context, mp, cur),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
-        children: <Widget>[
-          const SectionHeader(title: 'Overview'),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatCard(
-                  label: 'Total medicines',
-                  value: '${mp.totalCount}',
-                  sub: '${byCategory.length} categories',
-                ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+      children: <Widget>[
+        const SectionHeader(title: 'Overview'),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: StatCard(
+                label: 'Total medicines',
+                value: '${mp.totalCount}',
+                sub: '${byCategory.length} categories',
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  label: 'Stock value',
-                  value: Fmt.money(mp.totalStockValue, symbol: cur),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatCard(
-                  label: 'Expiring soon',
-                  value: '${mp.expiringCount}',
-                  sub: 'Needs attention',
-                  subColor: expSoon,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  label: 'Expired',
-                  value: '${mp.expiredCount}',
-                  sub: 'Remove from stock',
-                  subColor: expired,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: StatCard(
-                  label: 'Low stock',
-                  value: '${mp.lowStockCount}',
-                  sub: 'Reorder soon',
-                  subColor: amber,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: StatCard(
-                  label: 'Expired value',
-                  value: Fmt.money(_expiredValue(mp), symbol: cur),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 26),
-          const SectionHeader(title: 'Medicines by category'),
-          const SizedBox(height: 14),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(AppRadii.card),
-              border: Border.all(color: AppColors.border),
             ),
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-            child: byCategory.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: Text(
-                      'No category data yet.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  )
-                : Column(
-                    children: <Widget>[
-                      for (final MapEntry<String, int> e in byCategory.entries)
-                        _BarRow(label: e.key, value: e.value, max: maxCat),
-                    ],
-                  ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: 'Stock value',
+                value: Fmt.money(mp.totalStockValue, symbol: cur),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: StatCard(
+                label: 'Expiring soon',
+                value: '${mp.expiringCount}',
+                sub: 'Needs attention',
+                subColor: expSoon,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: 'Expired',
+                value: '${mp.expiredCount}',
+                sub: 'Remove from stock',
+                subColor: expired,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: StatCard(
+                label: 'Low stock',
+                value: '${mp.lowStockCount}',
+                sub: 'Reorder soon',
+                subColor: amber,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                label: 'Expired value',
+                value: Fmt.money(_expiredValue(mp), symbol: cur),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 26),
+        const SectionHeader(title: 'Medicines by category'),
+        const SizedBox(height: 14),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
-      ),
+          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+          child: byCategory.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text(
+                    'No category data yet.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                )
+              : Column(
+                  children: <Widget>[
+                    for (final MapEntry<String, int> e in byCategory.entries)
+                      _BarRow(label: e.key, value: e.value, max: maxCat),
+                  ],
+                ),
+        ),
+      ],
     );
   }
 
-  Map<String, int> _byCategory(List<Medicine> all) {
+  static Map<String, int> _byCategory(List<Medicine> all) {
     final Map<String, int> map = <String, int>{};
     for (final Medicine m in all) {
       final String key = m.category.trim().isEmpty ? 'Uncategorised' : m.category.trim();
@@ -163,7 +231,7 @@ class ReportsScreen extends StatelessWidget {
     return Map<String, int>.fromEntries(sorted.take(8));
   }
 
-  double _expiredValue(MedicineProvider mp) {
+  static double _expiredValue(MedicineProvider mp) {
     double v = 0;
     for (final Medicine m in mp.visibleAllForAlerts) {
       if (mp.statusOf(m).isExpired) v += m.stockValue;
@@ -171,8 +239,7 @@ class ReportsScreen extends StatelessWidget {
     return v;
   }
 
-  Future<void> _exportPdf(
-      BuildContext context, MedicineProvider mp, String cur) async {
+  static Future<void> _exportPdf(MedicineProvider mp, String cur) async {
     // The built-in PDF fonts have no ₹; embed the app's font (as invoices do).
     final InvoiceFonts fonts = await InvoiceFonts.load();
     final pw.Document doc = pw.Document(
