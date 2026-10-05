@@ -11,6 +11,7 @@ import '../widgets/status_chip.dart'; // exports the shared ui_kit + medicineSta
 import '../widgets/sync_badge.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
+import 'billing/new_bill_screen.dart';
 import 'medicine_detail_screen.dart';
 import 'product_detail_screen.dart';
 import 'settings_screen.dart';
@@ -59,7 +60,11 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           physics: const AlwaysScrollableScrollPhysics(),
           children: <Widget>[
-            _Header(onProfile: () => _open(const SettingsScreen()), onSearch: _addMedicine),
+            _Header(
+              onProfile: () => _open(const SettingsScreen()),
+              onSearch: _addMedicine,
+              onNewBill: () => _open(const NewBillScreen()),
+            ),
             // The cards overlap the rounded green header by ~40px, matching the design.
             Transform.translate(
               offset: const Offset(0, -40),
@@ -84,12 +89,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Green rounded-bottom header: greeting, app/store name, profile avatar button
-/// and a search-or-add pill.
+/// Green rounded-bottom header: greeting, app/store name, profile avatar button,
+/// a search-or-add pill and the "New bill" button.
 class _Header extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onSearch;
-  const _Header({required this.onProfile, required this.onSearch});
+  final VoidCallback onNewBill;
+  const _Header({required this.onProfile, required this.onSearch, required this.onNewBill});
 
   String _greeting() {
     final int h = DateTime.now().hour;
@@ -147,37 +153,70 @@ class _Header extends StatelessWidget {
               _AvatarButton(onTap: onProfile),
             ],
           ),
-          // 2dp less than the design's 20: the pill below is 2dp taller
-          // (48dp touch target), so it keeps its place.
+          // 2dp less than the design's 20: the pills below are 2dp taller
+          // (48dp touch target), so they keep their place.
           const SizedBox(height: 18),
-          Material(
-            color: Colors.white.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              onTap: onSearch,
-              borderRadius: BorderRadius.circular(14),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-                child: Row(
-                  children: <Widget>[
-                    Icon(Icons.search, size: 18, color: _searchHint),
-                    SizedBox(width: 10),
-                    Flexible(
-                      child: Text(
-                        'Search or add medicine',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _searchHint,
-                        ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Material(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: onSearch,
+                    borderRadius: BorderRadius.circular(14),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(Icons.search, size: 18, color: _searchHint),
+                          SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              'Search or add medicine',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: _searchHint,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Material(
+                color: AppColors.orange,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  onTap: onNewBill,
+                  borderRadius: BorderRadius.circular(14),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(Icons.receipt_long, size: 18, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'New bill',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

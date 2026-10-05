@@ -18,6 +18,7 @@ import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'billing/shop_settings_screen.dart';
 import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
 
@@ -109,6 +110,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.lock_outline,
                   label: 'Change password',
                   onTap: () => _changePassword(context),
+                ),
+              ]),
+
+              // Billing (GST invoices)
+              _sectionLabel('Billing'),
+              _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.storefront_outlined,
+                  label: 'Shop & invoice details',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const ShopSettingsScreen())),
                 ),
               ]),
 
@@ -481,6 +493,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
+          // Opened from the avatar on Home (phones): a way back.
+          if (Navigator.of(context).canPop()) ...<Widget>[
+            IconButton(
+              tooltip: 'Back',
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+            ),
+            const SizedBox(width: 4),
+          ],
           _avatar(name, avatarUrl),
           const SizedBox(width: 16),
           Expanded(

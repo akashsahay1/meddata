@@ -23,6 +23,11 @@ class Medicine {
   final DateTime updatedAt;
   final bool isDeleted;
 
+  /// GST details of the product (shared by its batches): HSN code, and the
+  /// GST rate in basis points (500 = 5%; null = the shop's default rate).
+  final String hsn;
+  final int? gstRateBp;
+
   const Medicine({
     required this.id,
     this.productId = '',
@@ -42,6 +47,8 @@ class Medicine {
     required this.createdAt,
     required this.updatedAt,
     this.isDeleted = false,
+    this.hsn = '',
+    this.gstRateBp,
   });
 
   /// Total stock value at selling price (used in reports).
@@ -63,6 +70,9 @@ class Medicine {
     String? notes,
     DateTime? updatedAt,
     bool? isDeleted,
+    String? hsn,
+    int? gstRateBp,
+    bool clearGstRate = false,
   }) {
     return Medicine(
       id: id,
@@ -83,6 +93,8 @@ class Medicine {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      hsn: hsn ?? this.hsn,
+      gstRateBp: clearGstRate ? null : (gstRateBp ?? this.gstRateBp),
     );
   }
 
@@ -106,6 +118,8 @@ class Medicine {
       'created_at': createdAt.millisecondsSinceEpoch,
       'updated_at': updatedAt.millisecondsSinceEpoch,
       'is_deleted': isDeleted ? 1 : 0,
+      'hsn': hsn,
+      'gst_rate_bp': gstRateBp,
     };
   }
 
@@ -135,6 +149,8 @@ class Medicine {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(
           (map['updated_at'] as int?) ?? 0),
       isDeleted: ((map['is_deleted'] as int?) ?? 0) == 1,
+      hsn: (map['hsn'] as String?) ?? '',
+      gstRateBp: (map['gst_rate_bp'] as num?)?.toInt(),
     );
   }
 }

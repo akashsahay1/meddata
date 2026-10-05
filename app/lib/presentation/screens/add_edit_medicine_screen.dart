@@ -58,6 +58,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   late final TextEditingController _purchase;
   late final TextEditingController _selling;
   late final TextEditingController _notes;
+  late final TextEditingController _hsn;
+
+  /// GST rate of the product in basis points; null = the shop's default.
+  int? _gstRateBp;
 
   String _unit = 'Tablets';
   String _category = 'Uncategorised';
@@ -94,6 +98,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
             ? m.sellingPrice.toString()
             : '');
     _notes = TextEditingController(text: m?.notes ?? '');
+    _hsn = TextEditingController(text: m?.hsn ?? '');
+    _gstRateBp = m?.gstRateBp;
     _unit = m?.unit ?? 'Tablets';
     final String stored = m?.category.trim() ?? '';
     _category = stored.isEmpty ? 'Uncategorised' : stored;
@@ -111,7 +117,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     _nameFocus.dispose();
     for (final TextEditingController c in <TextEditingController>[
       _name, _brand, _batch, _barcode, _quantity,
-      _lowStock, _purchase, _selling, _notes,
+      _lowStock, _purchase, _selling, _notes, _hsn,
     ]) {
       c.dispose();
     }
@@ -296,6 +302,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       expiryDate: _expiryDate,
       notes: _notes.text.trim(),
       updatedAt: now,
+      hsn: _hsn.text.trim(),
+      gstRateBp: _gstRateBp,
+      clearGstRate: _gstRateBp == null,
     );
     // copyWith keeps the old value for a null, so a manufacture date the
     // user cleared while editing has to be dropped explicitly.
@@ -446,6 +455,18 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                           decimal: true,
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Product-level GST details used on bills (all batches).
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(
+                        child: _numberField(_hsn, 'HSN code', hint: '3004'),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: _gstDropdown()),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -740,6 +761,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     if (_barcode.text.trim().isEmpty && barcode is String) {
       _barcode.text = barcode;
     }
+    final Object? hsn = m['hsn'];
+    if (hsn is String && hsn.isNotEmpty) _hsn.text = hsn;
+    final Object? gst = m['gst_rate_bp'];
+    if (gst is num) _gstRateBp = gst.toInt();
   }
 
   Widget _numberField(
@@ -844,6 +869,41 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
               ],
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  /// GST rate of the medicine; "Shop default" leaves it to the rate set in
+  /// the shop's invoice details.
+  Widget _gstDropdown() {
+    const List<int> rates = <int>[0, 500, 1200, 1800, 2800];
+    final int? current = _gstRateBp;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _fieldLabel('GST rate'),
+        DropdownButtonFormField<int?>(
+          initialValue: current,
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+              color: AppColors.muted),
+          style: const TextStyle(
+            fontFamily: AppTheme.fontFamily,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+          items: <DropdownMenuItem<int?>>[
+            const DropdownMenuItem<int?>(child: Text('Shop default')),
+            for (final int r in <int>[
+              ...rates,
+              if (current != null && !rates.contains(current)) current,
+            ])
+              DropdownMenuItem<int?>(
+                  value: r, child: Text('${r % 100 == 0 ? r ~/ 100 : r / 100}%')),
+          ],
+          onChanged: (int? v) => setState(() => _gstRateBp = v),
         ),
       ],
     );

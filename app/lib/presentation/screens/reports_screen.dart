@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
+import '../../services/invoice_pdf.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
@@ -172,7 +173,10 @@ class ReportsScreen extends StatelessWidget {
 
   Future<void> _exportPdf(
       BuildContext context, MedicineProvider mp, String cur) async {
-    final pw.Document doc = pw.Document();
+    // The built-in PDF fonts have no ₹; embed the app's font (as invoices do).
+    final InvoiceFonts fonts = await InvoiceFonts.load();
+    final pw.Document doc = pw.Document(
+        theme: pw.ThemeData.withFont(base: fonts.regular, bold: fonts.bold));
     final Map<String, int> byCat = _byCategory(mp.visibleAllForAlerts);
     doc.addPage(
       pw.Page(

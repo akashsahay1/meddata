@@ -39,7 +39,7 @@ class ApiClient {
   /// invalid-credentials (422/401) from network failure (null).
   Future<({int status, Map<String, dynamic>? body})> postResult(
       String path, Map<String, dynamic> body,
-      {String? token}) async {
+      {String? token, Duration? timeout}) async {
     try {
       final Uri uri = Uri.parse('$baseUrl$path');
       final http.Response res = await _http
@@ -52,7 +52,7 @@ class ApiClient {
             },
             body: jsonEncode(body),
           )
-          .timeout(_timeout);
+          .timeout(timeout ?? _timeout);
       Map<String, dynamic>? parsed;
       try {
         parsed = jsonDecode(res.body) as Map<String, dynamic>;
@@ -253,6 +253,11 @@ class ApiClient {
 
   Future<({int status, Map<String, dynamic>? body})> currentShop(String token) =>
       getResult('/shops/current', token: token);
+
+  /// Change the shop's invoice details (only the fields given).
+  Future<({int status, Map<String, dynamic>? body})> updateShop(
+          String token, Map<String, dynamic> changes) =>
+      _patchResult('/shops/current', changes, token: token);
 
   Future<({int status, Map<String, dynamic>? body})> syncStatus(String token) =>
       getResult('/sync/status', token: token);

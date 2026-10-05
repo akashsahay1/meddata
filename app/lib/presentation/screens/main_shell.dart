@@ -6,14 +6,17 @@ import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
+import 'billing/bills_screen.dart';
 import 'home_screen.dart';
 import 'inventory_screen.dart';
 import 'settings_screen.dart';
 import 'upgrade_screen.dart';
 
 /// Root tab shell: Home, Inventory, a center orange '+' that opens Add
-/// Medicine, Alerts (with a count badge) and Profile. Tab state is preserved
-/// with an [IndexedStack].
+/// Medicine, Bills, Alerts (with a count badge) and Profile. Tab state is
+/// preserved with an [IndexedStack]. Phones have room for four tabs around
+/// the '+', so Profile is reached from the avatar on Home there; the desktop
+/// rail shows all five.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -73,12 +76,15 @@ class _MainShellState extends State<MainShell> {
     if (choice != null) await sync.resolveLocalData(choice);
   }
 
-  static const List<Widget> _tabs = <Widget>[
-    HomeScreen(),
-    InventoryScreen(),
-    AlertsScreen(),
-    SettingsScreen(),
-  ];
+  static const int _billsTab = 2;
+
+  List<Widget> get _tabs => <Widget>[
+        const HomeScreen(),
+        const InventoryScreen(),
+        BillsScreen(active: _index == _billsTab),
+        const AlertsScreen(),
+        const SettingsScreen(),
+      ];
 
   Future<void> _addMedicine() async {
     final MedicineProvider mp = context.read<MedicineProvider>();
@@ -123,6 +129,8 @@ class _MainShellState extends State<MainShell> {
                     icon: Icon(Icons.home_outlined), label: Text('Home')),
                 const NavigationRailDestination(
                     icon: Icon(Icons.grid_view_outlined), label: Text('Inventory')),
+                const NavigationRailDestination(
+                    icon: Icon(Icons.receipt_long_outlined), label: Text('Bills')),
                 NavigationRailDestination(
                   icon: Badge(
                     isLabelVisible: alertTotal > 0,
@@ -227,16 +235,16 @@ class _BottomBar extends StatelessWidget {
             ),
             _CenterAddButton(onTap: onAdd),
             _NavItem(
-              icon: Icons.notifications_none,
-              label: 'Alerts',
+              icon: Icons.receipt_long_outlined,
+              label: 'Bills',
               selected: index == 2,
-              badgeCount: alertCount,
               onTap: () => onSelect(2),
             ),
             _NavItem(
-              icon: Icons.person_outline,
-              label: 'Profile',
+              icon: Icons.notifications_none,
+              label: 'Alerts',
               selected: index == 3,
+              badgeCount: alertCount,
               onTap: () => onSelect(3),
             ),
           ],

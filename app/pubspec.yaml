@@ -94,6 +94,9 @@ flutter:
   generate: true
   assets:
     - assets/images/
+    # Static Regular/Bold subsets of GoogleSansFlex (OFL) for invoice PDFs:
+    # the PDF can't use the variable font's weights, and they carry the ₹ glyph.
+    - assets/fonts/pdf/
 
   fonts:
     - family: GoogleSansFlex

@@ -25,7 +25,7 @@ class MedicineRepository {
   static const String _select = '''
     SELECT b.id AS id, b.product_id AS product_id, p.name AS name,
       p.manufacturer AS brand, p.category AS category, b.batch_no AS batch_no,
-      p.barcode AS barcode,
+      p.barcode AS barcode, p.hsn AS hsn, p.gst_rate_bp AS gst_rate_bp,
       b.server_qty_units + IFNULL((SELECT SUM(m.delta_units) FROM inv_movements m
         WHERE m.batch_id = b.id AND m.synced = 0), 0) AS quantity,
       p.unit AS unit, p.low_stock_threshold_units AS low_stock_threshold,
@@ -504,6 +504,8 @@ class MedicineRepository {
         'barcode': m.barcode.trim(),
         'low_stock_threshold_units': m.lowStockThreshold,
         'notes': m.notes,
+        'hsn': m.hsn.trim().isEmpty ? null : m.hsn.trim(),
+        'gst_rate_bp': m.gstRateBp,
       };
 
   static Map<String, Object?> _batchColumns(Medicine m) => <String, Object?>{

@@ -27,6 +27,7 @@ class StockMovement {
         return StockReason.add;
       case 'restock':
       case 'sale_return':
+      case 'sale_cancel': // a cancelled bill put its stock back
         return StockReason.restock;
       case 'sell':
       case 'sale':
