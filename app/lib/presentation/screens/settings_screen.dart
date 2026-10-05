@@ -18,6 +18,7 @@ import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/ui_kit.dart';
+import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -159,14 +160,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _sectionLabel('Data'),
               _menuCard(<Widget>[
                 _menuRow(
+                  icon: Icons.upload_file_outlined,
+                  label: 'Import stock from Excel / CSV',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                        builder: (_) => const ImportWizardScreen()),
+                  ),
+                ),
+                _menuRow(
                   icon: Icons.table_view_outlined,
                   label: 'Export as CSV',
                   onTap: () => _exportCsv(context),
                 ),
                 _menuRow(
-                  icon: Icons.file_download_outlined,
-                  label: 'Import from file (JSON / CSV)',
-                  onTap: () => _import(context),
+                  icon: Icons.settings_backup_restore,
+                  label: 'Restore JSON backup',
+                  onTap: () => _importJson(context),
                 ),
               ]),
 
@@ -960,24 +969,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _import(BuildContext context) async {
+  /// Restore a Meddata JSON backup. Spreadsheets go through the import
+  /// wizard instead.
+  Future<void> _importJson(BuildContext context) async {
     const XTypeGroup group = XTypeGroup(
-      label: 'Backup / CSV',
-      extensions: <String>['json', 'csv'],
+      label: 'Meddata backup',
+      extensions: <String>['json'],
+      mimeTypes: <String>['application/json', 'application/octet-stream'],
+      uniformTypeIdentifiers: <String>['public.json'],
     );
     final XFile? picked = await openFile(acceptedTypeGroups: <XTypeGroup>[group]);
-    if (picked == null) return;
-    final String path = picked.path;
-    final BackupService b = BackupService();
-    int count;
-    if (path.toLowerCase().endsWith('.csv')) {
-      count = await b.importCsv(File(path));
-    } else {
-      count = await b.importJson(File(path));
-    }
-    if (!context.mounted) return;
+    if (picked == null || !context.mounted) return;
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    await context.read<MedicineProvider>().load();
+    final MedicineProvider mp = context.read<MedicineProvider>();
+    int count;
+    try {
+      count = await BackupService().importJson(File(picked.path));
+    } catch (e) {
+      debugPrint('[Backup] restore failed: $e');
+      messenger.showSnackBar(const SnackBar(
+        content: Text('This is not a Meddata backup. For Excel or CSV files '
+            'use "Import stock from Excel / CSV".'),
+      ));
+      return;
+    }
+    await mp.load();
     messenger.showSnackBar(
       SnackBar(content: Text('Imported $count medicines')),
     );

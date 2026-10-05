@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../sync/outbox.dart';
 import '../db/database_helper.dart';
 import '../models/medicine.dart';
+import '../models/stock_import.dart';
 import '../models/stock_movement.dart';
 
 /// Inventory data access. The UI still works with [Medicine] (one batch of a
@@ -269,7 +272,164 @@ class MedicineRepository {
     return rows.map(StockMovement.fromMap).toList();
   }
 
+  /// Save a spreadsheet import (see `StockImportPlanner`) in one
+  /// transaction: new products, new batches with their opening stock, and
+  /// stock added to batches already here — written and queued for sync
+  /// the same way as [insert] and [adjustQuantity]. Writes go in batches so
+  /// thousands of rows stay quick on a phone. A product or batch the rows
+  /// point at that was deleted meanwhile (e.g. by a sync) is created anew.
+  Future<StockImportResult> importStock(List<StockImportRow> rows,
+      {void Function(int done, int total)? onProgress}) async {
+    final Database db = await _dbHelper.database;
+    int products = 0;
+    int batches = 0;
+    int toppedUp = 0;
+    int units = 0;
+    await db.transaction((Transaction txn) async {
+      final Set<String> liveProducts = await _liveProducts(
+          txn, rows.map((StockImportRow r) => r.productId).whereType<String>());
+      final Map<String, String> liveBatches = await _liveBatches(txn,
+          rows.map((StockImportRow r) => r.addToBatchId).whereType<String>());
+      final Map<String, String> created = <String, String>{};
+      Batch batch = txn.batch();
+      int queued = 0;
+      for (int i = 0; i < rows.length; i++) {
+        final StockImportRow r = rows[i];
+        final Medicine m = r.medicine;
+        final int ts = m.createdAt.millisecondsSinceEpoch;
+        final String? target = r.addToBatchId;
+        if (target != null && liveBatches.containsKey(target)) {
+          if (m.quantity > 0) {
+            _queueMove(batch, target, liveBatches[target]!, m.quantity,
+                'purchase', m.createdAt);
+            toppedUp++;
+            units += m.quantity;
+            queued += 2;
+          }
+        } else {
+          String? productId = r.productId != null &&
+                  liveProducts.contains(r.productId)
+              ? r.productId
+              : created[r.productKey];
+          if (productId == null) {
+            productId = _uuid.v4();
+            created[r.productKey] = productId;
+            final Map<String, Object?> data = _productData(m);
+            batch.insert('products', <String, Object?>{
+              'id': productId,
+              ...data,
+              'name_norm': DatabaseHelper.normName(m.name),
+              'created_at': ts,
+              'updated_at': ts,
+            });
+            Outbox.queueNew(batch,
+                table: 'products', rowId: productId, data: data);
+            products++;
+            queued += 2;
+          }
+          final Map<String, Object?> cols = _batchColumns(m);
+          batch.insert('batches', <String, Object?>{
+            'id': m.id,
+            'product_id': productId,
+            ...cols,
+            'created_at': ts,
+            'updated_at': ts,
+          });
+          Outbox.queueNew(batch,
+              table: 'batches',
+              rowId: m.id,
+              data: <String, Object?>{
+                'product_id': productId,
+                ..._batchSyncData(cols),
+              });
+          batches++;
+          queued += 2;
+          if (m.quantity != 0) {
+            _queueMove(batch, m.id, productId, m.quantity, 'opening',
+                m.createdAt);
+            units += m.quantity;
+            queued += 2;
+          }
+        }
+        if (queued >= 400) {
+          await batch.commit(noResult: true);
+          batch = txn.batch();
+          queued = 0;
+          onProgress?.call(i + 1, rows.length);
+        }
+      }
+      await batch.commit(noResult: true);
+    });
+    Outbox.onEnqueued?.call();
+    onProgress?.call(rows.length, rows.length);
+    return StockImportResult(
+      medicinesAdded: products,
+      batchesAdded: batches,
+      batchesToppedUp: toppedUp,
+      unitsAdded: units,
+    );
+  }
+
   // ---------------------------------------------------------------------
+
+  /// The ids among [ids] of products that still exist.
+  Future<Set<String>> _liveProducts(
+      DatabaseExecutor db, Iterable<String> ids) async {
+    final Set<String> out = <String>{};
+    final List<String> all = ids.toSet().toList();
+    for (int i = 0; i < all.length; i += 500) {
+      final List<String> chunk = all.sublist(i, math.min(i + 500, all.length));
+      final List<Map<String, Object?>> rows = await db.rawQuery(
+          'SELECT id FROM products WHERE is_deleted = 0 '
+          'AND id IN (${List<String>.filled(chunk.length, '?').join(',')})',
+          chunk);
+      out.addAll(rows.map((Map<String, Object?> r) => r['id'] as String));
+    }
+    return out;
+  }
+
+  /// Batch id → product id, for the batches among [ids] that still exist.
+  Future<Map<String, String>> _liveBatches(
+      DatabaseExecutor db, Iterable<String> ids) async {
+    final Map<String, String> out = <String, String>{};
+    final List<String> all = ids.toSet().toList();
+    for (int i = 0; i < all.length; i += 500) {
+      final List<String> chunk = all.sublist(i, math.min(i + 500, all.length));
+      final List<Map<String, Object?>> rows = await db.rawQuery(
+          'SELECT b.id AS id, b.product_id AS product_id FROM batches b '
+          'JOIN products p ON p.id = b.product_id '
+          'WHERE b.is_deleted = 0 AND p.is_deleted = 0 '
+          'AND b.id IN (${List<String>.filled(chunk.length, '?').join(',')})',
+          chunk);
+      for (final Map<String, Object?> r in rows) {
+        out[r['id'] as String] = r['product_id'] as String;
+      }
+    }
+    return out;
+  }
+
+  /// [_move] for a [Batch]: the same ledger row and sync mutation.
+  void _queueMove(Batch batch, String batchId, String productId, int delta,
+      String reason, DateTime at) {
+    final String id = _uuid.v4();
+    batch.insert('inv_movements', <String, Object?>{
+      'id': id,
+      'batch_id': batchId,
+      'product_id': productId,
+      'delta_units': delta,
+      'reason': reason,
+      'occurred_at': at.millisecondsSinceEpoch,
+    });
+    Outbox.queueNew(batch,
+        table: 'stock_movements',
+        rowId: id,
+        data: <String, Object?>{
+          'batch_id': batchId,
+          'delta_units': delta,
+          'reason': reason,
+          'occurred_at': at.toUtc().toIso8601String(),
+        });
+  }
 
   Future<String?> _findProduct(DatabaseExecutor db, Medicine m) async {
     final List<Map<String, Object?>> rows = await db.query(

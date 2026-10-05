@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 
 import '../data/db/database_helper.dart';
 import '../data/models/medicine.dart';
+import '../data/models/stock_import.dart';
 import '../data/models/stock_movement.dart';
 import '../data/repositories/medicine_repository.dart';
 import '../domain/medicine_status.dart';
@@ -232,6 +235,23 @@ class MedicineProvider extends ChangeNotifier {
   /// Free-plan limit counts products (a new batch of a known medicine is free).
   bool canAdd() =>
       Entitlement(isPremium: isPremium).canAddMedicine(_products.length);
+
+  /// How many more medicines (products) the free plan allows; null = no
+  /// limit.
+  int? get newMedicineRoom {
+    final Entitlement e = Entitlement(isPremium: isPremium);
+    if (e.isPremium) return null;
+    return math.max(0, e.freeLimit - _products.length);
+  }
+
+  /// Save the rows of a spreadsheet import (one transaction), then reload.
+  Future<StockImportResult> importStock(List<StockImportRow> rows,
+      {void Function(int done, int total)? onProgress}) async {
+    final StockImportResult result =
+        await _repo.importStock(rows, onProgress: onProgress);
+    await load();
+    return result;
+  }
 
   Future<AddResult> add(Medicine m, {bool allowDuplicate = false}) async {
     if (!canAdd()) return AddResult.blockedByFreeLimit;

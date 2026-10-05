@@ -60,17 +60,33 @@ class Outbox {
     onEnqueued?.call();
   }
 
+  /// Bulk variant of [upsert] and [movement] for rows the server has never
+  /// seen (a spreadsheet import): adds the change to [batch]. A new row has
+  /// no pending change to merge with. Call [onEnqueued] once committed.
+  static void queueNew(
+    Batch batch, {
+    required String table,
+    required String rowId,
+    required Map<String, Object?> data,
+  }) {
+    batch.insert('outbox', _row(table, 'upsert', rowId, 0, data));
+  }
+
   static Future<void> _insert(DatabaseExecutor db, String table, String op,
       String rowId, int rowVersion, Map<String, Object?> data) async {
-    await db.insert('outbox', <String, Object?>{
-      'mutation_id': _uuid.v4(),
-      'table_name': table,
-      'op': op,
-      'row_id': rowId,
-      // 0 = the server has never seen this row (a create).
-      'base_version': rowVersion > 0 ? rowVersion : null,
-      'data': jsonEncode(data),
-      'created_at': DateTime.now().millisecondsSinceEpoch,
-    });
+    await db.insert('outbox', _row(table, op, rowId, rowVersion, data));
   }
+
+  static Map<String, Object?> _row(String table, String op, String rowId,
+          int rowVersion, Map<String, Object?> data) =>
+      <String, Object?>{
+        'mutation_id': _uuid.v4(),
+        'table_name': table,
+        'op': op,
+        'row_id': rowId,
+        // 0 = the server has never seen this row (a create).
+        'base_version': rowVersion > 0 ? rowVersion : null,
+        'data': jsonEncode(data),
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      };
 }

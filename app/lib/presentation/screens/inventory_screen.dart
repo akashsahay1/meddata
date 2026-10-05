@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import '../widgets/sync_badge.dart';
 import 'barcode_lookup.dart';
+import 'import/import_wizard_screen.dart';
 import 'product_detail_screen.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
@@ -263,10 +264,23 @@ class _EmptyInventory extends StatelessWidget {
                   ? (filtered
                       ? 'Try a different search or filter.'
                       : 'Try a different search.')
-                  : 'Tap the + button to add your first item.',
+                  : 'Tap the + button to add your first item, or bring in '
+                      'your stock list from a spreadsheet.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.muted),
             ),
+            if (!hasAny) ...<Widget>[
+              const SizedBox(height: 20),
+              SecondaryButton(
+                label: 'Import from Excel / CSV',
+                icon: Icons.upload_file_outlined,
+                expand: false,
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                      builder: (_) => const ImportWizardScreen()),
+                ),
+              ),
+            ],
           ],
         ),
       ),
