@@ -138,6 +138,8 @@ class AppTheme {
         floatingLabelStyle:
             const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
         hintStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
+        // The default helper grey is 2.4:1 on the canvas; muted passes AA.
+        helperStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide(color: line, width: 1.5),
@@ -158,7 +160,8 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.orange,
-          foregroundColor: Colors.white,
+          // Ink, not white, on orange: 5.0:1 contrast (white is 2.8:1).
+          foregroundColor: AppColors.ink,
           elevation: 0,
           minimumSize: const Size.fromHeight(54),
           shape: RoundedRectangleBorder(

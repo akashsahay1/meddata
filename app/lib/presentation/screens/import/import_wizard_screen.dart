@@ -688,7 +688,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
         const Text(
           'Pick the column that holds each detail. We filled in our best '
           'guesses — please check them. Details marked * are needed.',
-          style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.muted),
+          style: TextStyle(
+              fontSize: 13, height: 1.4, fontWeight: FontWeight.w500, color: AppColors.muted),
         ),
         const SizedBox(height: 12),
         _Panel(
@@ -731,17 +732,25 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
           ),
           const SizedBox(height: 16),
         ],
-        const _Label('Unit for rows that have none'),
-        DropdownButtonFormField<String>(
-          initialValue: _defaultUnit,
-          isExpanded: true,
-          items: <DropdownMenuItem<String>>[
-            for (final String u in AppConstants.units)
-              DropdownMenuItem<String>(value: u, child: Text(u)),
-          ],
-          onChanged: (String? u) {
-            if (u != null) setState(() => _defaultUnit = u);
-          },
+        // One node for screen readers: "Unit for rows that have none, Tablets".
+        MergeSemantics(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const _Label('Unit for rows that have none'),
+              DropdownButtonFormField<String>(
+                initialValue: _defaultUnit,
+                isExpanded: true,
+                items: <DropdownMenuItem<String>>[
+                  for (final String u in AppConstants.units)
+                    DropdownMenuItem<String>(value: u, child: Text(u)),
+                ],
+                onChanged: (String? u) {
+                  if (u != null) setState(() => _defaultUnit = u);
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -791,26 +800,30 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       ],
       onChanged: (int? c) => _setColumn(f, c == null || c < 0 ? null : c),
     );
-    return Container(
-      decoration: BoxDecoration(
-        border: last
-            ? null
-            : const Border(bottom: BorderSide(color: AppColors.divider)),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints box) => box.maxWidth >= 520
-            ? Row(
-                children: <Widget>[
-                  Expanded(flex: 5, child: label),
-                  const SizedBox(width: 12),
-                  Expanded(flex: 6, child: picker),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[label, const SizedBox(height: 8), picker],
-              ),
+    // The detail and its column picker are read together, e.g.
+    // "Medicine name *, e.g. Dolo 650, A · Item Name".
+    return MergeSemantics(
+      child: Container(
+        decoration: BoxDecoration(
+          border: last
+              ? null
+              : const Border(bottom: BorderSide(color: AppColors.divider)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints box) => box.maxWidth >= 520
+              ? Row(
+                  children: <Widget>[
+                    Expanded(flex: 5, child: label),
+                    const SizedBox(width: 12),
+                    Expanded(flex: 6, child: picker),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[label, const SizedBox(height: 8), picker],
+                ),
+        ),
       ),
     );
   }

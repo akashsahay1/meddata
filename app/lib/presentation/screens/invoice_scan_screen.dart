@@ -966,7 +966,9 @@ class _Tips extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text('•  ', style: TextStyle(color: AppColors.muted)),
+                const ExcludeSemantics(
+                  child: Text('•  ', style: TextStyle(color: AppColors.muted)),
+                ),
                 Expanded(
                   child: Text(
                     tip,
@@ -1010,6 +1012,8 @@ class _LineCard extends StatelessWidget {
       if (duplicate) 'Batch already in stock',
     ];
     final ProductStock? product = line.target;
+    final String title =
+        product?.name ?? (line.name.isEmpty ? 'No name' : line.name);
     final String unit = line.stockUnit;
     final String qty = <String>[
       'Qty ${line.quantity}'
@@ -1047,8 +1051,7 @@ class _LineCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      product?.name ??
-                          (line.name.isEmpty ? 'No name' : line.name),
+                      title,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
@@ -1119,7 +1122,7 @@ class _LineCard extends StatelessWidget {
               Column(
                 children: <Widget>[
                   IconButton(
-                    tooltip: 'Edit item',
+                    tooltip: 'Edit $title',
                     icon: const Icon(
                       Icons.edit_outlined,
                       color: AppColors.muted,
@@ -1127,7 +1130,7 @@ class _LineCard extends StatelessWidget {
                     onPressed: onEdit,
                   ),
                   IconButton(
-                    tooltip: 'Remove item',
+                    tooltip: 'Remove $title',
                     icon: const Icon(
                       Icons.delete_outline,
                       color: AppColors.statusRed,

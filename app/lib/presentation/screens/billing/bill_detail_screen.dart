@@ -219,7 +219,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         actions: <Widget>[
           if (bill != null && !bill.isCancelled)
             PopupMenuButton<String>(
-              tooltip: 'More',
+              tooltip: 'More actions',
               onSelected: (String v) {
                 if (v == 'cancel') _cancel();
               },

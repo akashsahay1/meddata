@@ -205,7 +205,7 @@ class _BillsScreenState extends State<BillsScreen> {
                   suffixIcon: _search.text.isEmpty
                       ? null
                       : IconButton(
-                          tooltip: 'Clear',
+                          tooltip: 'Clear search',
                           icon: const Icon(Icons.close, size: 18),
                           onPressed: () {
                             _search.clear();

@@ -538,7 +538,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
         prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
         suffixIcon: _search.text.isNotEmpty
             ? IconButton(
-                tooltip: 'Clear',
+                tooltip: 'Clear search',
                 icon: const Icon(Icons.close, size: 18),
                 onPressed: _search.clear,
               )
@@ -904,7 +904,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
         const BillingSectionLabel('Payment'),
         Wrap(
           spacing: 8,
-          runSpacing: 8,
+          // The pills' 48dp touch boxes already leave 8dp between rows.
           children: <Widget>[
             for (final PaymentMode m in PaymentMode.values)
               PillChoice(
@@ -963,7 +963,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
             ? const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.ink),
               )
             : const Icon(Icons.receipt_long, size: 20),
         label: Text(_submitting ? 'Creating bill…' : 'Create bill'),
@@ -1057,8 +1057,7 @@ class _CartItemCard extends StatelessWidget {
               Text(Inr.format(amount),
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.ink)),
               IconButton(
-                tooltip: 'Remove',
-                visualDensity: VisualDensity.compact,
+                tooltip: 'Remove ${item.name}',
                 icon: const Icon(Icons.close, size: 20, color: AppColors.muted),
                 onPressed: () => cart.remove(item),
               ),

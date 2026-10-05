@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/inr.dart';
 import '../../../data/models/bill.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/ui_kit.dart';
 
 /// Billing needs the server: shown instead of a billing screen when the
 /// device is offline (inventory keeps working offline).
@@ -166,7 +167,8 @@ class BillingSectionLabel extends StatelessWidget {
       );
 }
 
-/// Pill-shaped choice chip matching the Inventory filters.
+/// Pill-shaped choice chip matching the Inventory filters: 40dp to look
+/// at, 48dp tall to touch.
 class PillChoice extends StatelessWidget {
   const PillChoice({
     super.key,
@@ -183,9 +185,11 @@ class PillChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
+    return TapTarget(
+      label: label,
+      tooltip: false,
       selected: selected,
+      onTap: onTap,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,

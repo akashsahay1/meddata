@@ -251,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xFF9BAAA7),
+                        color: AppColors.muted, // AA on the canvas
                       ),
                     ),
                   ),
