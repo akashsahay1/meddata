@@ -23,12 +23,16 @@ import '../support/test_app.dart';
 
 /// A screen to check, built over the seeded shop ([TestApp.seedShop]).
 class _Screen {
-  const _Screen(this.name, this.build, {this.tab, this.prepare});
+  const _Screen(this.name, this.build,
+      {this.tab, this.byTooltip = false, this.prepare});
   final String name;
   final Widget Function(TestApp app) build;
 
   /// Bottom-bar tab to switch to, for screens inside the tab shell.
   final String? tab;
+
+  /// Find [tab] by its tooltip instead of its text (an icon-only button).
+  final bool byTooltip;
 
   /// Extra setup before the screen is shown.
   final Future<void> Function(TestApp app)? prepare;
@@ -71,7 +75,8 @@ final List<_Screen> _keyScreens = <_Screen>[
 
 /// Everything else, checked with the same rules.
 final List<_Screen> _otherScreens = <_Screen>[
-  _Screen('Profile', (_) => const MainShell(), tab: 'Profile'),
+  // No bottom-bar tab for Profile on phones: it opens from the Home avatar.
+  _Screen('Profile', (_) => const MainShell(), tab: 'Profile', byTooltip: true),
   _Screen('Reports', (_) => const ReportsScreen()),
   _Screen('Sync issues', (_) => const SyncIssuesScreen()),
   _Screen('Login', (_) => const LoginScreen()),
@@ -104,7 +109,9 @@ void main() {
     await tester.pumpWidget(app.wrap(screen.build(app), textScale: textScale));
     await tester.pumpAndSettle();
     if (screen.tab != null) {
-      await tester.tap(find.text(screen.tab!));
+      await tester.tap(screen.byTooltip
+          ? find.byTooltip(screen.tab!)
+          : find.text(screen.tab!));
       await tester.pumpAndSettle();
     }
   }

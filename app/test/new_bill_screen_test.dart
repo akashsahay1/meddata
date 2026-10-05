@@ -85,10 +85,26 @@ class _Server extends ApiClient {
   }
 }
 
+/// The token in memory: the real store is platform secure storage, which has
+/// no implementation under `flutter test` (a read would never complete).
+class _MemoryTokenStore implements TokenStore {
+  String? value;
+
+  @override
+  Future<String?> read() async => value;
+
+  @override
+  Future<void> write(String token) async => value = token;
+
+  @override
+  Future<void> delete() async => value = null;
+}
+
 void main() {
   testWidgets('counter sale: offline gate, FEFO line, stale price, bill made', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues(<String, Object>{'auth_token': 'tok', 'auth_email': 'a@b.c'});
-    final AuthService auth = AuthService(SettingsService(), 'phone-1');
+    final AuthService auth =
+        AuthService(SettingsService(), 'phone-1', null, _MemoryTokenStore());
     await auth.init();
     final MedicineProvider meds = MedicineProvider(_Meds());
     await meds.load();

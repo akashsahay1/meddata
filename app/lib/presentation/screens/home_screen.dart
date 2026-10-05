@@ -201,14 +201,15 @@ class _Header extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        Icon(Icons.receipt_long, size: 18, color: Colors.white),
+                        // Ink, not white, on orange: 5.0:1 contrast (white is 2.8).
+                        Icon(Icons.receipt_long, size: 18, color: AppColors.ink),
                         SizedBox(width: 8),
                         Text(
                           'New bill',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: AppColors.ink,
                           ),
                         ),
                       ],
