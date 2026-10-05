@@ -158,8 +158,11 @@ void main() {
       await tester.pumpWidget(app.wrap(const InventoryScreen()));
       await tester.pumpAndSettle();
       expect(find.text('No medicines yet'), findsOneWidget);
-      expect(find.text('Tap the + button to add your first item.'),
+      expect(
+          find.text('Tap the + button to add your first item, or bring in '
+              'your stock list from a spreadsheet.'),
           findsOneWidget);
+      expect(find.text('Import from Excel / CSV'), findsOneWidget);
       expect(find.text('All · 0'), findsOneWidget);
 
       await app.addBatch('Cetirizine', qty: 50);

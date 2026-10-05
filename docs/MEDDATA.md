@@ -55,7 +55,7 @@ app/lib/
 - **Notifications:** flutter_local_notifications + timezone (scheduled expiry/low-stock alerts)
 - **Barcode:** mobile_scanner (phones only; desktop uses USB scanner typing into the field)
 - **Payments:** Razorpay — WebView checkout on phones, browser redirect on desktop
-- **Export:** csv + pdf + printing + share_plus
+- **Export / import:** csv + pdf + printing + share_plus; .xlsx read with `archive` + `xml` (pure Dart)
 - **Auth:** Custom Bearer token (no Sanctum) → email/password login → api_tokens table (SHA-256 hash)
 
 ### Backend (Laravel 13 + Filament 5)
@@ -253,8 +253,9 @@ php artisan queue:work database   # needed for AI invoice reading
 # Backend (77 tests: sync, catalog, browser payment, payment security, invoice scans, admin)
 cd backend && php artisan test
 
-# App tests (133 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
-#   widget tests for Add/Edit + Home/Inventory, accessibility on every screen, add→alert smoke test)
+# App tests (180 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+#   Excel/CSV import, widget tests for Add/Edit + Home/Inventory + import wizard,
+#   accessibility on every screen, add→alert smoke test)
 cd app && flutter test
 
 # Two-device integration (needs a running backend; skipped otherwise)
@@ -299,12 +300,16 @@ cd app && flutter test test/integration/
 - [ ] **Windows app build** — code ready (sqflite FFI, camera/scanner hidden on desktop, side menu for large screens, Windows notifications, Meddata branding). Blocked on Visual Studio "Desktop development with C++" install. Installer (MSIX or Inno Setup) also pending.
 - [ ] **Phone sync UI testing** — real-device test of sync flow (phone was disconnected)
 
-### P2 — Onboarding 🔧 In progress
+### P2 — Onboarding ✅ Done
 
 - [x] Barcode lookup: search shop products first, then master catalog
   - Inventory search has a scan button (camera on phones; on Windows a dialog a USB scanner types into). Shop's own product → opens it; else master-catalog match (`GET /medicines/search?barcode=`) → Add screen prefilled; else Add screen with only the barcode filled. The free-plan limit applies before a new medicine.
   - Add screen (new medicine only): after a scan, or Enter from a USB scanner in the barcode field, a barcode the shop already has offers "Add batch" to that product; a catalog match prefills name, manufacturer, unit and MRP (asks first if a name is already typed).
-- [ ] Excel/CSV import wizard: column mapping UI, preview, row validation, batch import
+- [x] Excel/CSV import wizard: Settings → Data → "Import stock from Excel / CSV" (also on the empty Inventory)
+  - Steps: pick .xlsx/.csv → sheet + header row (found automatically, even below title rows) → match columns (auto-guessed from English and distributor headers: Item Name, Batch, Exp, MRP, Qty, Pack, Rate, Mfr, Closing Stock, PTR…, checked against the column's values) → check every row (what imports, what is skipped and why) → import with progress and a results screen
+  - Parsing/validation in `app/lib/services/import/` (pure Dart, runs in a background isolate): format detected from content (CSV in UTF-8/UTF-16/Latin-1 with `,` `;` tab `|`; .xlsx via `archive` + `xml`; old .xls/.ods get a clear message); dates dd/MM/yyyy, dd-MM-yy, MM/yy, MMM-yy, dd-MMM-yyyy, yyyy-MM-dd and Excel serials (month-only expiry = end of month); prices like ₹1,234.50 / 45/- / 1,00,000; "10+2" qty = 12; units from pack text (10's/1x10 → Strips, 100ML → Bottles)
+  - Rows join an existing medicine with the same name when maker/unit agree; same medicine + batch (or same expiry without batch) = duplicate → skip or add quantity; zero-qty rows skipped by default; free-plan limit explained before importing
+  - Saved in one transaction via `MedicineRepository.importStock` (products, batches, opening/purchase movements, outbox — same as adding by hand). The old fixed-column CSV import is removed; JSON backup restore kept
 - [x] AI invoice reading (server-side): photo/PDF → extract purchase entry
   - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Claude (`claude-opus-5-5`, effort medium, fixed JSON schema via `output_config.format`, server-side refusal fallback `fallbacks: "default"`) → `GET /invoices/scan/{id}`, shop-scoped
   - Dates/numbers/GSTIN/HSN normalised; each line matched to the shop's products and the master catalog (barcode, then exact name, then loose name); retries with backoff; clear failure codes (`not_configured`, `refused`, `too_long`, `unreadable_output`, `no_items`, `auth`, `busy`, `stalled` after 15 min); files deleted after 30 days
@@ -336,7 +341,7 @@ cd app && flutter test test/integration/
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
 - [~] ~~Supplier management UI~~ — replaced by P4 parties (customers + suppliers)
-- [ ] Bulk CSV import of medicines (being replaced by P2 import wizard)
+- [x] ~~Bulk CSV import of medicines~~ → replaced by the P2 import wizard
 - [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
 - [ ] Accessibility coverage for screens added since the audit (invoice scan, import wizard, billing)
 - [ ] Contrast below WCAG AA in brand colours (white on orange buttons 2.8:1, status pills 2.2–3.4:1, Subscribe plan toggle 4.0:1) — needs a design decision
@@ -391,6 +396,8 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `893fddf` | App: Excel/CSV stock import wizard |
+| `910f0d6` | Android release signing from key.properties; docs |
 | `ad51dd5` | README: final update |
 | `70eadeb` | App a11y: 48dp touch targets, screen-reader names, AA muted text, large text |
 | `e289628` | App a11y: password toggles and settings switches named; auth links wrap |
