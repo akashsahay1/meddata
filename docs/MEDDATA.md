@@ -112,7 +112,7 @@ Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of un
 
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes.
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage).
 
 ---
 
@@ -175,7 +175,9 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 | POST | `/payment/verify` | Verify Razorpay payment |
 | POST | `/backup` | Upload backup |
 | GET | `/backup/latest` | Download latest backup |
-| GET | `/medicines/search` | Search master catalog |
+| GET | `/medicines/search` | Search master catalog (`?q=` name prefix or `?barcode=`) |
+| POST | `/invoices/scan` | Upload purchase invoice photo/PDF for AI reading (202) |
+| GET | `/invoices/scan/{id}` | Scan status + extracted lines |
 
 ---
 
@@ -233,21 +235,24 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 ```bash
 cd backend
 composer install
-cp .env.example .env               # set DB, ADMIN_EMAIL, ADMIN_PASSWORD, Razorpay keys
+cp .env.example .env               # set DB, ADMIN_EMAIL, ADMIN_PASSWORD, Razorpay keys, ANTHROPIC_API_KEY
 php artisan migrate:fresh --seed    # schema + admin + plans + settings
 php artisan medicines:import <csv>  # import master catalog (CSV path is required)
 php artisan serve --host=0.0.0.0 --port=8000
+php artisan queue:work database   # needed for AI invoice reading
 ```
+
+**AI invoice env:** `ANTHROPIC_API_KEY` (required for invoice scans), `ANTHROPIC_MODEL=claude-opus-5-5`; optional `ANTHROPIC_EFFORT`, `ANTHROPIC_MAX_TOKENS`, `ANTHROPIC_TIMEOUT`, `ANTHROPIC_FALLBACKS` (`off` disables the refusal fallback), `ANTHROPIC_BASE_URL`, `DB_QUEUE_RETRY_AFTER=600`.
 
 - **Admin panel:** `/admin` → login with ADMIN_EMAIL / ADMIN_PASSWORD from `.env`
 
 ### Tests
 
 ```bash
-# Backend (58 tests: sync, catalog, browser payment, payment security, admin)
+# Backend (77 tests: sync, catalog, browser payment, payment security, invoice scans, admin)
 cd backend && php artisan test
 
-# App unit tests (27 tests: repository, product stock, expiry, status, auth token storage)
+# App tests (50 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan)
 cd app && flutter test
 
 # Two-device integration (3 tests: stock sync, price edit, offline, merge)
@@ -292,13 +297,17 @@ cd app && flutter test test/integration/
 - [ ] **Windows app build** — code ready (sqflite FFI, camera/scanner hidden on desktop, side menu for large screens, Windows notifications, Meddata branding). Blocked on Visual Studio "Desktop development with C++" install. Installer (MSIX or Inno Setup) also pending.
 - [ ] **Phone sync UI testing** — real-device test of sync flow (phone was disconnected)
 
-### P2 — Onboarding ⬜ Next
+### P2 — Onboarding 🔧 In progress
 
 - [x] Barcode lookup: search shop products first, then master catalog
   - Inventory search has a scan button (camera on phones; on Windows a dialog a USB scanner types into). Shop's own product → opens it; else master-catalog match (`GET /medicines/search?barcode=`) → Add screen prefilled; else Add screen with only the barcode filled. The free-plan limit applies before a new medicine.
   - Add screen (new medicine only): after a scan, or Enter from a USB scanner in the barcode field, a barcode the shop already has offers "Add batch" to that product; a catalog match prefills name, manufacturer, unit and MRP (asks first if a name is already typed).
 - [ ] Excel/CSV import wizard: column mapping UI, preview, row validation, batch import
-- [ ] AI invoice reading (server-side): photo/PDF → extract purchase entry. Needs queue worker on server (`supervisor` for `queue:work`)
+- [x] AI invoice reading (server-side): photo/PDF → extract purchase entry
+  - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Claude (`claude-opus-5-5`, effort medium, fixed JSON schema via `output_config.format`, server-side refusal fallback `fallbacks: "default"`) → `GET /invoices/scan/{id}`, shop-scoped
+  - Dates/numbers/GSTIN/HSN normalised; each line matched to the shop's products and the master catalog (barcode, then exact name, then loose name); retries with backoff; clear failure codes (`not_configured`, `refused`, `too_long`, `unreadable_output`, `no_items`, `auth`, `busy`, `stalled` after 15 min); files deleted after 30 days
+  - App "Scan invoice" button on Add Medicine: camera/gallery/PDF on phones, file picker on desktop; online-only; editable review (fix/remove lines, duplicate-batch warning) → adds through `MedicineProvider.addFromInvoice` → `MedicineRepository.insert` like a manual add (known medicine = new batch); free-plan limit respected
+  - [ ] Follow-up: save HSN/GST% from scanned lines once billing adds them to `Medicine`
 
 ### P3 — GST billing ⬜ Planned
 
@@ -360,7 +369,10 @@ cd app && flutter test test/integration/
 - [ ] Set Support WhatsApp number in admin panel
 - [ ] Log in to admin, verify Shops + Master catalog pages
 - [ ] Add live site URL to Razorpay dashboard (for desktop browser payment `/api/v1/pay/...`)
-- [ ] Set up `queue:work` under supervisor (needed for P2 AI invoice)
+- [ ] Set `ANTHROPIC_API_KEY`; keep `QUEUE_CONNECTION=database`
+- [ ] Run the queue worker under supervisor: `php artisan queue:work database --sleep=3 --tries=3 --timeout=330 --max-time=3600` (`autorestart=true`, `stopwaitsecs=360`); `php artisan queue:restart` after each deploy
+- [ ] Raise upload limits to ~12 MB: PHP `upload_max_filesize` + `post_max_size` (currently 2 MB) and nginx `client_max_body_size`
+- [ ] Cron: `* * * * * php artisan schedule:run` (daily cleanup of old invoice scans)
 - [ ] Build and test Windows installer (Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage)
 - [ ] Cross-device testing: Windows ↔ phone sync, price conflicts, offline edits, USB barcode scanner
 
@@ -372,6 +384,8 @@ Newest first. Run `git log --oneline` for the live state.
 
 | SHA | Description |
 |-----|-------------|
+| `fb518f9` | AI invoice reading: server-side Claude extraction + app review screen |
+| `d3bfa60` | Docs: security fixes, deploy notes |
 | `c6b15b4` | Security: payment bypasses closed, debug-only test tools, secure token storage |
 | `7edea47` | App: barcode lookup — shop products first, then master catalog |
 | `bd2caa4` | Docs unified into docs/MEDDATA.md |
