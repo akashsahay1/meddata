@@ -22,7 +22,9 @@ class ShopSettingsScreen extends StatefulWidget {
 }
 
 class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
-  late final BillingApi _api = widget.api ?? BillingApi();
+  // A 401 (the server no longer accepts the login) signs out, as elsewhere.
+  late final BillingApi _api = (widget.api ?? BillingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   final GlobalKey<FormState> _form = GlobalKey<FormState>();
 
   final TextEditingController _name = TextEditingController();

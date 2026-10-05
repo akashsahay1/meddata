@@ -59,12 +59,31 @@ void usePhoneScreen(WidgetTester tester, {double height = 780}) {
   addTearDown(tester.view.reset);
 }
 
+/// The saved login in memory: the real store is platform secure storage,
+/// which has no implementation under `flutter test` (a read never completes).
+class MemoryTokenStore implements TokenStore {
+  String? value;
+
+  @override
+  Future<String?> read() async => value;
+
+  @override
+  Future<void> write(String token) async => value = token;
+
+  @override
+  Future<void> delete() async => value = null;
+}
+
 /// The backend without a network. Master-catalog name search and barcode
-/// lookup answer from [catalog]; every other call fails as if offline.
-/// Requested URLs are kept in [requests].
+/// lookup answer from [catalog]; a GET whose path ends with a key of
+/// [responses] answers that JSON (200); every other call fails as if
+/// offline. Requested URLs are kept in [requests].
 class FakeBackend {
-  FakeBackend({List<Map<String, Object?>>? catalog})
-      : catalog = catalog ?? defaultCatalog;
+  FakeBackend({
+    List<Map<String, Object?>>? catalog,
+    Map<String, Object?>? responses,
+  })  : catalog = catalog ?? defaultCatalog,
+        responses = responses ?? <String, Object?>{};
 
   static const List<Map<String, Object?>> defaultCatalog =
       <Map<String, Object?>>[
@@ -85,6 +104,7 @@ class FakeBackend {
   ];
 
   final List<Map<String, Object?>> catalog;
+  final Map<String, Object?> responses;
   final List<Uri> requests = <Uri>[];
 
   late final ApiClient api = ApiClient(MockClient(_handle));
@@ -104,6 +124,14 @@ class FakeBackend {
       return http.Response(
           jsonEncode(<String, Object?>{'results': results}), 200,
           headers: <String, String>{'content-type': 'application/json'});
+    }
+    if (request.method == 'GET') {
+      for (final MapEntry<String, Object?> r in responses.entries) {
+        if (request.url.path.endsWith(r.key)) {
+          return http.Response(jsonEncode(r.value), 200,
+              headers: <String, String>{'content-type': 'application/json'});
+        }
+      }
     }
     return http.Response('{"message":"offline"}', 503);
   }
@@ -127,21 +155,29 @@ class TestApp {
   /// does (so a screen that pops itself can be checked).
   final GlobalKey<NavigatorState> navigator = GlobalKey<NavigatorState>();
 
-  /// A signed-out, onboarded shop with an empty inventory. [premium] (paid)
-  /// lifts the free-plan limit, as the trial does.
+  /// An onboarded shop with an empty inventory, signed out unless
+  /// [signedIn] (as owner@example.com, token `tok`). [premium] (paid) lifts
+  /// the free-plan limit, as the trial does.
   static Future<TestApp> create({
     DatabaseHelper? db,
     bool premium = true,
+    bool signedIn = false,
     FakeBackend? backend,
   }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{
       'onboarded': true,
       'cached_premium': premium,
+      if (signedIn) ...<String, Object>{
+        'auth_token_secure': true,
+        'auth_email': 'owner@example.com',
+        'auth_name': 'Akash',
+      },
     });
     final SettingsService settings = SettingsService();
     await settings.init();
     final FakeBackend fake = backend ?? FakeBackend();
-    final AuthService auth = AuthService(settings, 'test-device', fake.api);
+    final AuthService auth = AuthService(settings, 'test-device', fake.api,
+        MemoryTokenStore()..value = signedIn ? 'tok' : null);
     await auth.init();
     final SubscriptionService subscription =
         SubscriptionService(settings, 'test-device', fake.api);

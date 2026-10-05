@@ -57,9 +57,22 @@ Future<void> main() async {
     tokenProvider: () => auth.token,
     userKeyProvider: () => auth.email,
     deviceId: () async => deviceId,
-  )..onDataChanged = medicines.load;
-  void followLogin() =>
-      auth.isLoggedIn ? sync.start() : sync.stop();
+  )
+    ..onDataChanged = medicines.load
+    // The server refused the login during a sync: sign out as on a 401
+    // anywhere else (offline or a server error never signs out).
+    ..onUnauthorized = auth.sessionRejected;
+  bool wasLoggedIn = auth.isLoggedIn;
+  void followLogin() {
+    auth.isLoggedIn ? sync.start() : sync.stop();
+    if (wasLoggedIn && !auth.isLoggedIn) {
+      // Signed out (here or because the server refused the login): close
+      // any screens open on top, so the login screen shows.
+      _navigator.currentState?.popUntil((Route<dynamic> r) => r.isFirst);
+    }
+    wasLoggedIn = auth.isLoggedIn;
+  }
+
   auth.addListener(followLogin);
   followLogin();
   // Catch up as soon as the app comes back to the foreground.
@@ -78,6 +91,9 @@ Future<void> main() async {
   // them before runApp would freeze the native splash. Best-effort only.
   unawaited(_startBackgroundServices(auth, settings, medicines));
 }
+
+/// The app's navigator, to close open screens when the user is signed out.
+final GlobalKey<NavigatorState> _navigator = GlobalKey<NavigatorState>();
 
 /// Best-effort background init, run after runApp so it never blocks first paint.
 Future<void> _startBackgroundServices(AuthService auth,
@@ -153,6 +169,7 @@ class MedStockApp extends StatelessWidget {
           mp.isPremium = s.hasAccess;
 
           return MaterialApp(
+            navigatorKey: _navigator,
             title: 'Meddata — Medicine Stock & Expiry Tracker',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,

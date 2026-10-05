@@ -61,6 +61,12 @@ class SyncEngine extends ChangeNotifier {
   /// Called after pulled changes were written, so screens reload.
   VoidCallback? onDataChanged;
 
+  /// Called with the token when the server answered 401: it no longer
+  /// accepts this login, so the app signs out ([AuthService.sessionRejected]).
+  /// Never called for being offline, a timeout or a server error. The outbox
+  /// is left as it is and is pushed after the same account signs in again.
+  void Function(String token)? onUnauthorized;
+
   /// Set when this device has inventory and the server shop does too; the
   /// UI must ask the user and call [resolveLocalData].
   bool needsLocalDataChoice = false;
@@ -161,7 +167,7 @@ class SyncEngine extends ChangeNotifier {
 
     final ({int status, Map<String, dynamic>? body}) r =
         await _api.currentShop(token);
-    if (!_ok(r.status)) return _offlineOrError(r.status);
+    if (!_ok(r.status)) return _offlineOrError(r.status, token);
     final bool serverHasData = r.body?['has_data'] == true;
     final bool localHasData = (Sqflite.firstIntValue(await db.rawQuery(
                 'SELECT COUNT(*) FROM products WHERE is_deleted = 0')) ??
@@ -275,7 +281,7 @@ class SyncEngine extends ChangeNotifier {
         platform: AppPlatform.name.toLowerCase(),
         mutations: send.map(_toWire).toList(),
       );
-      if (!_ok(r.status)) return _offlineOrError(r.status);
+      if (!_ok(r.status)) return _offlineOrError(r.status, token);
 
       final List<dynamic> results = (r.body?['results'] as List<dynamic>?) ?? <dynamic>[];
       await db.transaction((Transaction txn) async {
@@ -343,7 +349,7 @@ class SyncEngine extends ChangeNotifier {
       final int since = int.tryParse(await _state(db, 'cursor') ?? '') ?? 0;
       final ({int status, Map<String, dynamic>? body}) r =
           await _api.syncPull(token, since: since, deviceId: _deviceId!, limit: _pullLimit);
-      if (!_ok(r.status)) return _offlineOrError(r.status);
+      if (!_ok(r.status)) return _offlineOrError(r.status, token);
       final Map<String, dynamic> body = r.body ?? <String, dynamic>{};
       final Map<String, dynamic> changes =
           Map<String, dynamic>.from((body['changes'] as Map?) ?? <String, dynamic>{});
@@ -531,9 +537,13 @@ class SyncEngine extends ChangeNotifier {
 
   bool _ok(int status) => status >= 200 && status < 300;
 
-  bool _offlineOrError(int status) {
+  bool _offlineOrError(int status, String token) {
     if (status == 0) {
       _set(SyncStatus.offline);
+    } else if (status == 401) {
+      lastError = 'Signed out: please log in again';
+      _set(SyncStatus.error);
+      onUnauthorized?.call(token);
     } else {
       lastError = 'HTTP $status';
       _set(SyncStatus.error);

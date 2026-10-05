@@ -48,7 +48,9 @@ class BillDetailScreen extends StatefulWidget {
 }
 
 class _BillDetailScreenState extends State<BillDetailScreen> {
-  late final BillingApi _api = widget.api ?? BillingApi();
+  // A 401 (the server no longer accepts the login) signs out, as elsewhere.
+  late final BillingApi _api = (widget.api ?? BillingApi())
+    ..onUnauthorized = context.read<AuthService>().sessionRejected;
   Bill? _bill;
   bool _loading = false;
   ApiOutcome<Bill>? _failure;

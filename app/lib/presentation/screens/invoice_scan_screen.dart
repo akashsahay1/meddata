@@ -43,8 +43,10 @@ enum _Stage { pick, uploading, reading, review, saving }
 enum _Source { camera, gallery, file }
 
 class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
+  // A 401 (the server no longer accepts the login) signs out, as elsewhere.
   late final InvoiceScanService _service =
-      widget.service ?? InvoiceScanService();
+      (widget.service ?? InvoiceScanService())
+        ..onUnauthorized = context.read<AuthService>().sessionRejected;
 
   _Stage _stage = _Stage.pick;
 

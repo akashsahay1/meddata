@@ -58,9 +58,12 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  const AuthHeader(
+                  AuthHeader(
                     title: 'Welcome back',
-                    subtitle: 'Log in to your Meddata account',
+                    // Signed out because the server refused the saved login.
+                    subtitle: context.select((AuthService a) => a.sessionExpired)
+                        ? 'Your session has expired. Please log in again.'
+                        : 'Log in to your Meddata account',
                   ),
                   const SizedBox(height: 30),
                   Container(

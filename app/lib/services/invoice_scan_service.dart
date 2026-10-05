@@ -61,12 +61,17 @@ class InvoiceScanResponse {
 /// Uploads purchase invoices for AI reading and polls the result
 /// (`POST /invoices/scan`, `GET /invoices/scan/{id}`). Online only.
 class InvoiceScanService {
-  InvoiceScanService({http.Client? client, String? baseUrl})
+  InvoiceScanService({http.Client? client, String? baseUrl, this.onUnauthorized})
     : _http = client ?? http.Client(),
       _baseUrl = baseUrl ?? ApiClient.baseUrl;
 
   final http.Client _http;
   final String _baseUrl;
+
+  /// Called with the token when the server answers 401 (it no longer accepts
+  /// this login), so the app signs out ([AuthService.sessionRejected]). Being
+  /// offline or a server error only returns a message.
+  void Function(String token)? onUnauthorized;
 
   static const String offlineMessage =
       "Can't reach the server. Reading invoices needs an internet connection.";
@@ -77,6 +82,7 @@ class InvoiceScanService {
     required List<int> bytes,
     required String filename,
   }) async {
+    final http.Response res;
     try {
       final http.MultipartRequest req =
           http.MultipartRequest('POST', Uri.parse('$_baseUrl/invoices/scan'))
@@ -84,14 +90,14 @@ class InvoiceScanService {
             ..files.add(
               http.MultipartFile.fromBytes('file', bytes, filename: filename),
             );
-      final http.Response res = await http.Response.fromStream(
+      res = await http.Response.fromStream(
         await _http.send(req).timeout(const Duration(seconds: 120)),
       );
-      return _parse(res);
     } catch (e) {
       debugPrint('[InvoiceScan] upload failed: $e');
       return const InvoiceScanResponse.error(offlineMessage, offline: true);
     }
+    return _parse(res, token);
   }
 
   /// The scan's current status (and result once done).
@@ -99,18 +105,19 @@ class InvoiceScanService {
     required String token,
     required int id,
   }) async {
+    final http.Response res;
     try {
-      final http.Response res = await _http
+      res = await _http
           .get(
             Uri.parse('$_baseUrl/invoices/scan/$id'),
             headers: _headers(token),
           )
           .timeout(const Duration(seconds: 20));
-      return _parse(res);
     } catch (e) {
       debugPrint('[InvoiceScan] poll failed: $e');
       return const InvoiceScanResponse.error(offlineMessage, offline: true);
     }
+    return _parse(res, token);
   }
 
   static Map<String, String> _headers(String token) => <String, String>{
@@ -118,7 +125,8 @@ class InvoiceScanService {
     'Authorization': 'Bearer $token',
   };
 
-  static InvoiceScanResponse _parse(http.Response res) {
+  InvoiceScanResponse _parse(http.Response res, String token) {
+    if (res.statusCode == 401) onUnauthorized?.call(token);
     Map<String, dynamic>? body;
     try {
       final Object? decoded = jsonDecode(res.body);

@@ -62,6 +62,7 @@ class AuthService extends ChangeNotifier {
   String? _email;
   String? _name;
   String? _avatarUrl;
+  bool _sessionExpired = false;
 
   AuthService(this._settings, this.deviceId,
       [ApiClient? api, TokenStore? tokens])
@@ -73,6 +74,10 @@ class AuthService extends ChangeNotifier {
   String? get name => _name;
   String? get avatarUrl => _avatarUrl;
   bool get isLoggedIn => _token != null && _token!.isNotEmpty;
+
+  /// True once the server refused the saved login ([sessionRejected]) until
+  /// the next sign-in, so the login screen can say why it is showing.
+  bool get sessionExpired => _sessionExpired;
 
   Future<void> init() async {
     final SharedPreferences p = await SharedPreferences.getInstance();
@@ -190,6 +195,7 @@ class AuthService extends ChangeNotifier {
       _name = user?['name'] as String?;
       _avatarUrl = user?['avatar_url'] as String?;
       _applyEntitlement((b['entitlement'] as Map?)?.cast<String, dynamic>());
+      _sessionExpired = false;
       await _saveToken(await SharedPreferences.getInstance(), _token!);
       await _persistProfile();
       notifyListeners();
@@ -207,8 +213,7 @@ class AuthService extends ChangeNotifier {
     final String token = _token!;
     final ({int status, Map<String, dynamic>? body}) r = await _api.me(token);
     if (r.status == 401) {
-      // Unless someone signed in again while the request was in flight.
-      if (_token == token) await _signOutLocally();
+      await sessionRejected(token);
       return;
     }
     final Map<String, dynamic>? me = r.status == 200 ? r.body : null;
@@ -225,8 +230,24 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The server answered 401 to a call made with [token]: it no longer
+  /// accepts this login (logged out elsewhere, password changed or reset),
+  /// so sign out here too. Callers pass only a definitive 401 — never a
+  /// network failure, timeout or server error, as the app works offline.
+  ///
+  /// Like [logout], only the session is forgotten: inventory and changes not
+  /// yet synced stay on this device and are uploaded once the same account
+  /// signs in again. Does nothing if [token] is no longer the current one
+  /// (someone signed in again while the request was in flight).
+  Future<void> sessionRejected(String token) async {
+    if (_token == null || _token != token) return;
+    _sessionExpired = true;
+    await _signOutLocally();
+  }
+
   Future<void> logout() async {
     final String? t = _token;
+    _sessionExpired = false;
     await _signOutLocally();
     if (t != null) await _api.logout(t); // best-effort server revoke
   }

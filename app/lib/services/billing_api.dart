@@ -148,14 +148,26 @@ class ApiOutcome<T> {
 /// GST bills on the server: create (with the price re-check), list, view,
 /// cancel; and the shop's invoice details.
 class BillingApi {
-  BillingApi([ApiClient? api]) : _api = api ?? ApiClient();
+  BillingApi([ApiClient? api, this.onUnauthorized]) : _api = api ?? ApiClient();
 
   final ApiClient _api;
 
+  /// Called with the token when the server answers 401 (it no longer accepts
+  /// this login), so the app signs out ([AuthService.sessionRejected]). Not
+  /// called when offline or on other errors; those only show a message.
+  void Function(String token)? onUnauthorized;
+
+  ({int status, Map<String, dynamic>? body}) _checked(
+      String token, ({int status, Map<String, dynamic>? body}) r) {
+    if (r.status == 401) onUnauthorized?.call(token);
+    return r;
+  }
+
   Future<BillResult> create(String token, Map<String, Object?> body) async {
-    final ({int status, Map<String, dynamic>? body}) r = await _api.postResult(
-        '/bills', Map<String, dynamic>.from(body),
-        token: token, timeout: const Duration(seconds: 20));
+    final ({int status, Map<String, dynamic>? body}) r = _checked(
+        token,
+        await _api.postResult('/bills', Map<String, dynamic>.from(body),
+            token: token, timeout: const Duration(seconds: 20)));
     final Map<String, dynamic> b = r.body ?? <String, dynamic>{};
     List<Map<String, dynamic>> lines() => <Map<String, dynamic>>[
           for (final Object? l in (b['lines'] as List<dynamic>?) ?? <dynamic>[])
@@ -184,21 +196,22 @@ class BillingApi {
 
   Future<ApiOutcome<BillPage>> list(String token,
       {DateTime? from, DateTime? to, String? query, int page = 1, int perPage = 30}) async {
-    final ({int status, Map<String, dynamic>? body}) r =
+    final ({int status, Map<String, dynamic>? body}) r = _checked(
+        token,
         await _api.getResult('/bills', token: token, query: <String, String>{
-      if (from != null) 'from': ymd(from),
-      if (to != null) 'to': ymd(to),
-      if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-      'page': '$page',
-      'per_page': '$perPage',
-    });
+          if (from != null) 'from': ymd(from),
+          if (to != null) 'to': ymd(to),
+          if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+          'page': '$page',
+          'per_page': '$perPage',
+        }));
     if (r.status == 200 && r.body != null) return ApiOutcome<BillPage>.ok(BillPage.fromJson(r.body!));
     return ApiOutcome<BillPage>.failed(r.status, errorMessage(r.status, r.body));
   }
 
   Future<ApiOutcome<Bill>> get(String token, String id) async {
     final ({int status, Map<String, dynamic>? body}) r =
-        await _api.getResult('/bills/$id', token: token);
+        _checked(token, await _api.getResult('/bills/$id', token: token));
     final Object? bill = r.body?['bill'];
     if (r.status == 200 && bill is Map) {
       return ApiOutcome<Bill>.ok(Bill.fromJson(Map<String, dynamic>.from(bill)));
@@ -209,14 +222,16 @@ class BillingApi {
   /// Cancel a bill; the outcome carries the bill and the batches' new stock.
   Future<ApiOutcome<(Bill, Map<String, int>)>> cancel(String token, String id,
       {String? reason, String? deviceId}) async {
-    final ({int status, Map<String, dynamic>? body}) r = await _api.postResult(
-        '/bills/$id/cancel',
-        <String, dynamic>{
-          if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
-          'device_id': ?deviceId,
-        },
-        token: token,
-        timeout: const Duration(seconds: 20));
+    final ({int status, Map<String, dynamic>? body}) r = _checked(
+        token,
+        await _api.postResult(
+            '/bills/$id/cancel',
+            <String, dynamic>{
+              if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+              'device_id': ?deviceId,
+            },
+            token: token,
+            timeout: const Duration(seconds: 20)));
     final Object? bill = r.body?['bill'];
     if (r.status == 200 && bill is Map) {
       return ApiOutcome<(Bill, Map<String, int>)>.ok(
@@ -226,13 +241,14 @@ class BillingApi {
   }
 
   Future<ApiOutcome<ShopProfile>> shop(String token) async {
-    final ({int status, Map<String, dynamic>? body}) r = await _api.currentShop(token);
+    final ({int status, Map<String, dynamic>? body}) r =
+        _checked(token, await _api.currentShop(token));
     return _shopOutcome(r);
   }
 
   Future<ApiOutcome<ShopProfile>> updateShop(String token, Map<String, Object?> changes) async {
-    final ({int status, Map<String, dynamic>? body}) r =
-        await _api.updateShop(token, Map<String, dynamic>.from(changes));
+    final ({int status, Map<String, dynamic>? body}) r = _checked(
+        token, await _api.updateShop(token, Map<String, dynamic>.from(changes)));
     return _shopOutcome(r);
   }
 
