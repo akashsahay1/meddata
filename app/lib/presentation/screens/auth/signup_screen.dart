@@ -115,8 +115,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       onPressed: _signup,
                     ),
                   const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Wraps "Log in" onto a second line with large text.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       const Text(
                         'Already have an account? ',
@@ -202,6 +204,7 @@ class _PasswordField extends StatelessWidget {
                 color: AppColors.muted,
               ),
               onPressed: onToggle,
+              tooltip: obscure ? 'Show password' : 'Hide password',
             ),
           ),
         ),

@@ -132,8 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  // Wraps "Sign up" onto a second line with large text.
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       const Text(
                         "Don't have an account? ",
@@ -224,6 +226,7 @@ class _PasswordField extends StatelessWidget {
                 size: 20,
               ),
               onPressed: onToggle,
+              tooltip: obscure ? 'Show password' : 'Hide password',
             ),
           ),
         ),

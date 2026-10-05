@@ -281,6 +281,7 @@ class _PasswordField extends StatelessWidget {
                 size: 20,
               ),
               onPressed: onToggle,
+              tooltip: obscure ? 'Show password' : 'Hide password',
             ),
           ),
           validator: AuthValidators.password,
