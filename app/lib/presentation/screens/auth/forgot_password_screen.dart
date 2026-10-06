@@ -35,40 +35,51 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _sendCode() async {
+    if (_busy) return;
     if (AuthValidators.email(_email.text) != null) {
       _formKey.currentState!.validate();
       return;
     }
     setState(() => _busy = true);
-    final String? error =
-        await context.read<AuthService>().forgotPassword(_email.text.trim());
+    final String? error = await context.read<AuthService>().forgotPassword(
+      _email.text.trim(),
+    );
     if (!mounted) return;
     setState(() {
       _busy = false;
       if (error == null) _codeSent = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(error ??
-          'If that email exists, a 6-digit reset code has been sent.'),
-    ));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            error ??
+                'If that email exists, a 6-digit reset code has been sent.',
+          ),
+        ),
+      );
   }
 
   Future<void> _reset() async {
+    if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
     final String? error = await context.read<AuthService>().resetPassword(
-          email: _email.text.trim(),
-          code: _code.text.trim(),
-          password: _password.text,
-        );
+      email: _email.text.trim(),
+      code: _code.text.trim(),
+      password: _password.text,
+    );
     if (!mounted) return;
     setState(() => _busy = false);
     if (error != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error)));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Password reset. Please log in.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset. Please log in.')),
+      );
       Navigator.of(context).pop();
     }
   }
@@ -131,8 +142,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         ],
                         const SizedBox(height: 20),
                         ElevatedButton(
-                          onPressed:
-                              _busy ? null : (_codeSent ? _reset : _sendCode),
+                          onPressed: _busy
+                              ? null
+                              : (_codeSent ? _reset : _sendCode),
                           child: _busy
                               ? const SizedBox(
                                   height: 20,
@@ -144,9 +156,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     color: AppColors.ink,
                                   ),
                                 )
-                              : Text(_codeSent
-                                  ? 'Reset password'
-                                  : 'Send reset code'),
+                              : Text(
+                                  _codeSent
+                                      ? 'Reset password'
+                                      : 'Send reset code',
+                                ),
                         ),
                         if (_codeSent) ...<Widget>[
                           const SizedBox(height: 4),
