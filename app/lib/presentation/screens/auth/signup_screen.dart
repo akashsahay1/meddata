@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../services/auth_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../widgets/adaptive_layout.dart';
 import '../../widgets/ui_kit.dart';
 import 'auth_widgets.dart';
 
@@ -32,19 +33,25 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _signup() async {
+    if (_busy) return;
     if (!_formKey.currentState!.validate()) return;
     setState(() => _busy = true);
-    final String? error = await context.read<AuthService>().register(
-          name: _name.text.trim(),
-          email: _email.text.trim(),
-          phone: _phone.text.trim(),
-          password: _password.text,
-        );
+    final List<String?> result = await Future.wait<String?>(<Future<String?>>[
+      context.read<AuthService>().register(
+        name: _name.text.trim(),
+        email: _email.text.trim(),
+        phone: _phone.text.trim(),
+        password: _password.text,
+      ),
+      Future<String?>.delayed(const Duration(milliseconds: 300), () => null),
+    ]);
+    final String? error = result.first;
     if (!mounted) return;
     setState(() => _busy = false);
     if (error != null) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error)));
     } else {
       // Success: pop back; the root gate rebuilds into the app (trial active).
       Navigator.of(context).popUntil((Route<dynamic> r) => r.isFirst);
@@ -58,90 +65,95 @@ class _SignupScreenState extends State<SignupScreen> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  const AuthHeader(
-                    title: 'Create your account',
-                    subtitle: 'Start your 7-day free trial',
-                  ),
-                  const SizedBox(height: 28),
-                  LabeledField(
-                    label: 'Full name',
-                    hint: 'Your name',
-                    controller: _name,
-                    validator: AuthValidators.required,
-                  ),
-                  const SizedBox(height: 16),
-                  LabeledField(
-                    label: 'Email',
-                    hint: 'you@example.com',
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: AuthValidators.email,
-                  ),
-                  const SizedBox(height: 16),
-                  LabeledField(
-                    label: 'Phone (optional)',
-                    hint: 'Mobile number',
-                    controller: _phone,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 16),
-                  _PasswordField(
-                    controller: _password,
-                    obscure: _obscure,
-                    onToggle: () => setState(() => _obscure = !_obscure),
-                    onSubmitted: (_) => _signup(),
-                  ),
-                  const SizedBox(height: 24),
-                  if (_busy)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: null,
-                        child: const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    )
-                  else
-                    PrimaryButton(
-                      label: 'Create account',
-                      onPressed: _signup,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AdaptiveLayout.formMaxWidth,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    const AuthHeader(
+                      title: 'Create your account',
+                      subtitle: 'Start your 7-day free trial',
                     ),
-                  const SizedBox(height: 18),
-                  // Wraps "Log in" onto a second line with large text.
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: <Widget>[
-                      const Text(
-                        'Already have an account? ',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          'Log in',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.orange,
+                    const SizedBox(height: 28),
+                    LabeledField(
+                      label: 'Full name',
+                      hint: 'Your name',
+                      controller: _name,
+                      validator: AuthValidators.required,
+                    ),
+                    const SizedBox(height: 16),
+                    LabeledField(
+                      label: 'Email',
+                      hint: 'you@example.com',
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: AuthValidators.email,
+                    ),
+                    const SizedBox(height: 16),
+                    LabeledField(
+                      label: 'Phone (optional)',
+                      hint: 'Mobile number',
+                      controller: _phone,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: 16),
+                    _PasswordField(
+                      controller: _password,
+                      obscure: _obscure,
+                      onToggle: () => setState(() => _obscure = !_obscure),
+                      onSubmitted: (_) => _signup(),
+                    ),
+                    const SizedBox(height: 24),
+                    if (_busy)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: null,
+                          child: const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                         ),
+                      )
+                    else
+                      PrimaryButton(
+                        label: 'Create account',
+                        onPressed: _signup,
                       ),
-                    ],
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    // Wraps "Log in" onto a second line with large text.
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        const Text(
+                          'Already have an account? ',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Log in',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.orange,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

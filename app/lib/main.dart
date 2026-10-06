@@ -33,8 +33,10 @@ Future<void> main() async {
     // support folder (e.g. %APPDATA%\com.medstock\med_stock on Windows).
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    DatabaseHelper.pathOverride =
-        p.join((await getApplicationSupportDirectory()).path, 'meddata.db');
+    DatabaseHelper.pathOverride = p.join(
+      (await getApplicationSupportDirectory()).path,
+      'meddata.db',
+    );
   }
 
   final SettingsService settings = SettingsService();
@@ -45,26 +47,29 @@ Future<void> main() async {
   final AuthService auth = AuthService(settings, deviceId);
   await auth.init();
 
-  final SubscriptionService subscription =
-      SubscriptionService(settings, deviceId);
+  final SubscriptionService subscription = SubscriptionService(
+    settings,
+    deviceId,
+  );
   // The trial/entitlement/coupon endpoints are user-scoped and require the
   // auth token; supply it from AuthService.
   subscription.tokenProvider = () => auth.token;
 
   // Inventory is shared by all of the shop's devices through the server.
   final MedicineProvider medicines = MedicineProvider()..load();
-  final SyncEngine sync = SyncEngine(
-    tokenProvider: () => auth.token,
-    // Local data belongs to the account's server id, so changing the email
-    // keeps it; the email is only shown in messages.
-    userKeyProvider: () => auth.userId,
-    userEmailProvider: () => auth.email,
-    deviceId: () async => deviceId,
-  )
-    ..onDataChanged = medicines.load
-    // The server refused the login during a sync: sign out as on a 401
-    // anywhere else (offline or a server error never signs out).
-    ..onUnauthorized = auth.sessionRejected;
+  final SyncEngine sync =
+      SyncEngine(
+          tokenProvider: () => auth.token,
+          // Local data belongs to the account's server id, so changing the email
+          // keeps it; the email is only shown in messages.
+          userKeyProvider: () => auth.userId,
+          userEmailProvider: () => auth.email,
+          deviceId: () async => deviceId,
+        )
+        ..onDataChanged = medicines.load
+        // The server refused the login during a sync: sign out as on a 401
+        // anywhere else (offline or a server error never signs out).
+        ..onUnauthorized = auth.sessionRejected;
   bool wasLoggedIn = auth.isLoggedIn;
   void followLogin() {
     auth.isLoggedIn ? sync.start() : sync.stop();
@@ -81,13 +86,15 @@ Future<void> main() async {
   // Catch up as soon as the app comes back to the foreground.
   AppLifecycleListener(onResume: sync.syncNow);
 
-  runApp(MedStockApp(
-    settings: settings,
-    auth: auth,
-    subscription: subscription,
-    medicines: medicines,
-    sync: sync,
-  ));
+  runApp(
+    MeddataApp(
+      settings: settings,
+      auth: auth,
+      subscription: subscription,
+      medicines: medicines,
+      sync: sync,
+    ),
+  );
 
   // Initialize notifications + background work AFTER the first frame. These
   // touch native plugin channels that can be slow (or stall) on iOS; awaiting
@@ -99,8 +106,11 @@ Future<void> main() async {
 final GlobalKey<NavigatorState> _navigator = GlobalKey<NavigatorState>();
 
 /// Best-effort background init, run after runApp so it never blocks first paint.
-Future<void> _startBackgroundServices(AuthService auth,
-    SettingsService settings, MedicineProvider medicines) async {
+Future<void> _startBackgroundServices(
+  AuthService auth,
+  SettingsService settings,
+  MedicineProvider medicines,
+) async {
   // If already logged in, sync the user's entitlement (premium/trial).
   if (auth.isLoggedIn) auth.refreshMe();
 
@@ -138,13 +148,15 @@ Future<void> _startBackgroundServices(AuthService auth,
   await refreshAlerts();
 }
 
-class MedStockApp extends StatelessWidget {
+/// Root application widget. The package identifier remains `med_stock` for
+/// compatibility, while the customer-facing product name is Meddata.
+class MeddataApp extends StatelessWidget {
   final SettingsService settings;
   final AuthService auth;
   final SubscriptionService subscription;
   final MedicineProvider medicines;
   final SyncEngine sync;
-  const MedStockApp({
+  const MeddataApp({
     super.key,
     required this.settings,
     required this.auth,
@@ -166,8 +178,10 @@ class MedStockApp extends StatelessWidget {
       child: Consumer<SettingsService>(
         builder: (BuildContext context, SettingsService s, _) {
           // During trial or paid, the app has full access → unlimited medicines.
-          final MedicineProvider mp =
-              Provider.of<MedicineProvider>(context, listen: false);
+          final MedicineProvider mp = Provider.of<MedicineProvider>(
+            context,
+            listen: false,
+          );
           mp.warningDays = s.warningDays;
           mp.isPremium = s.hasAccess;
 

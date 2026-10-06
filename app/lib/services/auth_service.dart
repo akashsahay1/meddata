@@ -24,7 +24,8 @@ class SecureTokenStore implements TokenStore {
     // Readable once the phone has been unlocked after boot (not only while
     // unlocked), and never restored from a backup onto another device.
     iOptions: IOSOptions(
-        accessibility: KeychainAccessibility.first_unlock_this_device),
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
   );
 
   @override
@@ -67,10 +68,13 @@ class AuthService extends ChangeNotifier {
   bool _sessionExpired = false;
   String? _loginHint;
 
-  AuthService(this._settings, this.deviceId,
-      [ApiClient? api, TokenStore? tokens])
-      : _api = api ?? ApiClient(),
-        _tokens = tokens ?? const SecureTokenStore();
+  AuthService(
+    this._settings,
+    this.deviceId, [
+    ApiClient? api,
+    TokenStore? tokens,
+  ]) : _api = api ?? ApiClient(),
+       _tokens = tokens ?? const SecureTokenStore();
 
   String? get token => _token;
 
@@ -199,13 +203,22 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> _handleAuthResult(
-      ({int status, Map<String, dynamic>? body}) r) async {
-    if (r.status == 0) return 'No internet connection. Please try again.';
+    ({int status, Map<String, dynamic>? body}) r,
+  ) async {
+    if (r.status == 0) {
+      return 'Cannot reach the Meddata server. Check your connection and make sure the backend is deployed.';
+    }
+    if (r.status == 404 || r.status == 405) {
+      return 'This Meddata server needs an update before this version of the app can sign in.';
+    }
+    if (r.status >= 500) {
+      return 'The Meddata server is unavailable. Please try again shortly.';
+    }
     final Map<String, dynamic>? b = r.body;
     if (r.status >= 200 && r.status < 300 && b != null && b['token'] != null) {
       _token = b['token'] as String;
-      final Map<String, dynamic>? user =
-          (b['user'] as Map?)?.cast<String, dynamic>();
+      final Map<String, dynamic>? user = (b['user'] as Map?)
+          ?.cast<String, dynamic>();
       _userId = _idFrom(user);
       _email = user?['email'] as String?;
       _name = user?['name'] as String?;
@@ -235,8 +248,8 @@ class AuthService extends ChangeNotifier {
     }
     final Map<String, dynamic>? me = r.status == 200 ? r.body : null;
     if (me == null) return;
-    final Map<String, dynamic>? user =
-        (me['user'] as Map?)?.cast<String, dynamic>();
+    final Map<String, dynamic>? user = (me['user'] as Map?)
+        ?.cast<String, dynamic>();
     if (user != null) {
       _userId = _idFrom(user) ?? _userId;
       _email = user['email'] as String? ?? _email;
@@ -295,8 +308,8 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<String?> forgotPassword(String email) async {
-    final ({int status, Map<String, dynamic>? body}) r =
-        await _api.forgotPassword(email);
+    final ({int status, Map<String, dynamic>? body}) r = await _api
+        .forgotPassword(email);
     if (r.status == 0) return 'No internet connection. Please try again.';
     if (r.status >= 200 && r.status < 300) return null;
     return _errorFrom(r.body) ?? 'Could not send reset code.';
@@ -322,8 +335,8 @@ class AuthService extends ChangeNotifier {
         .updateProfile(token: _token!, name: name, email: email);
     if (r.status == 0) return 'No internet connection. Please try again.';
     if (r.status >= 200 && r.status < 300) {
-      final Map<String, dynamic>? user =
-          (r.body?['user'] as Map?)?.cast<String, dynamic>();
+      final Map<String, dynamic>? user = (r.body?['user'] as Map?)
+          ?.cast<String, dynamic>();
       if (user != null) {
         _userId = _idFrom(user) ?? _userId;
         _name = user['name'] as String? ?? _name;
@@ -340,25 +353,27 @@ class AuthService extends ChangeNotifier {
   /// a user-facing error message on failure.
   Future<String?> uploadAvatar(String filePath) async {
     if (!isLoggedIn) return 'You are not signed in.';
-    final ({int status, Map<String, dynamic>? body}) r =
-        await _api.uploadAvatar(token: _token!, filePath: filePath);
+    final ({int status, Map<String, dynamic>? body}) r = await _api
+        .uploadAvatar(token: _token!, filePath: filePath);
     return _applyAvatarResult(r, 'Could not upload photo.');
   }
 
   /// Remove the profile photo. Returns null on success, or an error message.
   Future<String?> removeAvatar() async {
     if (!isLoggedIn) return 'You are not signed in.';
-    final ({int status, Map<String, dynamic>? body}) r =
-        await _api.deleteAvatar(_token!);
+    final ({int status, Map<String, dynamic>? body}) r = await _api
+        .deleteAvatar(_token!);
     return _applyAvatarResult(r, 'Could not remove photo.');
   }
 
   Future<String?> _applyAvatarResult(
-      ({int status, Map<String, dynamic>? body}) r, String fallback) async {
+    ({int status, Map<String, dynamic>? body}) r,
+    String fallback,
+  ) async {
     if (r.status == 0) return 'No internet connection. Please try again.';
     if (r.status >= 200 && r.status < 300) {
-      final Map<String, dynamic>? user =
-          (r.body?['user'] as Map?)?.cast<String, dynamic>();
+      final Map<String, dynamic>? user = (r.body?['user'] as Map?)
+          ?.cast<String, dynamic>();
       _avatarUrl = user?['avatar_url'] as String?;
       await _persistProfile();
       notifyListeners();
@@ -374,12 +389,12 @@ class AuthService extends ChangeNotifier {
     required String newPassword,
   }) async {
     if (!isLoggedIn) return 'You are not signed in.';
-    final ({int status, Map<String, dynamic>? body}) r =
-        await _api.changePassword(
-      token: _token!,
-      currentPassword: currentPassword,
-      newPassword: newPassword,
-    );
+    final ({int status, Map<String, dynamic>? body}) r = await _api
+        .changePassword(
+          token: _token!,
+          currentPassword: currentPassword,
+          newPassword: newPassword,
+        );
     if (r.status == 0) return 'No internet connection. Please try again.';
     if (r.status >= 200 && r.status < 300) return null;
     return _errorFrom(r.body) ?? 'Could not change password.';
@@ -395,8 +410,8 @@ class AuthService extends ChangeNotifier {
     if (body == null) return null;
     if (body['message'] is String) return body['message'] as String;
     // Laravel validation errors: { errors: { field: [msg] } }
-    final Map<String, dynamic>? errors =
-        (body['errors'] as Map?)?.cast<String, dynamic>();
+    final Map<String, dynamic>? errors = (body['errors'] as Map?)
+        ?.cast<String, dynamic>();
     if (errors != null && errors.isNotEmpty) {
       final dynamic first = errors.values.first;
       if (first is List && first.isNotEmpty) return first.first.toString();

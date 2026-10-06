@@ -9,6 +9,7 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart'; // exports the shared ui_kit + medicineStatusPill
 import '../widgets/sync_badge.dart';
+import '../widgets/adaptive_layout.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'billing/new_bill_screen.dart';
@@ -37,14 +38,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openUpgrade() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
   }
 
   void _open(Widget screen) {
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => screen));
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   @override
@@ -69,7 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Transform.translate(
               offset: const Offset(0, -40),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AdaptiveLayout.pageGutter(context),
+                ),
                 child: _DashboardBody(
                   mp: mp,
                   settings: settings,
@@ -95,7 +97,11 @@ class _Header extends StatelessWidget {
   final VoidCallback onProfile;
   final VoidCallback onSearch;
   final VoidCallback onNewBill;
-  const _Header({required this.onProfile, required this.onSearch, required this.onNewBill});
+  const _Header({
+    required this.onProfile,
+    required this.onSearch,
+    required this.onNewBill,
+  });
 
   String _greeting() {
     final int h = DateTime.now().hour;
@@ -166,7 +172,10 @@ class _Header extends StatelessWidget {
                     onTap: onSearch,
                     borderRadius: BorderRadius.circular(14),
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 14,
+                      ),
                       child: Row(
                         children: <Widget>[
                           Icon(Icons.search, size: 18, color: _searchHint),
@@ -202,7 +211,11 @@ class _Header extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         // Ink, not white, on orange: 5.0:1 contrast (white is 2.8).
-                        Icon(Icons.receipt_long, size: 18, color: AppColors.ink),
+                        Icon(
+                          Icons.receipt_long,
+                          size: 18,
+                          color: AppColors.ink,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'New bill',
@@ -289,8 +302,10 @@ class _DashboardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Medicine> all = mp.visibleAllForAlerts;
-    final int totalUnits =
-        all.fold(0, (int sum, Medicine m) => sum + m.quantity);
+    final int totalUnits = all.fold(
+      0,
+      (int sum, Medicine m) => sum + m.quantity,
+    );
     final int catCount = all
         .map((Medicine m) => m.category.trim())
         .where((String c) => c.isNotEmpty)
@@ -300,59 +315,23 @@ class _DashboardBody extends StatelessWidget {
     // One row per medicine, for its most serious problem.
     final List<(ProductStock, int, MedicineStatus)> attention =
         <(ProductStock, int, MedicineStatus)>[
-      for (final ProductStock p in mp.products)
-        if (_problem(mp, p) case (final int sev, final MedicineStatus st))
-          (p, sev, st),
-    ]..sort((a, b) => a.$2.compareTo(b.$2));
+          for (final ProductStock p in mp.products)
+            if (_problem(mp, p) case (final int sev, final MedicineStatus st))
+              (p, sev, st),
+        ]..sort((a, b) => a.$2.compareTo(b.$2));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: StatCard(
-                label: 'Stock value',
-                value: '$currency${_grouped(mp.totalStockValue.round())}',
-                sub: '${_grouped(totalUnits)} units',
-                subColor: AppColors.statusGreen,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: StatCard(
-                label: 'Medicines',
-                value: '${mp.productCount}',
-                sub: catCount == 1 ? '1 category' : '$catCount categories',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Row(
-          children: <Widget>[
-            Expanded(
-              child: AlertCard(
-                icon: Icons.inventory_2_outlined,
-                count: mp.lowStockCount,
-                label: 'Low on stock',
-                color: AppColors.statusAmber,
-                bg: AppColors.statusAmberBg,
-                onTap: onAlerts,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: AlertCard(
-                icon: Icons.schedule,
-                count: mp.expiringCount,
-                label: 'Expiring soon',
-                color: AppColors.statusRed,
-                bg: AppColors.statusRedBg,
-                onTap: onAlerts,
-              ),
-            ),
-          ],
+        _DashboardSummary(
+          desktop: AdaptiveLayout.isDesktop(context),
+          stockValue: '$currency${_grouped(mp.totalStockValue.round())}',
+          totalUnits: '${_grouped(totalUnits)} units',
+          medicineCount: '${mp.productCount}',
+          categoryLabel: catCount == 1 ? '1 category' : '$catCount categories',
+          lowStockCount: mp.lowStockCount,
+          expiringCount: mp.expiringCount,
+          onAlerts: onAlerts,
         ),
         if (!settings.isPremium && settings.isTrialActive) ...<Widget>[
           const SizedBox(height: 14),
@@ -377,8 +356,11 @@ class _DashboardBody extends StatelessWidget {
                 name: p.name,
                 subtitle: _subtitle(p),
                 status: medicineStatusPill(row.$3, p.totalQty),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => ProductDetailScreen(productId: p.productId))),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ProductDetailScreen(productId: p.productId),
+                  ),
+                ),
               ),
             );
           }),
@@ -405,10 +387,95 @@ class _DashboardBody extends StatelessWidget {
       if (s.isExpiring) return (1, s);
     }
     const MedicineStatus low = MedicineStatus(
-        expiryState: ExpiryState.ok, daysToExpiry: 999, isLowStock: true);
+      expiryState: ExpiryState.ok,
+      daysToExpiry: 999,
+      isLowStock: true,
+    );
     if (p.totalQty == 0) return (2, low);
     if (p.isLowStock) return (3, low);
     return null;
+  }
+}
+
+/// Desktop promotes the four key numbers into one row; phones retain the
+/// denser two-by-two arrangement.
+class _DashboardSummary extends StatelessWidget {
+  final bool desktop;
+  final String stockValue;
+  final String totalUnits;
+  final String medicineCount;
+  final String categoryLabel;
+  final int lowStockCount;
+  final int expiringCount;
+  final VoidCallback onAlerts;
+
+  const _DashboardSummary({
+    required this.desktop,
+    required this.stockValue,
+    required this.totalUnits,
+    required this.medicineCount,
+    required this.categoryLabel,
+    required this.lowStockCount,
+    required this.expiringCount,
+    required this.onAlerts,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> cards = <Widget>[
+      StatCard(
+        label: 'Stock value',
+        value: stockValue,
+        sub: totalUnits,
+        subColor: AppColors.statusGreen,
+      ),
+      StatCard(label: 'Medicines', value: medicineCount, sub: categoryLabel),
+      AlertCard(
+        icon: Icons.inventory_2_outlined,
+        count: lowStockCount,
+        label: 'Low on stock',
+        color: AppColors.statusAmber,
+        bg: AppColors.statusAmberBg,
+        onTap: onAlerts,
+      ),
+      AlertCard(
+        icon: Icons.schedule,
+        count: expiringCount,
+        label: 'Expiring soon',
+        color: AppColors.statusRed,
+        bg: AppColors.statusRedBg,
+        onTap: onAlerts,
+      ),
+    ];
+    if (desktop) {
+      return Row(
+        children: <Widget>[
+          for (int i = 0; i < cards.length; i++) ...<Widget>[
+            Expanded(child: cards[i]),
+            if (i != cards.length - 1) const SizedBox(width: 16),
+          ],
+        ],
+      );
+    }
+    return Column(
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: cards[0]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[1]),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: <Widget>[
+            Expanded(child: cards[2]),
+            const SizedBox(width: 12),
+            Expanded(child: cards[3]),
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -435,8 +502,11 @@ class _AllGoodCard extends StatelessWidget {
               color: AppColors.statusGreenBg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.check_circle_outline,
-                size: 22, color: AppColors.statusGreen),
+            child: const Icon(
+              Icons.check_circle_outline,
+              size: 22,
+              color: AppColors.statusGreen,
+            ),
           ),
           const SizedBox(width: 13),
           const Expanded(
@@ -484,11 +554,17 @@ class _TrialBanner extends StatelessWidget {
         onTap: onUpgrade,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
-          constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
+          constraints: const BoxConstraints(
+            minHeight: kMinInteractiveDimension,
+          ),
           padding: const EdgeInsets.all(14),
           child: Row(
             children: <Widget>[
-              const Icon(Icons.timelapse, size: 18, color: AppColors.orangeHover),
+              const Icon(
+                Icons.timelapse,
+                size: 18,
+                color: AppColors.orangeHover,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

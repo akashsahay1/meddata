@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/adaptive_layout.dart';
 import 'account_switch_dialog.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
@@ -88,19 +89,19 @@ class _MainShellState extends State<MainShell> {
   static const int _billsTab = 2;
 
   List<Widget> get _tabs => <Widget>[
-        const HomeScreen(),
-        const InventoryScreen(),
-        BillsScreen(active: _index == _billsTab),
-        const AlertsScreen(),
-        const SettingsScreen(),
-      ];
+    const HomeScreen(),
+    const InventoryScreen(),
+    BillsScreen(active: _index == _billsTab),
+    const AlertsScreen(),
+    const SettingsScreen(),
+  ];
 
   Future<void> _addMedicine() async {
     final MedicineProvider mp = context.read<MedicineProvider>();
     if (!mp.canAdd()) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
       return;
     }
     await Navigator.of(context).push(
@@ -116,7 +117,7 @@ class _MainShellState extends State<MainShell> {
 
     // Wide windows (Windows PC, tablets): side rail instead of the bottom
     // bar, and content kept to a readable width.
-    if (MediaQuery.sizeOf(context).width >= 900) {
+    if (AdaptiveLayout.isDesktop(context)) {
       return Scaffold(
         backgroundColor: AppColors.canvas,
         body: Row(
@@ -135,11 +136,17 @@ class _MainShellState extends State<MainShell> {
               ),
               destinations: <NavigationRailDestination>[
                 const NavigationRailDestination(
-                    icon: Icon(Icons.home_outlined), label: Text('Home')),
+                  icon: Icon(Icons.home_outlined),
+                  label: Text('Home'),
+                ),
                 const NavigationRailDestination(
-                    icon: Icon(Icons.grid_view_outlined), label: Text('Inventory')),
+                  icon: Icon(Icons.grid_view_outlined),
+                  label: Text('Inventory'),
+                ),
                 const NavigationRailDestination(
-                    icon: Icon(Icons.receipt_long_outlined), label: Text('Bills')),
+                  icon: Icon(Icons.receipt_long_outlined),
+                  label: Text('Bills'),
+                ),
                 NavigationRailDestination(
                   icon: Badge(
                     isLabelVisible: alertTotal > 0,
@@ -149,7 +156,9 @@ class _MainShellState extends State<MainShell> {
                   label: const Text('Alerts'),
                 ),
                 const NavigationRailDestination(
-                    icon: Icon(Icons.person_outline), label: Text('Profile')),
+                  icon: Icon(Icons.person_outline),
+                  label: Text('Profile'),
+                ),
               ],
             ),
             const VerticalDivider(width: 1),
@@ -157,7 +166,9 @@ class _MainShellState extends State<MainShell> {
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
+                  constraints: const BoxConstraints(
+                    maxWidth: AdaptiveLayout.contentMaxWidth,
+                  ),
                   child: IndexedStack(index: _index, children: _tabs),
                 ),
               ),
@@ -179,7 +190,11 @@ class _MainShellState extends State<MainShell> {
             data: theme.copyWith(
               snackBarTheme: theme.snackBarTheme.copyWith(
                 insetPadding: EdgeInsets.fromLTRB(
-                    15, 5, 15, 10 + MediaQuery.of(context).padding.bottom),
+                  15,
+                  5,
+                  15,
+                  10 + MediaQuery.of(context).padding.bottom,
+                ),
               ),
             ),
             child: IndexedStack(index: _index, children: _tabs),
@@ -312,8 +327,9 @@ class _NavItem extends StatelessWidget {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: AppColors.statusRed,
-                              borderRadius:
-                                  BorderRadius.circular(AppRadii.pill),
+                              borderRadius: BorderRadius.circular(
+                                AppRadii.pill,
+                              ),
                             ),
                             child: Text(
                               badgeCount > 99 ? '99+' : '$badgeCount',
