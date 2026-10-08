@@ -329,7 +329,7 @@ cd app && flutter test test/integration/
 - [x] Product-wise screens: inventory shows batches grouped under medicine; product detail screen; low stock on product total, expiry on stocked batches
 - [x] Admin panel cleanup: removed demo Customers/Stores/Medicines; added Shops page (list + detail with devices & products), Master catalog page, dashboard widgets (recent shops, growth, categories)
 - [x] Desktop browser payment: app creates order, opens Razorpay page in browser, payment verified server-side, app auto-refreshes; 3 tests
-- [ ] **Windows app build** — code ready (sqflite FFI, camera/scanner hidden on desktop, side menu for large screens, Windows notifications, Meddata branding). Blocked on Visual Studio "Desktop development with C++" install. Installer (MSIX or Inno Setup) also pending.
+- [ ] **Windows app build and installer verification** — desktop UI and an Inno Setup per-user installer recipe are in place (`app/tool/build_windows_installer.ps1`). Build and smoke-test on Windows with Visual Studio "Desktop development with C++" and the C++ ATL component; install Inno Setup 7 (or 6) to produce the setup executable.
 - [ ] **Phone sync UI testing** — real-device test of sync flow (phone was disconnected)
 
 ### P2 — Onboarding ✅ Done
@@ -431,7 +431,7 @@ cd app && flutter test test/integration/
 - [ ] Raise upload limits to ~12 MB: PHP `upload_max_filesize` + `post_max_size` (currently 2 MB) and nginx `client_max_body_size`
 - [ ] Cron: `* * * * * php artisan schedule:run` (daily cleanup of old invoice scans)
 - [ ] Android: create an upload keystore and `app/android/key.properties` (`storePassword`, `keyPassword`, `keyAlias`, `storeFile` relative to `android/app`); without it release builds are signed with the debug key
-- [ ] Build and test Windows installer (Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage)
+- [ ] Build and test Windows installer (run `app/tool/build_windows_installer.ps1`; Visual Studio needs "Desktop development with C++" **and** the "C++ ATL for latest build tools" component, for flutter_secure_storage; Inno Setup 7 or 6 is also required)
   - `permission_handler` was removed (its Windows plugin passes `/await`, which Visual Studio 2026 rejects): `mobile_scanner` and `image_picker` ask for camera permission themselves, and `app_settings` opens the app's settings page. After pulling, run `flutter clean` before `flutter build windows`
 - [ ] Cross-device testing: Windows ↔ phone sync, price conflicts, offline edits, USB barcode scanner
 

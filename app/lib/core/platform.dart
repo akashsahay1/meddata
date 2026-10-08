@@ -10,6 +10,9 @@ class AppPlatform {
   static bool get isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+  /// A Windows desktop build (used for Windows-specific layout choices).
+  static bool get isWindows => !kIsWeb && Platform.isWindows;
+
   /// A camera for barcode scanning / taking photos (phones only; on a PC a
   /// USB barcode scanner types into the barcode field instead).
   static bool get supportsCamera =>

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/adaptive_layout.dart';
+import '../widgets/ui_kit.dart';
 import 'account_switch_dialog.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
@@ -117,22 +119,68 @@ class _MainShellState extends State<MainShell> {
 
     // Wide windows (Windows PC, tablets): side rail instead of the bottom
     // bar, and content kept to a readable width.
-    if (AdaptiveLayout.isDesktop(context)) {
+    final double width = MediaQuery.sizeOf(context).width;
+    if (AdaptiveLayout.isDesktop(context) || AppPlatform.isWindows) {
+      final bool extendedRail = width >= 1100;
       return Scaffold(
         backgroundColor: AppColors.canvas,
         body: Row(
           children: <Widget>[
             NavigationRail(
+              backgroundColor: AppColors.card,
+              extended: extendedRail,
+              minExtendedWidth: 228,
+              labelType: extendedRail
+                  ? NavigationRailLabelType.none
+                  : NavigationRailLabelType.all,
               selectedIndex: _index,
               onDestinationSelected: (int i) => setState(() => _index = i),
-              labelType: NavigationRailLabelType.all,
               leading: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: FloatingActionButton(
-                  tooltip: 'Add medicine',
-                  onPressed: _addMedicine,
-                  child: const Icon(Icons.add),
+                padding: EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: extendedRail ? 20 : 0,
                 ),
+                child: extendedRail
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              BrandMark(size: 32),
+                              SizedBox(width: 9),
+                              Text(
+                                'Meddata',
+                                style: TextStyle(
+                                  color: AppColors.greenDarkest,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 22),
+                          SizedBox(
+                            width: 184,
+                            child: ElevatedButton.icon(
+                              onPressed: _addMedicine,
+                              icon: const Icon(Icons.add_rounded),
+                              label: const Text('Add medicine'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.orange,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(46),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : FloatingActionButton(
+                        tooltip: 'Add medicine',
+                        onPressed: _addMedicine,
+                        child: const Icon(Icons.add),
+                      ),
               ),
               destinations: <NavigationRailDestination>[
                 const NavigationRailDestination(

@@ -20,7 +20,7 @@ meddata/
 - **Flutter 3.44.4** (Dart 3.12), with the Android SDK for phone builds
 - **PHP 8.4** (composer.json allows ^8.3) with `pdo_sqlite`, plus `pdo_mysql` for MariaDB/MySQL
 - **Composer 2**
-- For Windows builds: a Windows PC with Visual Studio 2022 and the *Desktop development with C++* workload
+- For Windows builds: a Windows PC with Visual Studio 2026 and the *Desktop development with C++* workload
 
 ## Quick start
 
@@ -97,7 +97,13 @@ Release builds are still signed with the debug key (`app/android/app/build.gradl
 flutter build windows --release               # output in build\windows\x64\runner\Release\
 ```
 
-This must be run on Windows with the Visual Studio C++ workload. The desktop code is ready, but the first Windows build and the installer (MSIX or Inno Setup) are still open (MEDDATA.md §8).
+This must be run on Windows with the Visual Studio C++ workload. To produce a per-user installer, install Inno Setup 7 (or 6) and run this from the repository root in PowerShell:
+
+```powershell
+./app/tool/build_windows_installer.ps1
+```
+
+The installer is written to `app/build/installer/Meddata-Setup-<version>.exe`. Windows builds need Visual Studio 2026 with the Desktop development with C++ workload and the C++ ATL component. Pass `-SkipBuild` to package an existing release build.
 
 ## Picking up work
 

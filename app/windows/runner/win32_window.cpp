@@ -144,6 +144,29 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  // Start in the middle of the work area instead of against the top-left
+  // corner of the primary monitor.
+  RECT window_rect{};
+  MONITORINFO monitor_info{};
+  monitor_info.cbSize = sizeof(monitor_info);
+  const HMONITOR window_monitor =
+      MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
+  if (GetWindowRect(window, &window_rect) &&
+      GetMonitorInfo(window_monitor, &monitor_info)) {
+    const int width = window_rect.right - window_rect.left;
+    const int height = window_rect.bottom - window_rect.top;
+    const int x = monitor_info.rcWork.left +
+                  ((monitor_info.rcWork.right - monitor_info.rcWork.left) -
+                   width) /
+                      2;
+    const int y = monitor_info.rcWork.top +
+                  ((monitor_info.rcWork.bottom - monitor_info.rcWork.top) -
+                   height) /
+                      2;
+    SetWindowPos(window, nullptr, x, y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+  }
+
   UpdateTheme(window);
 
   return OnCreate();
@@ -204,6 +227,15 @@ Win32Window::MessageHandler(HWND hwnd,
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, TRUE);
       }
+      return 0;
+    }
+
+    case WM_GETMINMAXINFO: {
+      auto min_max_info = reinterpret_cast<MINMAXINFO*>(lparam);
+      const HMONITOR monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+      const double scale_factor = FlutterDesktopGetDpiForMonitor(monitor) / 96.0;
+      min_max_info->ptMinTrackSize.x = Scale(900, scale_factor);
+      min_max_info->ptMinTrackSize.y = Scale(620, scale_factor);
       return 0;
     }
 
