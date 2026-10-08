@@ -727,45 +727,16 @@ class _NewBillScreenState extends State<NewBillScreen> {
     required String initial,
     required bool decimal,
     required String? Function(String) validate,
-  }) {
-    final TextEditingController ctrl = TextEditingController(text: initial);
-    return showDialog<String>(
-      context: context,
-      builder: (BuildContext ctx) {
-        String? error;
-        return StatefulBuilder(
-          builder: (BuildContext ctx, StateSetter setLocal) {
-            void done() {
-              final String? e = validate(ctrl.text.trim());
-              if (e != null) {
-                setLocal(() => error = e);
-                return;
-              }
-              Navigator.of(ctx).pop(ctrl.text.trim());
-            }
-
-            return AlertDialog(
-              title: Text(title),
-              content: TextField(
-                controller: ctrl,
-                autofocus: true,
-                keyboardType: TextInputType.numberWithOptions(decimal: decimal),
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.allow(RegExp(decimal ? r'[0-9.]' : r'[0-9]')),
-                ],
-                onSubmitted: (_) => done(),
-                decoration: InputDecoration(errorText: error),
-              ),
-              actions: <Widget>[
-                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-                TextButton(onPressed: done, child: const Text('OK')),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(ctrl.dispose);
-  }
+  }) =>
+      showDialog<String>(
+        context: context,
+        builder: (_) => _NumberDialog(
+          title: title,
+          initial: initial,
+          decimal: decimal,
+          validate: validate,
+        ),
+      );
 
   Future<void> _changeBatch(CartItem item) async {
     final DateTime today = _cart.today;
@@ -1355,6 +1326,67 @@ class _PackQtyDialogState extends State<_PackQtyDialog> {
             ),
           ),
         ],
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: _done, child: const Text('OK')),
+      ],
+    );
+  }
+}
+
+/// One-number dialog (plain quantity, discount %). A StatefulWidget for the
+/// same reason as [_PackQtyDialog]: the controller must outlive the exit
+/// animation.
+class _NumberDialog extends StatefulWidget {
+  const _NumberDialog({
+    required this.title,
+    required this.initial,
+    required this.decimal,
+    required this.validate,
+  });
+
+  final String title;
+  final String initial;
+  final bool decimal;
+  final String? Function(String) validate;
+
+  @override
+  State<_NumberDialog> createState() => _NumberDialogState();
+}
+
+class _NumberDialogState extends State<_NumberDialog> {
+  late final TextEditingController _ctrl = TextEditingController(text: widget.initial);
+  String? _error;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _done() {
+    final String? e = widget.validate(_ctrl.text.trim());
+    if (e != null) {
+      setState(() => _error = e);
+      return;
+    }
+    Navigator.of(context).pop(_ctrl.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _ctrl,
+        autofocus: true,
+        keyboardType: TextInputType.numberWithOptions(decimal: widget.decimal),
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.allow(RegExp(widget.decimal ? r'[0-9.]' : r'[0-9]')),
+        ],
+        onSubmitted: (_) => _done(),
+        decoration: InputDecoration(errorText: _error),
       ),
       actions: <Widget>[
         TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),

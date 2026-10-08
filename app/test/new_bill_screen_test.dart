@@ -280,5 +280,15 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('= 2 strips + 3 tablets'), findsOneWidget);
+
+    // The one-number dialog (discount) closes cleanly too.
+    await tester.tap(find.text('Discount'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discount % on MRP'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, '10');
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.text('10%'), findsOneWidget);
+    expect(find.textContaining('10% off'), findsOneWidget);
   });
 }
