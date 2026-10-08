@@ -149,7 +149,8 @@ void main() {
       });
       expect(l[1]['product_id'], 'new-0');
       expect(l[1]['product'], <String, Object?>{
-        'name': 'Azithral 500', 'manufacturer': 'Alembic', 'unit': 'Strips', 'category': 'Uncategorised', 'barcode': '890123',
+        'name': 'Azithral 500', 'manufacturer': 'Alembic', 'unit': 'Strips', 'pack_size': 1, 'category': 'Uncategorised',
+        'barcode': '890123',
       });
       expect(<Object?>[l[1]['units_per_pack'], l[1]['mfg_date'], l[1].containsKey('gst_rate_bp'), l[1].containsKey('batch_no')],
           <Object?>[1, '2026-04-01', false, false]);

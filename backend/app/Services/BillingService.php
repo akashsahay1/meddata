@@ -168,7 +168,7 @@ class BillingService
             $product = $products[$batch->product_id];
             $gstRate = (int) ($product->gst_rate_bp ?? $shop->default_gst_rate_bp);
             $discountBp = (int) ($line['discount_bp'] ?? 0);
-            $calc = GstMath::line((int) $batch->mrp_paise, (int) $line['qty_units'], $discountBp, $gstRate, $interState);
+            $calc = GstMath::line((int) $batch->mrp_paise, (int) $line['qty_units'], $discountBp, $gstRate, $interState, $product->pricePack());
             $items[] = [
                 'line_no' => $i + 1,
                 'product_id' => $product->id,

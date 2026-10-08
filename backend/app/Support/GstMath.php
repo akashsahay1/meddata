@@ -11,7 +11,8 @@ use DateTimeInterface;
  * keep the two in step - the server's numbers are the ones that count.
  *
  * Per line:
- *   gross    = mrp x qty
+ *   gross    = mrp x qty / packSize (rounded half up: the MRP is per pack of
+ *              packSize pieces and qty is in pieces - see PackSize)
  *   discount = gross x discount% (rounded half up)
  *   amount   = gross - discount          what the customer pays for it
  *   inter-state: taxable = amount x 100 / (100 + rate%), IGST = amount - taxable
@@ -32,9 +33,9 @@ final class GstMath
      * @return array{gross_paise: int, discount_paise: int, rate_paise: int, taxable_paise: int,
      *               cgst_paise: int, sgst_paise: int, igst_paise: int, total_paise: int}
      */
-    public static function line(int $mrpPaise, int $qty, int $discountBp, int $gstRateBp, bool $interState): array
+    public static function line(int $mrpPaise, int $qty, int $discountBp, int $gstRateBp, bool $interState, int $packSize = 1): array
     {
-        $gross = $mrpPaise * $qty;
+        $gross = self::roundDiv($mrpPaise * $qty, max(1, $packSize));
         $discount = self::roundDiv($gross * $discountBp, 10000);
         $amount = $gross - $discount;
 
@@ -51,8 +52,8 @@ final class GstMath
         return [
             'gross_paise' => $gross,
             'discount_paise' => $discount,
-            // Unit price before GST, after discount (display only).
-            'rate_paise' => $qty > 0 ? self::roundDiv($taxable, $qty) : 0,
+            // Price per pack before GST, after discount (display only).
+            'rate_paise' => $qty > 0 ? self::roundDiv($taxable * max(1, $packSize), $qty) : 0,
             'taxable_paise' => $taxable,
             'cgst_paise' => $cgst,
             'sgst_paise' => $sgst,
@@ -76,9 +77,9 @@ final class GstMath
      * @return array{gross_paise: int, discount_paise: int, rate_paise: int, taxable_paise: int,
      *               cgst_paise: int, sgst_paise: int, igst_paise: int, total_paise: int}
      */
-    public static function purchaseLine(int $ratePaise, int $qty, int $discountBp, int $gstRateBp, bool $interState): array
+    public static function purchaseLine(int $ratePaise, int $qty, int $discountBp, int $gstRateBp, bool $interState, int $packSize = 1): array
     {
-        $gross = $ratePaise * $qty;
+        $gross = self::roundDiv($ratePaise * $qty, max(1, $packSize));
         $discount = self::roundDiv($gross * $discountBp, 10000);
         $taxable = $gross - $discount;
 

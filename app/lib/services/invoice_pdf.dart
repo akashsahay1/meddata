@@ -294,7 +294,8 @@ class InvoicePdf {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: <pw.Widget>[
           pw.Text(i.name, style: const pw.TextStyle(fontSize: 8)),
-          pw.Text(packs, style: const pw.TextStyle(fontSize: 6.5, color: _muted)),
+          pw.Text('$packs · MRP per ${PackSize.packNoun(i.unit ?? '')}',
+              style: const pw.TextStyle(fontSize: 6.5, color: _muted)),
         ],
       ),
     );
@@ -559,7 +560,8 @@ class InvoicePdf {
                       if (_packs(i).isNotEmpty) _packs(i),
                       if (i.batchNo != null) 'B: ${i.batchNo}',
                       'Exp ${_exp(i.expiryDate)}',
-                      'MRP ${_amt(i.mrpPaise)}',
+                      'MRP ${_amt(i.mrpPaise)}'
+                          '${i.pricePack > 1 ? '/${PackSize.packNoun(i.unit ?? '')}' : ''}',
                       if (i.discountBp > 0) 'Disc ${Inr.percent(i.discountBp)}',
                       if (_registered(bill)) 'GST ${Inr.percent(i.gstRateBp)}',
                       if (_registered(bill) && i.hsn != null) 'HSN ${i.hsn}',

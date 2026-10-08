@@ -189,6 +189,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('hsn', 16)->nullable();
             $table->string('unit', 32)->nullable();
+            $table->unsignedInteger('pack_size')->default(1); // as on the bill item
             $table->string('batch_no', 64)->nullable();
             $table->date('expiry_date')->nullable();
             $table->unsignedInteger('qty_units');

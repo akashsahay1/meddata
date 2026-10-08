@@ -35,8 +35,8 @@ class ReportRepository {
     final List<Map<String, Object?>> rows = await db.rawQuery('''
       SELECT b.id AS batch_id, b.product_id AS product_id, p.name AS name,
         p.manufacturer AS brand, p.category AS category, b.batch_no AS batch_no,
-        p.unit AS unit, b.expiry_date AS expiry_date, b.mrp_paise AS mrp_paise,
-        b.purchase_rate_paise AS cost_paise,
+        p.unit AS unit, p.pack_size AS pack_size, b.expiry_date AS expiry_date,
+        b.mrp_paise AS mrp_paise, b.purchase_rate_paise AS cost_paise,
         b.server_qty_units
           + IFNULL((SELECT SUM(m.delta_units) FROM inv_movements m
               WHERE m.batch_id = b.id AND m.synced = 0), 0)
@@ -54,7 +54,8 @@ class ReportRepository {
     final Database db = await _dbHelper.database;
     final List<Map<String, Object?>> rows = await db.rawQuery('''
       SELECT m.batch_id AS batch_id, m.product_id AS product_id, p.name AS name,
-        p.category AS category, b.batch_no AS batch_no, b.expiry_date AS expiry_date,
+        p.category AS category, p.unit AS unit, p.pack_size AS pack_size,
+        b.batch_no AS batch_no, b.expiry_date AS expiry_date,
         -m.delta_units AS units, m.occurred_at AS occurred_at,
         b.mrp_paise AS mrp_paise, b.purchase_rate_paise AS cost_paise
       FROM inv_movements m
@@ -70,6 +71,8 @@ class ReportRepository {
           productId: (r['product_id'] as String?) ?? '',
           name: (r['name'] as String?) ?? '',
           category: (r['category'] as String?) ?? '',
+          unit: (r['unit'] as String?) ?? '',
+          packSize: (r['pack_size'] as num?)?.toInt() ?? 1,
           batchNo: (r['batch_no'] as String?) ?? '',
           expiry: _date(r['expiry_date']),
           units: (r['units'] as num?)?.toInt() ?? 0,
@@ -88,6 +91,7 @@ class ReportRepository {
         category: (r['category'] as String?) ?? '',
         batchNo: (r['batch_no'] as String?) ?? '',
         unit: (r['unit'] as String?) ?? '',
+        packSize: (r['pack_size'] as num?)?.toInt() ?? 1,
         expiry: _date(r['expiry_date']),
         qty: (r['qty'] as num?)?.toInt() ?? 0,
         mrpPaise: (r['mrp_paise'] as num?)?.toInt() ?? 0,

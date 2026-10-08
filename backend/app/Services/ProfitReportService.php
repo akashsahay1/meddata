@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\PackSize;
+use App\Support\GstMath;
 use App\Models\Bill;
 use App\Models\Shop;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +45,8 @@ class ProfitReportService
             ->groupBy('b.bill_date', 'i.batch_id', 'i.product_id')
             ->selectRaw('b.bill_date AS bill_date, i.batch_id AS batch_id, i.product_id AS product_id,
                 MAX(i.name) AS name, MAX(i.batch_no) AS batch_no, MAX(p.name) AS product_name,
-                MAX(p.category) AS category, SUM(i.qty_units) AS qty,
+                MAX(p.category) AS category, MAX(p.unit) AS unit, MAX(p.pack_size) AS pack_size,
+                SUM(i.qty_units) AS qty,
                 SUM(i.taxable_paise) AS revenue, SUM(i.total_paise) AS sales,
                 MAX(bt.purchase_rate_paise) AS rate')
             ->orderBy('b.bill_date')
@@ -64,7 +67,10 @@ class ProfitReportService
             $revenue = (int) $r->revenue;
             $sales = (int) $r->sales;
             $rate = (int) ($r->rate ?? 0);
-            $cost = $rate > 0 ? $qty * $rate : null;
+            // The rate is per price pack (a strip); qty is in units.
+            $cost = $rate > 0
+                ? GstMath::roundDiv($qty * $rate, PackSize::pricePack($r->unit, (int) ($r->pack_size ?? 1)))
+                : null;
             $name = (string) ($r->product_name ?? $r->name);
             $category = trim((string) ($r->category ?? '')) ?: 'Uncategorised';
 
@@ -102,7 +108,7 @@ class ProfitReportService
             'to' => $to,
             'basis' => [
                 'revenue' => 'taxable value: price excluding GST, after discount',
-                'cost' => "qty x batch purchase rate (excluding GST, the batch's current rate)",
+                'cost' => "qty x batch purchase rate / pack size (excluding GST, the batch's current rate)",
             ],
             'totals' => $this->finish($total) + ['bills' => $bills],
             'by_day' => array_map(fn ($d) => $this->finish($d), array_values($days)),

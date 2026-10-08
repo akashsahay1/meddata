@@ -22,6 +22,11 @@ void main() {
       'nil rated': (<Object>[99999, 13, 0, 0, false], <int>[0, 1299987, 0, 0, 0, 1299987, 99999]),
       'free (100% off)': (<Object>[2050, 10, 10000, 1200, false], <int>[20500, 0, 0, 0, 0, 0, 0]),
       'odd discount': (<Object>[3333, 3, 333, 500, false], <int>[333, 9206, 230, 230, 0, 9666, 3069]),
+      // MRP per strip of 15, qty in tablets: the line is priced as a whole.
+      'strip of 15, two whole strips': (<Object>[3550, 30, 0, 1200, false, 15], <int>[0, 6340, 380, 380, 0, 7100, 3170]),
+      'strip of 15, loose tablets': (<Object>[3550, 23, 0, 1200, false, 15], <int>[0, 4859, 292, 292, 0, 5443, 3169]),
+      'strip of 15, 7 tablets inter-state': (<Object>[3550, 7, 0, 500, true, 15], <int>[0, 1578, 0, 0, 79, 1657, 3381]),
+      'strip of 10 with 10% off': (<Object>[10550, 25, 1000, 1200, false, 10], <int>[2638, 21193, 1272, 1272, 0, 23737, 8477]),
     };
 
     vectors.forEach((String name, (List<Object>, List<int>) v) {
@@ -33,6 +38,7 @@ void main() {
           discountBp: i[2] as int,
           gstRateBp: i[3] as int,
           interState: i[4] as bool,
+          packSize: i.length > 5 ? i[5] as int : 1,
         );
         expect(<int>[
           l.discountPaise, l.taxablePaise, l.cgstPaise, l.sgstPaise,

@@ -32,6 +32,7 @@ class ReturnLine {
     required this.ratePaise,
     required this.discountBp,
     required this.gstRateBp,
+    this.packSize = 1,
     this.qty = 0,
   });
 
@@ -42,10 +43,12 @@ class ReturnLine {
   /// Sold (or bought) less what earlier notes returned.
   final int maxQty;
 
-  /// Sale: MRP incl. GST; purchase: rate before GST (per pack).
+  /// Sale: MRP incl. GST per [packSize] units; purchase: rate before GST
+  /// (per pack, [qty] in packs).
   final int ratePaise;
   final int discountBp;
   final int gstRateBp;
+  final int packSize;
   int qty;
 }
 
@@ -70,6 +73,7 @@ class ReturnDraft {
                 ratePaise: i.mrpPaise,
                 discountBp: i.discountBp,
                 gstRateBp: i.gstRateBp,
+                packSize: i.pricePack,
               ),
         ],
       );
@@ -112,7 +116,8 @@ class ReturnDraft {
 
   GstLine gstOf(ReturnLine l) => isSale
       ? GstMath.line(
-          mrpPaise: l.ratePaise, qty: l.qty, discountBp: l.discountBp, gstRateBp: l.gstRateBp, interState: interState)
+          mrpPaise: l.ratePaise, qty: l.qty, discountBp: l.discountBp, gstRateBp: l.gstRateBp, interState: interState,
+          packSize: l.packSize)
       : GstMath.purchaseLine(
           ratePaise: l.ratePaise, qty: l.qty, discountBp: l.discountBp, gstRateBp: l.gstRateBp, interState: interState);
 
@@ -181,6 +186,7 @@ class PurchaseFromInvoice {
           'name': l.name.trim(),
           if (l.manufacturer.trim().isNotEmpty) 'manufacturer': l.manufacturer.trim(),
           'unit': l.stockUnit,
+          'pack_size': l.unitsPerPack,
           'category': 'Uncategorised',
           if (l.barcode.trim().isNotEmpty) 'barcode': l.barcode.trim(),
         },

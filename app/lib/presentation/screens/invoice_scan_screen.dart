@@ -12,6 +12,7 @@ import '../../data/models/accounting.dart';
 import '../../data/models/medicine.dart';
 import '../../domain/accounting.dart';
 import '../../domain/invoice_draft.dart';
+import '../../domain/pack_size.dart';
 import '../../domain/product_stock.dart';
 import '../../services/accounting_api.dart';
 import '../../services/auth_service.dart';
@@ -1427,9 +1428,10 @@ class _LineCard extends StatelessWidget {
                     ),
                     Text('$qty → ${line.stockQuantity} $unit', style: body),
                     Text(price, style: body),
-                    if (line.countsPieces)
+                    if (line.countsPieces && line.pricePack != line.unitsPerPack)
                       Text(
-                        'Per ${unit.toLowerCase()}: MRP ${Fmt.money(line.mrpPerUnit)}'
+                        'Per ${line.pricePack > 1 ? '${PackSize.packNoun(unit)} of ${line.pricePack}' : unit.toLowerCase()}: '
+                        'MRP ${Fmt.money(line.mrpPerUnit)}'
                         ' · cost ${Fmt.money(line.costPerUnit)}',
                         style: const TextStyle(
                           fontSize: 12.5,

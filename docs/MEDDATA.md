@@ -111,7 +111,9 @@ backend/
 
 Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of unsynced `inv_movements`.
 
-**Pack size.** Stock, prices and bill quantities are always in the product's `unit`. `products.pack_size` is how many pieces one pack holds (tablets per strip, ml per bottle — e.g. 6, 1, 10, 15; it is never assumed). It only *does* anything when the unit counts pieces (`Tablets`, `Capsules`, `ML`) and is more than 1: then the Add/Edit screen takes stock as strips + loose and prices per strip (stored per piece), the bill screen takes quantities as strips + loose, and bills/invoices read "2 strips + 3 tablets" (`app/lib/domain/pack_size.dart`). A medicine counted in `Strips`/`Bottles` keeps its pack size (from the catalog label, the invoice pack text or the import's "10's") but is counted in whole packs. `bill_items.pack_size` is copied at bill time, like `unit`, so an invoice reads the same after the product changes.
+**Pack size.** Stock and bill quantities are always in the product's `unit`. `products.pack_size` is how many pieces one pack holds (tablets per strip, ml per bottle — e.g. 6, 1, 10, 15; it is never assumed). It only *does* anything when the unit counts pieces (`Tablets`, `Capsules`, `ML`) and is more than 1 (`PackSize.applies`): then the Add/Edit screen takes stock as strips + loose, the bill screen takes quantities as strips + loose, and bills/invoices read "2 strips + 3 tablets" (`app/lib/domain/pack_size.dart`, `App\Support\PackSize`). A medicine counted in `Strips`/`Bottles` keeps its pack size (from the catalog label, the invoice pack text or the import's "10's") but is counted in whole packs. `bill_items.pack_size` and `sale_return_items.pack_size` are copied at bill time, like `unit`.
+
+**Prices are per price pack.** A batch's `mrp_paise` and `purchase_rate_paise` are per `pricePack` pieces = the pack size when it applies, else one unit. So a strip of 15 at ₹35.50 is stored as 3550 for 15 tablets — never a rounded per-tablet price. Every amount is worked out on the whole line and rounded once: `GstMath.line(..., packSize)` does `gross = round(mrp × qty / packSize)` (same on the server), stock valuation, expiry loss and the profit report do `round(qty × price / pricePack)`, and a purchase entry stores the supplier's per-pack rate as `round(rate × pricePack / units_per_pack)` (the same number when the packs agree). Selling 23 tablets of that strip bills ₹54.43; 30 tablets bill exactly ₹71.00.
 
 ### Backend (mirrored + admin tables)
 
@@ -269,10 +271,10 @@ php artisan queue:work database   # needed for AI invoice reading
 ### Tests
 
 ```bash
-# Backend (143 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
+# Backend (148 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths incl. per-pack, admin)
 cd backend && php artisan test   # accounting: parties, purchases, payments, returns, ledgers, GSTR
 
-# App tests (411 tests - 406 pass, 5 known contrast failures (see §8), 1 skipped: repository, product stock, pack sizes, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (417 tests - 416 pass, 1 skipped two-device test: repository, product stock, pack sizes + per-pack GST, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -386,8 +388,8 @@ cd app && flutter test test/integration/
 - [x] New bill: search results show "23 Tablets (2 strips + 3 tablets) · MRP ₹3.00 (₹30.00/strip)"; quantity dialog takes strips + loose; "− 1 strip / + 1 strip" buttons; the line reads "= 2 strips + 3 tablets"
 - [x] Bill detail, A4 invoice and 80 mm receipt print the strips + loose breakdown under the item; the server copies `pack_size` onto `bill_items` (migration edited in place — fresh DB, as per §9)
 - [x] Product detail and batch detail show the breakdown; tests: `pack_size_test`, Add/Edit widget tests (enter, edit, clear, catalog), cart, draft, repository, PDF, backend billing
-- Known limit: a per-strip MRP that doesn't divide evenly (₹35.50 / 15) is stored per tablet to the paise (₹2.37), so the bill and the edit screen show ₹35.55 for a strip. Fixing this properly means per-pack pricing in GstMath on both sides — decide if it matters before go-live
-- Not done: switching a medicine's unit between Strips and Tablets does not convert its existing stock (the number stays as typed)
+- [x] Per-pack pricing (8 Oct): batch MRP and purchase rate are per strip when the pack size applies (see §3 "Prices are per price pack"); `GstMath.line` / `GstMath::line` and `purchaseLine` take `packSize` and round once per line; valuation, expiry loss, profit, sale returns (`sale_return_items.pack_size`), purchases from invoices (`lines.*.product.pack_size` now validated and saved) and the catalog price all follow. Shared vectors added to `gst_math_test.dart` / `GstMathTest.php`
+- Not done: switching a medicine's unit between Strips and Tablets does not convert its existing stock or prices (the numbers stay as typed) — see §9 for the options
 
 ### Remaining from original task list
 
@@ -426,6 +428,8 @@ cd app && flutter test test/integration/
 | AI invoice | Server-side processing, not on-device |
 | Pricing | Plan prices not finalized yet |
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
+| Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
+| Unit change with stock | **Open.** Changing Strips ↔ Tablets on a medicine that has stock leaves the numbers as typed. Options: (a) refuse while stock > 0, (b) convert stock ×/÷ pack size (refuse when not divisible) and keep prices (they are per strip either way) |
 | Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail |
 
 ---

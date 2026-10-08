@@ -107,6 +107,27 @@ class BillingApiTest extends TestCase
 
     // ---- tax ----------------------------------------------------------------
 
+    public function test_a_medicine_priced_per_strip_is_billed_on_the_whole_line(): void
+    {
+        $token = $this->token();
+        $this->shop($token);
+        // Zincovit: tablets, strip of 15 at 35.50; stock in tablets.
+        $zincovit = $this->stock($token, ['name' => 'Zincovit', 'unit' => 'Tablets', 'pack_size' => 15, 'gst_rate_bp' => 1200],
+            ['batch_no' => 'Z1', 'mrp_paise' => 3550], 100);
+
+        $res = $this->bill($token, [$this->line($zincovit, 23)])->assertCreated();
+        $item = $res->json('bill.items.0');
+        // 35.50 x 23 / 15 = 54.43, rounded once on the line, not per tablet.
+        $this->assertSame([23, 3550, 15, 5443, 4859, 292, 292], [$item['qty_units'], $item['mrp_paise'], $item['pack_size'],
+            $item['total_paise'], $item['taxable_paise'], $item['cgst_paise'], $item['sgst_paise']]);
+        $this->assertSame(5400, $res->json('bill.total_paise'));
+        $this->assertSame(77, (int) Batch::find($zincovit['batch'])->qty_units);
+
+        // Two whole strips are exact.
+        $res = $this->bill($token, [$this->line($zincovit, 30)])->assertCreated();
+        $this->assertSame(7100, $res->json('bill.items.0.total_paise'));
+    }
+
     public function test_intra_state_bill_splits_gst_into_cgst_and_sgst(): void
     {
         $token = $this->token();

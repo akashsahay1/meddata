@@ -115,7 +115,10 @@ class ProductDetailScreen extends StatelessWidget {
         isLowStock: false);
     return MedicineTile(
       name: b.batchNo.isEmpty ? 'No batch no.' : 'Batch ${b.batchNo}',
-      subtitle: b.sellingPrice > 0 ? 'MRP ${Fmt.money(b.sellingPrice)}' : null,
+      subtitle: b.sellingPrice > 0
+          ? 'MRP ${Fmt.money(b.sellingPrice)}'
+              '${b.pricePack > 1 ? '/${PackSize.packNoun(b.unit)}' : ''}'
+          : null,
       initials: 'B',
       status: medicineStatusPill(batchOnly, b.quantity),
       qtyLabel: '${b.quantity} ${b.unit}',

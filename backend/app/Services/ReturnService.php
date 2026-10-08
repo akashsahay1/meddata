@@ -18,6 +18,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Support\DocumentSeries;
 use App\Support\GstMath;
+use App\Support\PackSize;
 use App\Support\StockLedger;
 use Illuminate\Support\Facades\DB;
 
@@ -81,7 +82,8 @@ class ReturnService
                 $item = $items[$itemId];
                 $calc = $qty === $item->qty_units - $returned[$itemId]['qty']
                     ? GstMath::remainder($this->billItemCalc($item), $returned[$itemId]['calcs'])
-                    : GstMath::line((int) $item->mrp_paise, $qty, (int) $item->discount_bp, (int) $item->gst_rate_bp, (bool) $bill->is_inter_state);
+                    : GstMath::line((int) $item->mrp_paise, $qty, (int) $item->discount_bp, (int) $item->gst_rate_bp, (bool) $bill->is_inter_state,
+                        PackSize::pricePack($item->unit, (int) $item->pack_size));
                 $calcs[] = $calc;
                 $rows[] = [
                     'line_no' => count($rows) + 1,
@@ -91,6 +93,7 @@ class ReturnService
                     'name' => $item->name,
                     'hsn' => $item->hsn,
                     'unit' => $item->unit,
+                    'pack_size' => (int) $item->pack_size,
                     'batch_no' => $item->batch_no,
                     'expiry_date' => Purchase::day($item->expiry_date),
                     'qty_units' => $qty,
@@ -288,10 +291,11 @@ class ReturnService
                 throw new ApiRefused(422, 'batch_not_found', 'A batch on this return is not in your inventory.', ['index' => $i]);
             }
             $qty = (int) $line['qty'];
+            // The batch rate is per price pack (a strip); qty is in units.
             $rate = (int) ($line['rate_paise'] ?? $batch->purchase_rate_paise);
             $gst = (int) ($line['gst_rate_bp'] ?? $product->gst_rate_bp ?? $shop->default_gst_rate_bp);
             $discount = (int) ($line['discount_bp'] ?? 0);
-            $calc = GstMath::purchaseLine($rate, $qty, $discount, $gst, $interState);
+            $calc = GstMath::purchaseLine($rate, $qty, $discount, $gst, $interState, $product->pricePack());
             $calcs[] = $calc;
             $rows[] = [
                 'line_no' => $i + 1,
@@ -362,8 +366,10 @@ class ReturnService
         foreach ($class::whereIn($idKey, $ids)->get() as $row) {
             $id = (int) $row->{$idKey};
             $out[$id]['qty'] += (int) $row->{$qtyKey};
+            // A sale return's MRP is per price pack; a purchase return's rate per pack with qty in packs.
+            $pack = isset($row->mrp_paise) ? PackSize::pricePack($row->unit, (int) ($row->pack_size ?? 1)) : 1;
             $out[$id]['calcs'][] = $row->only(['discount_paise', 'taxable_paise', 'cgst_paise', 'sgst_paise', 'igst_paise', 'total_paise'])
-                + ['gross_paise' => (int) ($row->mrp_paise ?? $row->rate_paise) * (int) $row->{$qtyKey}];
+                + ['gross_paise' => GstMath::roundDiv((int) ($row->mrp_paise ?? $row->rate_paise) * (int) $row->{$qtyKey}, $pack)];
         }
 
         return $out;
@@ -372,7 +378,8 @@ class ReturnService
     private function billItemCalc(BillItem $item): array
     {
         return [
-            'gross_paise' => (int) $item->mrp_paise * (int) $item->qty_units,
+            'gross_paise' => GstMath::roundDiv((int) $item->mrp_paise * (int) $item->qty_units,
+                PackSize::pricePack($item->unit, (int) $item->pack_size)),
             'discount_paise' => (int) $item->discount_paise,
             'taxable_paise' => (int) $item->taxable_paise,
             'cgst_paise' => (int) $item->cgst_paise,

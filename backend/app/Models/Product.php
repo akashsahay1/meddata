@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PackSize;
 use App\Models\Concerns\SyncedRow;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,5 +28,11 @@ class Product extends Model
     public function batches(): HasMany
     {
         return $this->hasMany(Batch::class);
+    }
+
+    /** Pieces a batch price covers: the strip when the pack size applies, else one unit. */
+    public function pricePack(): int
+    {
+        return PackSize::pricePack($this->unit, (int) $this->pack_size);
     }
 }

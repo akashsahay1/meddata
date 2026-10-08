@@ -14,9 +14,10 @@ void main() {
       SaleBatch(
         id: id,
         productId: product,
-        productName: product == 'dolo' ? 'Dolo 650' : 'Cough Syrup',
-        unit: product == 'dolo' ? 'Tablets' : 'Strips',
-        packSize: product == 'dolo' ? 10 : 1,
+        productName: product == 'dolo' ? 'Dolo 650' : product == 'tabs' ? 'Zincovit' : 'Cough Syrup',
+        // Zincovit is counted in tablets, priced per strip of 15.
+        unit: product == 'tabs' ? 'Tablets' : 'Strips',
+        packSize: product == 'tabs' ? 15 : 1,
         batchNo: id,
         expiryDate: expiry,
         mrpPaise: mrp,
@@ -35,6 +36,7 @@ void main() {
     'syrup': <SaleBatch>[b('S1', 'syrup', DateTime(2027, 1, 31), 10, mrp: 11250, gst: null, discount: 1000)],
     'old': <SaleBatch>[b('O1', 'old', DateTime(2025, 1, 1), 5)],
     'none': <SaleBatch>[b('N1', 'none', DateTime(2027, 1, 1), 0)],
+    'tabs': <SaleBatch>[b('Z1', 'tabs', DateTime(2028, 1, 1), 100, mrp: 3550, gst: 1200)],
   };
 
   BillCart cart() => BillCart(
@@ -47,8 +49,6 @@ void main() {
     expect(await c.addProduct('dolo'), AddOutcome.added);
     expect(await c.addProduct('dolo', qty: 4), AddOutcome.added, reason: 'same medicine adds up');
     expect(c.items.single.qty, 5);
-    expect((c.items.single.unit, c.items.single.packSize), ('Tablets', 10),
-        reason: 'the pack size comes with the batch, for strips + loose');
     expect(c.lines.map((CartLine l) => (l.batch.id, l.qty, l.batch.mrpPaise)),
         <(String, int, int)>[('D1', 3, 3000), ('D2', 2, 3200)]);
     expect(c.available(c.items.single), 23, reason: 'the expired batch does not count');
@@ -58,6 +58,21 @@ void main() {
     expect(await c.addProduct('none'), AddOutcome.outOfStock);
     expect(await c.addProduct('missing'), AddOutcome.notFound);
     expect(c.items, hasLength(1));
+  });
+
+  test('a medicine priced per strip is billed on the whole line, in tablets', () async {
+    final BillCart c = cart();
+    expect(await c.addProduct('tabs', qty: 23), AddOutcome.added);
+    expect((c.items.single.unit, c.items.single.packSize), ('Tablets', 15),
+        reason: 'the pack size comes with the batch, for strips + loose');
+    // 35.50 a strip of 15: 23 tablets = 35.50 x 23 / 15 = 54.43, rounded once.
+    expect(c.lines.single.gst.grossPaise, 5443);
+    expect(c.totals.totalPaise, 5400, reason: 'rounded to the rupee');
+    c.setQty(c.items.single, 30);
+    expect(c.lines.single.gst.totalPaise, 7100, reason: 'two whole strips, exact');
+    expect(c.requestBody()['lines'], <Map<String, Object?>>[
+      <String, Object?>{'batch_id': 'Z1', 'qty_units': 30, 'mrp_paise': 3550, 'batch_version': 7, 'discount_bp': 0},
+    ], reason: 'units and the strip MRP go to the server as they are');
   });
 
   test('tax uses the product rate or the shop default, and the customer state', () async {
@@ -112,7 +127,7 @@ void main() {
     expect(c.problem(), isNull);
     c.setQty(c.items.single, 30);
     expect(c.hasShortfall, isTrue);
-    expect(c.problem(), contains('Only 23 Tablets of Dolo 650'));
+    expect(c.problem(), contains('Only 23 Strips of Dolo 650'));
     c.setQty(c.items.single, 1);
     c.update(() => c.customerGstin = '27AAPFU0939F1ZX');
     expect(c.problem(), "The customer's GSTIN is not valid.");

@@ -7,6 +7,11 @@ const Set<String> kPieceUnits = <String>{'Tablets', 'Capsules', 'ML'};
 /// pack size lets it be entered and read as packs + loose pieces, and lets
 /// a bill say "2 strips + 3 tablets". A product counted in whole packs
 /// (unit Strips, Bottles...) keeps its pack size but nothing uses it.
+///
+/// Prices (a batch's MRP and purchase rate) are per [pricePack] pieces:
+/// per strip when the pack size applies, else per unit. A line's amount is
+/// worked out on the whole line, `price x qty / pricePack` rounded once,
+/// so a strip MRP of ₹35.50 never has to become a per-tablet price.
 class PackSize {
   PackSize._();
 
@@ -15,6 +20,10 @@ class PackSize {
   /// Whether [packSize] splits stock of [unit] into packs and loose pieces.
   static bool applies(String unit, int packSize) =>
       packSize > 1 && kPieceUnits.contains(unit);
+
+  /// Pieces one price covers: the pack when the pack size applies, else 1.
+  static int pricePack(String unit, int packSize) =>
+      applies(unit, packSize) ? packSize : 1;
 
   /// What one pack of this unit is called.
   static String packNoun(String unit) => unit == 'ML' ? 'bottle' : 'strip';

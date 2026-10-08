@@ -88,8 +88,15 @@ class InvoiceDraftLine {
   /// Purchase rate per pack after the line discount (GST not included).
   double get netRate => rate * (1 - discountPercent / 100);
 
-  double get mrpPerUnit => _round2(mrp / _perPack);
-  double get costPerUnit => _round2(netRate / _perPack);
+  /// Pieces a stored price covers: the medicine's own pack when it applies
+  /// (a known medicine's, or this line's for a new one), else one unit.
+  int get pricePack =>
+      PackSize.pricePack(stockUnit, target?.packSize ?? unitsPerPack);
+
+  /// MRP and cost as stored on the batch: per [pricePack] pieces. With the
+  /// pack as printed this is the printed price itself (no division).
+  double get mrpPerUnit => _round2(mrp * pricePack / _perPack);
+  double get costPerUnit => _round2(netRate * pricePack / _perPack);
 
   /// What must be fixed before the line can be added.
   List<String> get problems => <String>[

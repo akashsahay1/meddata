@@ -1,3 +1,5 @@
+import 'pack_size.dart';
+
 /// A batch as the bill screen sells it: the batch's price, stock and
 /// version, plus the product details a bill line needs.
 class SaleBatch {
@@ -41,6 +43,9 @@ class SaleBatch {
 
   /// The product's default selling discount.
   final int discountBp;
+
+  /// Pieces [mrpPaise] covers (a strip, or one unit).
+  int get pricePack => PackSize.pricePack(unit, packSize);
 
   /// Expired = the expiry date is before today (it can be sold on the day).
   bool isExpiredOn(DateTime today) => _day(expiryDate).isBefore(_day(today));

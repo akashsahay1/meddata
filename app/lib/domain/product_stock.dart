@@ -20,6 +20,9 @@ class ProductStock {
 
   /// Pieces per pack (tablets per strip); 1 when not set.
   int get packSize => first.packSize;
+
+  /// Pieces a price covers (see [PackSize.pricePack]).
+  int get pricePack => first.pricePack;
   int get lowStockThreshold => first.lowStockThreshold;
 
   int get totalQty =>

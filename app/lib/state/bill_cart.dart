@@ -215,6 +215,7 @@ class BillCart extends ChangeNotifier {
               discountBp: item.discountBp,
               gstRateBp: gstRateOf(take.batch),
               interState: inter,
+              packSize: take.batch.pricePack,
             ),
           ),
     ];

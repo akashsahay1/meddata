@@ -332,7 +332,7 @@ void main() {
       final Medicine m = l.toMedicine(id: 'b2', now: now);
       expect(m.quantity, 20);
       expect(m.packSize, 10);
-      expect(m.sellingPrice, 3);
+      expect(m.sellingPrice, 30, reason: 'per strip, as printed');
     });
 
     test('a pack count of one never multiplies', () {

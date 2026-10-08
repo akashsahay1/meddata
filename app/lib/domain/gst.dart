@@ -6,7 +6,8 @@
 /// server's numbers are the ones that count.
 ///
 /// Per line:
-///   gross    = mrp x qty
+///   gross    = mrp x qty / packSize (rounded half up; the MRP is per pack
+///              of [packSize] pieces, qty in pieces - see PackSize)
 ///   discount = gross x discount% (rounded half up)
 ///   amount   = gross - discount            what the customer pays for it
 ///   inter-state: taxable = amount x 100 / (100 + rate%), IGST = the rest
@@ -25,8 +26,9 @@ class GstMath {
     int discountBp = 0,
     required int gstRateBp,
     required bool interState,
+    int packSize = 1,
   }) {
-    final int gross = mrpPaise * qty;
+    final int gross = roundDiv(mrpPaise * qty, packSize);
     final int discount = roundDiv(gross * discountBp, 10000);
     final int amount = gross - discount;
     final int taxable;
@@ -41,7 +43,8 @@ class GstMath {
     return GstLine(
       grossPaise: gross,
       discountPaise: discount,
-      ratePaise: qty > 0 ? roundDiv(taxable, qty) : 0,
+      // Per pack, like the MRP.
+      ratePaise: qty > 0 ? roundDiv(taxable * packSize, qty) : 0,
       taxablePaise: taxable,
       cgstPaise: cgst,
       sgstPaise: sgst,
@@ -60,8 +63,9 @@ class GstMath {
     int discountBp = 0,
     required int gstRateBp,
     required bool interState,
+    int packSize = 1,
   }) {
-    final int gross = ratePaise * qty;
+    final int gross = roundDiv(ratePaise * qty, packSize);
     final int discount = roundDiv(gross * discountBp, 10000);
     final int taxable = gross - discount;
     int cgst = 0, sgst = 0, igst = 0;
@@ -126,11 +130,11 @@ class GstLine {
     required this.totalPaise,
   });
 
-  /// MRP x qty, before discount.
+  /// MRP x qty (/ pack size), before discount.
   final int grossPaise;
   final int discountPaise;
 
-  /// Unit price before GST, after discount (display only).
+  /// Price per pack before GST, after discount (display only).
   final int ratePaise;
   final int taxablePaise;
   final int cgstPaise;

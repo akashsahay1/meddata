@@ -6,6 +6,9 @@
 /// is counted apart rather than as zero.
 library;
 
+import '../gst.dart';
+import '../pack_size.dart';
+
 /// One batch's stock on a given date, as the report reads it from the
 /// local database.
 class StockRow {
@@ -17,6 +20,7 @@ class StockRow {
     this.category = '',
     this.batchNo = '',
     this.unit = '',
+    this.packSize = 1,
     required this.expiry,
     required this.qty,
     required this.mrpPaise,
@@ -30,22 +34,27 @@ class StockRow {
   final String category;
   final String batchNo;
   final String unit;
+
+  /// Pieces per pack of the product; prices are per [pricePack] pieces.
+  final int packSize;
   final DateTime expiry;
 
   /// Units on hand.
   final int qty;
 
-  /// MRP per unit (incl. GST).
+  /// MRP per price pack (incl. GST).
   final int mrpPaise;
 
-  /// Purchase rate per unit (excl. GST); 0 = not entered.
+  /// Purchase rate per price pack (excl. GST); 0 = not entered.
   final int costPaise;
 
+  int get pricePack => PackSize.pricePack(unit, packSize);
   bool get hasCost => costPaise > 0;
-  int get mrpValuePaise => qty * mrpPaise;
+  int get mrpValuePaise => GstMath.roundDiv(qty * mrpPaise, pricePack);
 
   /// Null when the purchase rate is unknown.
-  int? get costValuePaise => hasCost ? qty * costPaise : null;
+  int? get costValuePaise =>
+      hasCost ? GstMath.roundDiv(qty * costPaise, pricePack) : null;
 
   /// '' categories read as "Uncategorised".
   String get categoryLabel =>

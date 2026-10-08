@@ -119,7 +119,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         text: (m?.packSize ?? 1) > 1 ? '${m!.packSize}' : '');
     _packs = TextEditingController();
     _loose = TextEditingController();
-    _syncMode();
+    _initMode();
     final String stored = m?.category.trim() ?? '';
     _category = stored.isEmpty ? 'Uncategorised' : stored;
     _mfgDate = batchOnly ? null : m?.mfgDate;
@@ -157,9 +157,24 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   int get _quantityValue =>
       _packsMode ? _packsTotal() : (int.tryParse(_quantity.text.trim()) ?? 0);
 
+  /// The mode the saved medicine is in: prices are stored per pack when
+  /// the pack size applies, so they go in the fields as they are; only the
+  /// stock is split into packs + loose.
+  void _initMode() {
+    final int ps = _packSizeValue;
+    _packsMode = PackSize.applies(_unit, ps);
+    _modePackSize = ps;
+    if (!_packsMode) return;
+    final String typed = _quantity.text.trim();
+    final (int p, int l) = PackSize.split(int.tryParse(typed) ?? 0, ps);
+    _packs.text = typed.isEmpty ? '' : '$p';
+    _loose.text = l == 0 ? '' : '$l';
+  }
+
   /// Switch the stock and price fields between pieces and packs when the
-  /// unit or pack size changes, keeping what was typed. A [keepSelling]
-  /// price is already per pack (the catalog lists pack prices).
+  /// unit or pack size changes, keeping what was typed: a price per tablet
+  /// becomes the same price per strip and back. A [keepSelling] price is
+  /// already per pack (the catalog lists pack prices).
   void _syncMode({bool keepSelling = false}) {
     final int ps = _packSizeValue;
     final bool packs = PackSize.applies(_unit, ps);
@@ -350,10 +365,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     final DateTime now = DateTime.now();
     final String name = _name.text.trim();
     final String batch = _batch.text.trim();
-    // Prices are typed per pack in packs mode; stored per piece.
-    final int perPack = _packsMode ? _modePackSize : 1;
+    // Prices are per strip in packs mode and stored that way (see
+    // PackSize.pricePack); per unit otherwise.
     double price(TextEditingController c) =>
-        (double.tryParse(c.text.trim()) ?? 0) / perPack;
+        double.tryParse(c.text.trim()) ?? 0;
 
     Medicine medicine = (widget.existing ??
             Medicine(

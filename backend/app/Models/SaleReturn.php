@@ -90,6 +90,7 @@ class SaleReturn extends Model
                 'name' => $i->name,
                 'hsn' => $i->hsn,
                 'unit' => $i->unit,
+                'pack_size' => (int) $i->pack_size,
                 'batch_no' => $i->batch_no,
                 'expiry_date' => Purchase::day($i->expiry_date),
                 'qty' => $i->qty_units,

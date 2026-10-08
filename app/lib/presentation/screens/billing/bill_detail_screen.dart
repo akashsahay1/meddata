@@ -465,6 +465,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 ),
                 Text(
                   '${i.qty} × ${Inr.format(i.mrpPaise)}'
+                  '${i.pricePack > 1 ? '/${PackSize.packNoun(i.unit ?? '')}' : ''}'
                   '${packs.isEmpty ? '' : ' ($packs)'}'
                   '${i.discountBp > 0 ? ' · ${Inr.percent(i.discountBp)} off' : ''}'
                   '${registered ? ' · GST ${Inr.percent(i.gstRateBp)}' : ''}',

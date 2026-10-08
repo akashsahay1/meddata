@@ -631,13 +631,12 @@ class _NewBillScreenState extends State<NewBillScreen> {
     final int qty = sellable.fold(0, (int s, Medicine m) => s + m.quantity);
     final bool canSell = qty > 0;
     final int mrp = canSell ? (sellable.first.sellingPrice * 100).round() : 0;
-    // MRP is per piece; with a pack size the strip price is what the
-    // customer asks for.
-    final String perPack = PackSize.applies(p.unit, p.packSize)
-        ? ' (${Inr.format(mrp * p.packSize)}/${PackSize.packNoun(p.unit)})'
+    // With a pack size the MRP is the strip's, as printed on it.
+    final String per = PackSize.applies(p.unit, p.packSize)
+        ? '/${PackSize.packNoun(p.unit)}'
         : '';
     final String stock = canSell
-        ? '${PackSize.stock(qty, p.unit, p.packSize)} · MRP ${Inr.format(mrp)}$perPack'
+        ? '${PackSize.stock(qty, p.unit, p.packSize)} · MRP ${Inr.format(mrp)}$per'
         : (p.totalQty > 0 ? 'Only expired stock' : 'Out of stock');
     return ListTile(
       enabled: canSell,
@@ -1283,7 +1282,9 @@ class _CartItemCard extends StatelessWidget {
                     child: Text(
                       '${l.batch.batchNo.isEmpty ? 'No batch no.' : l.batch.batchNo}'
                       ' · Exp ${exp.format(l.batch.expiryDate)}'
-                      ' · MRP ${Inr.format(l.batch.mrpPaise)} × ${l.qty}',
+                      ' · MRP ${Inr.format(l.batch.mrpPaise)}'
+                      '${l.batch.pricePack > 1 ? '/${PackSize.packNoun(l.batch.unit)}' : ''}'
+                      ' × ${l.qty}',
                       style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.ink),
                     ),
                   ),

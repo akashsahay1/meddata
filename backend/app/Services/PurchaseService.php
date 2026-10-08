@@ -285,6 +285,10 @@ class PurchaseService
         }
 
         $net = $rate - GstMath::roundDiv($rate * $discountBp, 10000);
+        // The bill's prices are per printed pack of $upp units; the batch
+        // keeps them per the product's own price pack (its strip, or one
+        // unit) - the same number when the two packs agree.
+        $pack = $product->pricePack();
         $batch = new Batch;
         $batch->id = $id ?? (string) Str::uuid();
         $batch->fill([
@@ -292,8 +296,8 @@ class PurchaseService
             'batch_no' => $batchNo,
             'expiry_date' => $line['expiry_date'],
             'mfg_date' => $line['mfg_date'] ?? null,
-            'mrp_paise' => GstMath::roundDiv((int) ($line['mrp_paise'] ?? 0), $upp),
-            'purchase_rate_paise' => GstMath::roundDiv($net, $upp),
+            'mrp_paise' => GstMath::roundDiv((int) ($line['mrp_paise'] ?? 0) * $pack, $upp),
+            'purchase_rate_paise' => GstMath::roundDiv($net * $pack, $upp),
         ]);
         $batch->shop_id = $shop->id;
         $batch->created_by = $user->id;

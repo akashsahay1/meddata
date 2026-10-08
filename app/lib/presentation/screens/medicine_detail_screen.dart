@@ -85,9 +85,15 @@ class MedicineDetailScreen extends StatelessWidget {
             if (med.batchNo.isNotEmpty) <String>['Batch / lot', med.batchNo],
             if (med.barcode.isNotEmpty) <String>['Barcode', med.barcode],
             if (med.purchasePrice > 0)
-              <String>['Purchase price', Fmt.money(med.purchasePrice, symbol: cur)],
+              <String>[
+                'Purchase price${med.pricePack > 1 ? ' per ${PackSize.packNoun(med.unit)}' : ''}',
+                Fmt.money(med.purchasePrice, symbol: cur),
+              ],
             if (med.sellingPrice > 0)
-              <String>['Selling price', Fmt.money(med.sellingPrice, symbol: cur)],
+              <String>[
+                med.pricePack > 1 ? 'MRP per ${PackSize.packNoun(med.unit)}' : 'Selling price',
+                Fmt.money(med.sellingPrice, symbol: cur),
+              ],
             if (med.sellingPrice > 0)
               <String>['Stock value', Fmt.money(med.stockValue, symbol: cur)],
             if (med.notes.isNotEmpty) <String>['Notes', med.notes],

@@ -1,4 +1,5 @@
 import '../../domain/gst.dart';
+import '../../domain/pack_size.dart';
 import 'accounting.dart' show NoteRef;
 
 /// How a bill was paid. Credit = the customer pays later (udhaar).
@@ -144,6 +145,9 @@ class BillItem {
   final int returnedQty;
 
   int get returnableQty => qty - returnedQty;
+
+  /// Pieces [mrpPaise] covers (a strip, or one unit).
+  int get pricePack => PackSize.pricePack(unit ?? '', packSize);
 }
 
 /// Taxable value and tax at one GST rate (the invoice's tax summary).

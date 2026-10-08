@@ -76,7 +76,8 @@ class PurchaseApiTest extends TestCase
         $product = Product::findOrFail($newProduct);
         $this->assertSame(['Azithral 500', 'Tablets', '30042019', 1200], [$product->name, $product->unit, $product->hsn, (int) $product->gst_rate_bp]);
         $batch = Batch::where('product_id', $newProduct)->firstOrFail();
-        $this->assertSame([120, 1120, 450, 'AZ9'], [(int) $batch->qty_units, (int) $batch->mrp_paise, (int) $batch->purchase_rate_paise, $batch->batch_no]);
+        // 10 tablets a strip: 120 tablets, priced per strip as on the bill (rate 5000 less 10%).
+        $this->assertSame([120, 11200, 4500, 'AZ9'], [(int) $batch->qty_units, (int) $batch->mrp_paise, (int) $batch->purchase_rate_paise, $batch->batch_no]);
         $this->assertSame($dolo['batch'], $p['items'][1]['batch_id']);
         $this->assertFalse($p['items'][1]['new_batch']);
         $this->assertSame(25, $this->qty($dolo['batch']));

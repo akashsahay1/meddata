@@ -310,23 +310,23 @@ void main() {
       final ProductStock p = app.medicines.products.single;
       expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 33));
       final Medicine b = p.batches.single;
-      expect(b.sellingPrice, 2, reason: 'stored per tablet');
-      expect(b.purchasePrice, 1);
+      expect(b.sellingPrice, 30, reason: 'stored per strip (PackSize.pricePack)');
+      expect(b.purchasePrice, 15);
     });
 
     testWidgets('editing shows the stock and prices as strips; a change is saved in tablets',
         (WidgetTester tester) async {
       final TestApp app = await start(tester);
       final Medicine m = await app.addBatch('Dolo 650',
-          qty: 63, packSize: 10, mrp: 2.5, purchase: 1.8);
+          qty: 63, packSize: 10, mrp: 25, purchase: 18);
       await app.open(
           tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
 
       expect(fieldText(tester, 'Tablets per strip'), '10');
       expect(fieldText(tester, 'Strips *'), '6');
       expect(fieldText(tester, 'Loose tablets'), '3');
-      expect(fieldText(tester, 'MRP per strip'), '25');
-      expect(fieldText(tester, 'Purchase price per strip'), '18');
+      expect(fieldText(tester, 'MRP per strip'), '25.0', reason: 'as stored, per strip');
+      expect(fieldText(tester, 'Purchase price per strip'), '18.0');
       expect(find.text('= 63 tablets in stock'), findsOneWidget);
 
       await tester.enterText(fieldLabeled('Strips *'), '5');
@@ -337,15 +337,15 @@ void main() {
 
       final Medicine saved = app.medicines.findById(m.id)!;
       expect((saved.quantity, saved.packSize), (50, 10));
-      expect(saved.sellingPrice, 2.5, reason: 'unchanged, still per tablet');
-      expect(saved.purchasePrice, 1.8);
+      expect(saved.sellingPrice, 25, reason: 'unchanged, per strip');
+      expect(saved.purchasePrice, 18);
     });
 
     testWidgets('clearing the pack size goes back to a plain quantity in tablets',
         (WidgetTester tester) async {
       final TestApp app = await start(tester);
       final Medicine m = await app.addBatch('Dolo 650',
-          qty: 63, packSize: 10, mrp: 2.5, purchase: 1.8);
+          qty: 63, packSize: 10, mrp: 25, purchase: 18);
       await app.open(
           tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
 
@@ -451,7 +451,8 @@ void main() {
       await save(tester, 'Add medicine');
       final ProductStock p = app.medicines.products.single;
       expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 15));
-      expect(p.batches.single.sellingPrice, 7);
+      expect(p.batches.single.sellingPrice, 105, reason: 'the strip price');
+      expect(p.batches.single.purchasePrice, 75);
     });
 
     testWidgets('typing a name suggests catalog medicines to fill in from',

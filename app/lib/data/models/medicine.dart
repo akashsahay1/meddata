@@ -57,8 +57,12 @@ class Medicine {
     this.gstRateBp,
   });
 
+  /// Pieces a price covers: the strip when the pack size applies, else 1.
+  /// [sellingPrice] and [purchasePrice] are per that many pieces.
+  int get pricePack => PackSize.pricePack(unit, packSize);
+
   /// Total stock value at selling price (used in reports).
-  double get stockValue => sellingPrice * quantity;
+  double get stockValue => sellingPrice * quantity / pricePack;
 
   Medicine copyWith({
     String? name,

@@ -29,13 +29,18 @@ class GstMathTest extends TestCase
             'nil rated' => [99999, 13, 0, 0, false, [0, 1299987, 0, 0, 0, 1299987, 99999]],
             'free (100% off)' => [2050, 10, 10000, 1200, false, [20500, 0, 0, 0, 0, 0, 0]],
             'odd discount' => [3333, 3, 333, 500, false, [333, 9206, 230, 230, 0, 9666, 3069]],
+            // MRP per strip of 15, qty in tablets: the line is priced as a whole.
+            'strip of 15, two whole strips' => [3550, 30, 0, 1200, false, [0, 6340, 380, 380, 0, 7100, 3170], 15],
+            'strip of 15, loose tablets' => [3550, 23, 0, 1200, false, [0, 4859, 292, 292, 0, 5443, 3169], 15],
+            'strip of 15, 7 tablets inter-state' => [3550, 7, 0, 500, true, [0, 1578, 0, 0, 79, 1657, 3381], 15],
+            'strip of 10 with 10% off' => [10550, 25, 1000, 1200, false, [2638, 21193, 1272, 1272, 0, 23737, 8477], 10],
         ];
     }
 
     #[DataProvider('lines')]
-    public function test_line_maths(int $mrp, int $qty, int $discBp, int $rateBp, bool $inter, array $expected): void
+    public function test_line_maths(int $mrp, int $qty, int $discBp, int $rateBp, bool $inter, array $expected, int $pack = 1): void
     {
-        $line = GstMath::line($mrp, $qty, $discBp, $rateBp, $inter);
+        $line = GstMath::line($mrp, $qty, $discBp, $rateBp, $inter, $pack);
 
         $this->assertSame($expected, [
             $line['discount_paise'], $line['taxable_paise'], $line['cgst_paise'],
@@ -44,7 +49,7 @@ class GstMathTest extends TestCase
         // Tax is inside the MRP: taxable + tax is exactly what the customer pays.
         $this->assertSame($line['total_paise'],
             $line['taxable_paise'] + $line['cgst_paise'] + $line['sgst_paise'] + $line['igst_paise']);
-        $this->assertSame($mrp * $qty - $line['discount_paise'], $line['total_paise']);
+        $this->assertSame(GstMath::roundDiv($mrp * $qty, $pack) - $line['discount_paise'], $line['total_paise']);
     }
 
     public function test_totals_round_to_the_nearest_rupee(): void

@@ -17,6 +17,8 @@ class WriteOff {
     required this.name,
     this.category = '',
     this.batchNo = '',
+    this.unit = '',
+    this.packSize = 1,
     required this.expiry,
     required this.units,
     required this.at,
@@ -29,6 +31,8 @@ class WriteOff {
   final String name;
   final String category;
   final String batchNo;
+  final String unit;
+  final int packSize;
   final DateTime expiry;
 
   /// Units removed (positive).
@@ -37,7 +41,7 @@ class WriteOff {
   /// When it was written off.
   final DateTime at;
 
-  /// The batch's MRP / purchase rate per unit (0 = not entered).
+  /// The batch's MRP / purchase rate per price pack (0 = not entered).
   final int mrpPaise;
   final int costPaise;
 
@@ -48,6 +52,8 @@ class WriteOff {
         name: name,
         category: category,
         batchNo: batchNo,
+        unit: unit,
+        packSize: packSize,
         expiry: expiry,
         qty: units,
         mrpPaise: mrpPaise,
