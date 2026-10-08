@@ -706,76 +706,10 @@ class _NewBillScreenState extends State<NewBillScreen> {
 
   /// Quantity as packs + loose pieces ("2 strips + 3 tablets"); returns
   /// the total in pieces.
-  Future<int?> _packQtyDialog(CartItem item) {
-    final (int packs, int loose) = PackSize.split(item.qty, item.packSize);
-    final TextEditingController packsCtrl = TextEditingController(text: packs == 0 ? '' : '$packs');
-    final TextEditingController looseCtrl = TextEditingController(text: loose == 0 ? '' : '$loose');
-    final String pack = PackSize.packNoun(item.unit);
-    final String piece = PackSize.pieceNoun(item.unit);
-    int total() =>
-        (int.tryParse(packsCtrl.text.trim()) ?? 0) * item.packSize +
-        (int.tryParse(looseCtrl.text.trim()) ?? 0);
-    return showDialog<int>(
-      context: context,
-      builder: (BuildContext ctx) {
-        String? error;
-        return StatefulBuilder(
-          builder: (BuildContext ctx, StateSetter setLocal) {
-            void done() {
-              if (total() < 1) {
-                setLocal(() => error = 'Enter 1 or more');
-                return;
-              }
-              Navigator.of(ctx).pop(total());
-            }
-
-            Widget field(TextEditingController c, String label, {bool autofocus = false}) => TextField(
-                  controller: c,
-                  autofocus: autofocus,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (_) => setLocal(() => error = null),
-                  onSubmitted: (_) => done(),
-                  decoration: InputDecoration(labelText: label),
-                );
-
-            return AlertDialog(
-              title: Text('Quantity · 1 $pack = ${item.packSize} ${piece == 'ml' ? 'ml' : '${piece}s'}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(child: field(packsCtrl, '${pack[0].toUpperCase()}${pack.substring(1)}s', autofocus: true)),
-                      const SizedBox(width: 12),
-                      Expanded(child: field(looseCtrl, 'Loose ${piece == 'ml' ? 'ml' : '${piece}s'}')),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    error ?? '= ${total()} ${item.unit.toLowerCase()}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: error == null ? AppColors.muted : AppColors.statusRed,
-                    ),
-                  ),
-                ],
-              ),
-              actions: <Widget>[
-                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-                TextButton(onPressed: done, child: const Text('OK')),
-              ],
-            );
-          },
-        );
-      },
-    ).whenComplete(() {
-      packsCtrl.dispose();
-      looseCtrl.dispose();
-    });
-  }
+  Future<int?> _packQtyDialog(CartItem item) => showDialog<int>(
+        context: context,
+        builder: (_) => _PackQtyDialog(item: item),
+      );
 
   Future<void> _editDiscount(CartItem item) async {
     final String? v = await _numberDialog(
@@ -1332,6 +1266,100 @@ class _StepButton extends StatelessWidget {
         side: const BorderSide(color: AppColors.border, width: 1.5),
         foregroundColor: AppColors.green,
       ),
+    );
+  }
+}
+
+/// The strips + loose quantity dialog. A StatefulWidget so its controllers
+/// are disposed with the route, after the exit animation: disposing them
+/// from `whenComplete` (which fires at pop) left the fading dialog
+/// rebuilding fields on dead controllers.
+class _PackQtyDialog extends StatefulWidget {
+  const _PackQtyDialog({required this.item});
+
+  final CartItem item;
+
+  @override
+  State<_PackQtyDialog> createState() => _PackQtyDialogState();
+}
+
+class _PackQtyDialogState extends State<_PackQtyDialog> {
+  late final TextEditingController _packs;
+  late final TextEditingController _loose;
+  String? _error;
+
+  CartItem get item => widget.item;
+
+  @override
+  void initState() {
+    super.initState();
+    final (int packs, int loose) = PackSize.split(item.qty, item.packSize);
+    _packs = TextEditingController(text: packs == 0 ? '' : '$packs');
+    _loose = TextEditingController(text: loose == 0 ? '' : '$loose');
+  }
+
+  @override
+  void dispose() {
+    _packs.dispose();
+    _loose.dispose();
+    super.dispose();
+  }
+
+  int get _total =>
+      (int.tryParse(_packs.text.trim()) ?? 0) * item.packSize +
+      (int.tryParse(_loose.text.trim()) ?? 0);
+
+  void _done() {
+    if (_total < 1) {
+      setState(() => _error = 'Enter 1 or more');
+      return;
+    }
+    Navigator.of(context).pop(_total);
+  }
+
+  Widget _field(TextEditingController c, String label, {bool autofocus = false}) => TextField(
+        controller: c,
+        autofocus: autofocus,
+        keyboardType: TextInputType.number,
+        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+        onChanged: (_) => setState(() => _error = null),
+        onSubmitted: (_) => _done(),
+        decoration: InputDecoration(labelText: label),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final String pack = PackSize.packNoun(item.unit);
+    final String piece = PackSize.pieceNoun(item.unit);
+    final String pieces = piece == 'ml' ? 'ml' : '${piece}s';
+    return AlertDialog(
+      title: Text('Quantity · 1 $pack = ${item.packSize} $pieces'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(child: _field(_packs, '${pack[0].toUpperCase()}${pack.substring(1)}s', autofocus: true)),
+              const SizedBox(width: 12),
+              Expanded(child: _field(_loose, 'Loose $pieces')),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _error ?? '= $_total ${item.unit.toLowerCase()}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _error == null ? AppColors.muted : AppColors.statusRed,
+            ),
+          ),
+        ],
+      ),
+      actions: <Widget>[
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: _done, child: const Text('OK')),
+      ],
     );
   }
 }

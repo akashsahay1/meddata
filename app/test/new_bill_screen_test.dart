@@ -19,6 +19,11 @@ import 'billing_api_test.dart' show sampleBill;
 final DateTime _expiry = DateTime(2030, 12, 31);
 
 class _Meds extends MedicineRepository {
+  _Meds({this.unit = 'Strips', this.packSize = 1, this.qty = 10});
+  final String unit;
+  final int packSize;
+  final int qty;
+
   @override
   Future<List<Medicine>> getAll() async => <Medicine>[
         Medicine(
@@ -27,8 +32,9 @@ class _Meds extends MedicineRepository {
           name: 'Dolo 650',
           brand: 'Micro Labs',
           batchNo: 'B1',
-          quantity: 10,
-          unit: 'Strips',
+          quantity: qty,
+          unit: unit,
+          packSize: packSize,
           sellingPrice: 30,
           expiryDate: _expiry,
           createdAt: DateTime(2026),
@@ -38,6 +44,10 @@ class _Meds extends MedicineRepository {
 }
 
 class _Batches extends BillingRepository {
+  _Batches({this.unit = 'Strips', this.packSize = 1, this.qty = 10});
+  final String unit;
+  final int packSize;
+  final int qty;
   Map<String, int>? appliedStock;
 
   @override
@@ -46,12 +56,13 @@ class _Batches extends BillingRepository {
           id: 'B1',
           productId: 'P1',
           productName: 'Dolo 650',
-          unit: 'Strips',
+          unit: unit,
+          packSize: packSize,
           batchNo: 'B1',
           expiryDate: _expiry,
           mrpPaise: 3000,
           version: 7,
-          qty: 10,
+          qty: qty,
           gstRateBp: 500,
         ),
       ];
@@ -197,5 +208,77 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.text('open'), findsOneWidget);
+  });
+  testWidgets('strips + loose quantity: + 1 strip, the dialog, and closing it cleanly', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues(<String, Object>{'auth_token': 'tok', 'auth_email': 'a@b.c'});
+    final AuthService auth =
+        AuthService(SettingsService(), 'phone-1', null, _MemoryTokenStore());
+    await auth.init();
+    // Dolo 650 counted in tablets, a strip of 15, priced ₹30 a strip.
+    final MedicineProvider meds = MedicineProvider(_Meds(unit: 'Tablets', packSize: 15, qty: 100));
+    await meds.load();
+    final SyncEngine sync = SyncEngine(tokenProvider: () => null, userKeyProvider: () => null);
+    final _Server server = _Server()..online = true;
+    final _Batches batches = _Batches(unit: 'Tablets', packSize: 15, qty: 100);
+
+    await tester.pumpWidget(MultiProvider(
+      providers: <ChangeNotifierProvider<ChangeNotifier>>[
+        ChangeNotifierProvider<AuthService>.value(value: auth),
+        ChangeNotifierProvider<MedicineProvider>.value(value: meds),
+        ChangeNotifierProvider<SyncEngine>.value(value: sync),
+      ],
+      child: MaterialApp(
+        home: Builder(
+          builder: (BuildContext context) => TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                builder: (_) => NewBillScreen(api: BillingApi(server), repository: batches))),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'dolo');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('100 Tablets (6 strips + 10 tablets) · MRP ₹30.00/strip'), findsOneWidget);
+    await tester.tap(find.text('Dolo 650'));
+    await tester.pumpAndSettle();
+    expect(find.text('= 1 tablet'), findsOneWidget);
+    expect(find.textContaining('MRP ₹30.00/strip × 1'), findsOneWidget);
+
+    await tester.tap(find.text('+ 1 strip'));
+    await tester.pumpAndSettle();
+    expect(find.text('= 1 strip + 1 tablet'), findsOneWidget);
+    expect(find.text('₹32.00'), findsWidgets, reason: '16 tablets at ₹30 a strip of 15, rounded once');
+
+    // The quantity box opens the strips + loose dialog.
+    await tester.tap(find.text('16'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quantity · 1 strip = 15 tablets'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Strips'), '2');
+    await tester.enterText(find.widgetWithText(TextField, 'Loose tablets'), '3');
+    await tester.pump();
+    expect(find.text('= 33 tablets'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    // Runs the dialog's exit animation: its fields must not touch disposed
+    // controllers (they did, when disposal happened at pop).
+    await tester.pumpAndSettle();
+    expect(find.text('= 2 strips + 3 tablets'), findsOneWidget);
+    expect(find.textContaining('× 33'), findsOneWidget);
+    expect(find.text('₹66.00'), findsWidgets, reason: '33 x 30 / 15');
+
+    // Cancel leaves the quantity alone; an empty dialog refuses OK.
+    await tester.tap(find.text('33'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Strips'), '');
+    await tester.enterText(find.widgetWithText(TextField, 'Loose tablets'), '');
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+    expect(find.text('Enter 1 or more'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('= 2 strips + 3 tablets'), findsOneWidget);
   });
 }
