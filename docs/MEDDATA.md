@@ -397,7 +397,7 @@ cd app && flutter test test/integration/
 - [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
 - [x] Accessibility coverage for screens added since the audit (billing, invoice scan + review, all import wizard steps, signed-in Profile): 48dp targets, labels, contrast, no overflow at 1.3x/1.5x, spoken statuses and amounts
 - [~] Contrast in brand colours: orange primary buttons now use ink text app-wide (5.0:1; orange unchanged). Status pills (2.2–3.4:1) and the Subscribe plan toggle (4.0:1) still need a design decision
-- [ ] **5 accessibility tests fail on `main`** (`test/widget/accessibility_test.dart`, contrast: Profile signed in, Shop settings, Import header row / columns / check rows — 12 px labels at 1.35:1). Already failing at `f396c76` (PR #1 "adaptive experience"), before the pack-size work; find what that PR changed for those labels
+- [x] Contrast guideline on small muted text: 12–13 px `AppColors.muted` at weight 400/500 fails `textContrastGuideline` (it samples rendered pixels; the thin strokes never reach the full colour, so it reads ~1.35:1 against the canvas). Fixed by using w600 for the version line, the import file name and header-row hint, and the theme's `helperStyle`. Rule: muted text under 14 px is w600 or heavier
 - [x] Widget tests (Add/Edit 14, Home/Inventory 8) + smoke test add → list → expiry alerts scheduled (`test/integration/smoke_add_to_alert_test.dart`, no server needed)
 - [x] Fix: clearing a batch's manufacture date on Edit now saves (and syncs)
 - [x] Final README update

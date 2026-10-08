@@ -626,7 +626,11 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   "that's not right."
               : "We couldn't find column names. Tap the row that has them, "
                   'or keep "No header row".',
-          style: const TextStyle(fontSize: 13, color: AppColors.muted),
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.muted,
+          ),
         ),
         const SizedBox(height: 12),
         _ChoiceTile(
@@ -1126,7 +1130,11 @@ class _StepBar extends StatelessWidget {
                 fileName!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                ),
               ),
             ),
         ],

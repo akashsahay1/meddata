@@ -139,7 +139,8 @@ class AppTheme {
             const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
         hintStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
         // The default helper grey is 2.4:1 on the canvas; muted passes AA.
-        helperStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
+        // w600: small muted text at w500 fails the contrast guideline.
+        helperStyle: TextStyle(color: muted, fontWeight: FontWeight.w600),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.input),
           borderSide: BorderSide(color: line, width: 1.5),

@@ -273,9 +273,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child: Text(
                       'Meddata v$_appVersion',
+                      // Small muted text needs w600: at w500 the thin
+                      // strokes never reach the full colour (contrast test).
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                         color: AppColors.muted, // AA on the canvas
                       ),
                     ),
