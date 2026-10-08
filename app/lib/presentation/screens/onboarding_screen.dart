@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/platform.dart';
 import '../../services/settings_service.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/adaptive_layout.dart';
 import '../widgets/ui_kit.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -59,7 +59,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (AppPlatform.isWindows || MediaQuery.sizeOf(context).width >= 900) {
+    if (AdaptiveLayout.isDesktop(context)) {
       return _buildDesktop();
     }
     return _buildPhone();

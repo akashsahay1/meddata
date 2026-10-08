@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/platform.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
@@ -120,7 +119,7 @@ class _MainShellState extends State<MainShell> {
     // Wide windows (Windows PC, tablets): side rail instead of the bottom
     // bar, and content kept to a readable width.
     final double width = MediaQuery.sizeOf(context).width;
-    if (AdaptiveLayout.isDesktop(context) || AppPlatform.isWindows) {
+    if (AdaptiveLayout.isDesktop(context)) {
       final bool extendedRail = width >= 1100;
       return Scaffold(
         backgroundColor: AppColors.canvas,
