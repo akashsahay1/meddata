@@ -277,6 +277,106 @@ void main() {
     });
   });
 
+  group('pack size', () {
+    testWidgets('tablets per strip: stock as strips + loose, prices per strip',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      await app.open(tester, AddEditMedicineScreen(api: app.backend.api));
+      expect(find.text('Quantity *'), findsOneWidget);
+      expect(find.text('Tablets per strip'), findsOneWidget,
+          reason: 'the default unit counts pieces');
+
+      await tester.enterText(fieldLabeled('Medicine name *'), 'Dolo 650');
+      await tester.enterText(fieldLabeled('Tablets per strip'), '15');
+      await tester.pump();
+      expect(find.text('Quantity *'), findsNothing);
+      expect(find.text('Stock is kept in tablets; 1 strip = 15 tablets'),
+          findsOneWidget);
+
+      // Neither strips nor loose: still required.
+      await save(tester, 'Add medicine');
+      expect(find.text('Required'), findsOneWidget);
+      expect(app.medicines.productCount, 0);
+
+      await tester.enterText(fieldLabeled('Strips *'), '2');
+      await tester.enterText(fieldLabeled('Loose tablets'), '3');
+      await tester.pump();
+      expect(find.text('= 33 tablets in stock'), findsOneWidget);
+      await tester.enterText(fieldLabeled('Purchase price per strip'), '15');
+      await tester.enterText(fieldLabeled('MRP per strip'), '30');
+      await save(tester, 'Add medicine');
+
+      expect(find.byType(AddEditMedicineScreen), findsNothing);
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 33));
+      final Medicine b = p.batches.single;
+      expect(b.sellingPrice, 2, reason: 'stored per tablet');
+      expect(b.purchasePrice, 1);
+    });
+
+    testWidgets('editing shows the stock and prices as strips; a change is saved in tablets',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine m = await app.addBatch('Dolo 650',
+          qty: 63, packSize: 10, mrp: 2.5, purchase: 1.8);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
+
+      expect(fieldText(tester, 'Tablets per strip'), '10');
+      expect(fieldText(tester, 'Strips *'), '6');
+      expect(fieldText(tester, 'Loose tablets'), '3');
+      expect(fieldText(tester, 'MRP per strip'), '25');
+      expect(fieldText(tester, 'Purchase price per strip'), '18');
+      expect(find.text('= 63 tablets in stock'), findsOneWidget);
+
+      await tester.enterText(fieldLabeled('Strips *'), '5');
+      await tester.enterText(fieldLabeled('Loose tablets'), '');
+      await tester.pump();
+      expect(find.text('= 50 tablets in stock'), findsOneWidget);
+      await save(tester, 'Save changes');
+
+      final Medicine saved = app.medicines.findById(m.id)!;
+      expect((saved.quantity, saved.packSize), (50, 10));
+      expect(saved.sellingPrice, 2.5, reason: 'unchanged, still per tablet');
+      expect(saved.purchasePrice, 1.8);
+    });
+
+    testWidgets('clearing the pack size goes back to a plain quantity in tablets',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine m = await app.addBatch('Dolo 650',
+          qty: 63, packSize: 10, mrp: 2.5, purchase: 1.8);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
+
+      await tester.enterText(fieldLabeled('Tablets per strip'), '');
+      await tester.pump();
+      expect(fieldText(tester, 'Quantity *'), '63');
+      expect(fieldText(tester, 'Selling price (MRP)'), '2.50');
+      expect(fieldText(tester, 'Purchase price'), '1.80');
+      expect(find.text('Strips *'), findsNothing);
+
+      // And back: the same numbers, as strips again.
+      await tester.enterText(fieldLabeled('Tablets per strip'), '6');
+      await tester.pump();
+      expect(fieldText(tester, 'Strips *'), '10');
+      expect(fieldText(tester, 'Loose tablets'), '3');
+      expect(fieldText(tester, 'MRP per strip'), '15');
+      expect(find.text('= 63 tablets in stock'), findsOneWidget);
+    });
+
+    testWidgets('a strip-counted medicine has no pack size field',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine m = await app.addBatch('Dolo 650', unit: 'Strips', qty: 7);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
+      expect(find.text('Tablets per strip'), findsNothing);
+      expect(find.textContaining('per strip'), findsNothing);
+      expect(fieldText(tester, 'Quantity *'), '7');
+    });
+  });
+
   group('barcode and catalog', () {
     testWidgets('a barcode the shop already has offers a new batch of it',
         (WidgetTester tester) async {
@@ -309,6 +409,49 @@ void main() {
       expect(fieldText(tester, 'Brand'), 'GSK');
       expect(fieldText(tester, 'Selling price (MRP)'), '22.50');
       expect(find.text('Strips'), findsOneWidget, reason: 'unit normalised');
+
+      // Counted in strips, so the "15 tablets" pack is kept but not asked
+      // about; save and the medicine remembers it.
+      expect(find.text('Tablets per strip'), findsNothing);
+      await tester.enterText(fieldLabeled('Quantity *'), '4');
+      await save(tester, 'Add medicine');
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.packSize, p.totalQty), ('Strips', 15, 4));
+      expect(p.batches.single.sellingPrice, 22.5, reason: 'per strip');
+    });
+
+    testWidgets('a catalog medicine counted in tablets fills the pack size and keeps the pack price',
+        (WidgetTester tester) async {
+      usePhoneScreen(tester, height: 1400);
+      final TestApp app = await TestApp.create(
+        backend: FakeBackend(catalog: <Map<String, Object?>>[
+          <String, Object?>{
+            'name': 'Zincovit',
+            'manufacturer': 'Apex',
+            'pack_size': 'strip of 15 tablets',
+            'unit': 'Tablets',
+            'price': 105,
+            'barcode': '8901000000022',
+          },
+        ]),
+      );
+      addTearDown(app.dispose);
+      await app.open(tester, AddEditMedicineScreen(api: app.backend.api));
+      await tester.enterText(fieldLabeled('Purchase price'), '5');
+      await tester.enterText(fieldLabeled('Barcode'), '8901000000022');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(fieldText(tester, 'Tablets per strip'), '15');
+      expect(fieldText(tester, 'MRP per strip'), '105.00',
+          reason: 'the catalog price is for the strip');
+      expect(fieldText(tester, 'Purchase price per strip'), '75',
+          reason: 'what was typed per tablet, now per strip');
+      await tester.enterText(fieldLabeled('Strips *'), '1');
+      await save(tester, 'Add medicine');
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 15));
+      expect(p.batches.single.sellingPrice, 7);
     });
 
     testWidgets('typing a name suggests catalog medicines to fill in from',

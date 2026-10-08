@@ -5,6 +5,7 @@ import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../data/models/stock_movement.dart';
 import '../../domain/medicine_status.dart';
+import '../../domain/pack_size.dart';
 import '../../services/settings_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
@@ -75,7 +76,7 @@ class MedicineDetailScreen extends StatelessWidget {
           _QuantityCard(medicine: med),
           const SizedBox(height: 16),
           _infoCard(<List<String>>[
-            <String>['Quantity', '${med.quantity} ${med.unit}'],
+            <String>['Quantity', PackSize.stock(med.quantity, med.unit, med.packSize)],
             <String>['Low-stock alert at', '${med.lowStockThreshold}'],
             <String>['Expiry date', Fmt.date(med.expiryDate)],
             if (med.mfgDate != null)
@@ -347,6 +348,19 @@ class _QuantityCard extends StatelessWidget {
                     color: AppColors.muted,
                   ),
                 ),
+                if (PackSize.applies(medicine.unit, medicine.packSize))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      PackSize.breakdown(
+                          medicine.quantity, medicine.unit, medicine.packSize),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

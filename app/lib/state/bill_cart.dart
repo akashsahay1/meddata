@@ -14,6 +14,7 @@ class CartItem {
     required this.productId,
     required this.name,
     required this.unit,
+    this.packSize = 1,
     required this.qty,
     this.discountBp = 0,
   });
@@ -21,6 +22,11 @@ class CartItem {
   final String productId;
   final String name;
   final String unit;
+
+  /// Pieces per pack (tablets per strip); 1 when not set.
+  final int packSize;
+
+  /// Units (pieces) of the product on the bill.
   int qty;
   int discountBp;
 
@@ -130,6 +136,7 @@ class BillCart extends ChangeNotifier {
       productId: productId,
       name: first.productName,
       unit: first.unit,
+      packSize: first.packSize,
       qty: qty,
       discountBp: first.discountBp,
     ));

@@ -44,7 +44,7 @@ Map<String, dynamic> sampleBill({String status = 'final', String? phone = '98765
       'items': <Map<String, dynamic>>[
         <String, dynamic>{
           'line_no': 1, 'product_id': 'p1', 'batch_id': 'b1', 'name': 'Dolo 650', 'hsn': '3004',
-          'unit': 'Strips', 'batch_no': 'B1', 'expiry_date': '2027-10-31', 'qty_units': 2,
+          'unit': 'Tablets', 'pack_size': 15, 'batch_no': 'B1', 'expiry_date': '2027-10-31', 'qty_units': 2,
           'mrp_paise': 3000, 'rate_paise': 2857, 'discount_bp': 0, 'discount_paise': 0,
           'gst_rate_bp': 500, 'taxable_paise': 5714, 'cgst_paise': 0, 'sgst_paise': 0,
           'igst_paise': 286, 'total_paise': 6000,

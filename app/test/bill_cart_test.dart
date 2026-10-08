@@ -15,7 +15,8 @@ void main() {
         id: id,
         productId: product,
         productName: product == 'dolo' ? 'Dolo 650' : 'Cough Syrup',
-        unit: 'Strips',
+        unit: product == 'dolo' ? 'Tablets' : 'Strips',
+        packSize: product == 'dolo' ? 10 : 1,
         batchNo: id,
         expiryDate: expiry,
         mrpPaise: mrp,
@@ -46,6 +47,8 @@ void main() {
     expect(await c.addProduct('dolo'), AddOutcome.added);
     expect(await c.addProduct('dolo', qty: 4), AddOutcome.added, reason: 'same medicine adds up');
     expect(c.items.single.qty, 5);
+    expect((c.items.single.unit, c.items.single.packSize), ('Tablets', 10),
+        reason: 'the pack size comes with the batch, for strips + loose');
     expect(c.lines.map((CartLine l) => (l.batch.id, l.qty, l.batch.mrpPaise)),
         <(String, int, int)>[('D1', 3, 3000), ('D2', 2, 3200)]);
     expect(c.available(c.items.single), 23, reason: 'the expired batch does not count');
@@ -109,7 +112,7 @@ void main() {
     expect(c.problem(), isNull);
     c.setQty(c.items.single, 30);
     expect(c.hasShortfall, isTrue);
-    expect(c.problem(), contains('Only 23 Strips of Dolo 650'));
+    expect(c.problem(), contains('Only 23 Tablets of Dolo 650'));
     c.setQty(c.items.single, 1);
     c.update(() => c.customerGstin = '27AAPFU0939F1ZX');
     expect(c.problem(), "The customer's GSTIN is not valid.");

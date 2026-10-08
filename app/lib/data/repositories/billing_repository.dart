@@ -15,7 +15,7 @@ class BillingRepository {
   Future<List<SaleBatch>> batchesOf(String productId) async {
     final Database db = await _db.database;
     final List<Map<String, Object?>> rows = await db.rawQuery('''
-      SELECT b.id, b.product_id, p.name, p.unit, p.hsn, p.gst_rate_bp,
+      SELECT b.id, b.product_id, p.name, p.unit, p.pack_size, p.hsn, p.gst_rate_bp,
         p.discount_bp, b.batch_no, b.expiry_date, b.mrp_paise, b.version,
         b.server_qty_units + IFNULL((SELECT SUM(m.delta_units) FROM inv_movements m
           WHERE m.batch_id = b.id AND m.synced = 0), 0) AS qty
@@ -29,6 +29,7 @@ class BillingRepository {
               productId: r['product_id']! as String,
               productName: (r['name'] as String?) ?? '',
               unit: (r['unit'] as String?) ?? '',
+              packSize: (r['pack_size'] as int?) ?? 1,
               batchNo: (r['batch_no'] as String?) ?? '',
               expiryDate:
                   DateTime.fromMillisecondsSinceEpoch((r['expiry_date'] as int?) ?? 0),

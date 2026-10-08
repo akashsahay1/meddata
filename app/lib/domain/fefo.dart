@@ -6,6 +6,7 @@ class SaleBatch {
     required this.productId,
     required this.productName,
     this.unit = '',
+    this.packSize = 1,
     this.batchNo = '',
     required this.expiryDate,
     required this.mrpPaise,
@@ -20,6 +21,9 @@ class SaleBatch {
   final String productId;
   final String productName;
   final String unit;
+
+  /// Pieces per pack of the product (tablets per strip); 1 when not set.
+  final int packSize;
   final String batchNo;
   final DateTime expiryDate;
   final int mrpPaise;
@@ -46,6 +50,7 @@ class SaleBatch {
         productId: productId,
         productName: productName,
         unit: unit,
+        packSize: packSize,
         batchNo: batchNo,
         expiryDate: expiryDate,
         mrpPaise: mrpPaise ?? this.mrpPaise,

@@ -26,7 +26,8 @@ void main() {
     await factory.deleteDatabase(path);
   });
 
-  Medicine med(String name, String batch, int qty, {double mrp = 30, String brand = 'Micro Labs'}) {
+  Medicine med(String name, String batch, int qty,
+      {double mrp = 30, String brand = 'Micro Labs', int packSize = 1}) {
     final DateTime now = DateTime.now();
     return Medicine(
         id: const Uuid().v4(),
@@ -34,6 +35,7 @@ void main() {
         brand: brand,
         batchNo: batch,
         quantity: qty,
+        packSize: packSize,
         sellingPrice: mrp,
         purchasePrice: 18,
         expiryDate: DateTime(2027, 1, 31),
@@ -57,6 +59,28 @@ void main() {
     expect(batch['expiry_date'], '2027-01-31');
     expect(batch['mrp_paise'], 3000);
     expect((await repo.movementsFor(m.id)).single.reason, StockReason.add);
+  });
+
+  test('the pack size is kept on the product and sent to the server', () async {
+    final Medicine m = med('Dolo 650', 'D1', 63, packSize: 10);
+    await repo.insert(m);
+    expect((await repo.getById(m.id))!.packSize, 10);
+    Future<Map<String, Object?>> product() async =>
+        jsonDecode((await outbox()).first['data'] as String) as Map<String, Object?>;
+    expect((await product())['pack_size'], 10);
+
+    // An edit changes it for every batch of the medicine; the pending
+    // product mutation (not yet sent) carries the new value.
+    await repo.update(m.copyWith(packSize: 15));
+    expect((await product())['pack_size'], 15);
+    expect((await outbox()).where((Map<String, Object?> r) => r['table_name'] == 'products'),
+        hasLength(1), reason: 'merged into the pending upsert');
+    expect((await repo.getById(m.id))!.packSize, 15);
+
+    // Blank or nonsense never reaches the server as less than one.
+    final Medicine loose = med('ORS', 'O1', 4, packSize: 0);
+    await repo.insert(loose);
+    expect((await repo.getById(loose.id))!.packSize, 1);
   });
 
   test('a new batch of an existing medicine joins its product', () async {

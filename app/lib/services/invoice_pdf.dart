@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../core/inr.dart';
 import '../data/models/bill.dart';
 import '../domain/gst.dart';
+import '../domain/pack_size.dart';
 
 enum InvoiceLayout {
   a4('A4 invoice'),
@@ -281,6 +282,26 @@ class InvoicePdf {
     );
   }
 
+  /// The item name, with the quantity as strips + loose pieces under it
+  /// when the medicine has a pack size ("2 strips + 3 tablets").
+  static pw.Widget _itemCell(BillItem i) {
+    final String packs = _packs(i);
+    if (packs.isEmpty) return _cell(i.name);
+    return pw.Container(
+      alignment: pw.Alignment.centerLeft,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: <pw.Widget>[
+          pw.Text(i.name, style: const pw.TextStyle(fontSize: 8)),
+          pw.Text(packs, style: const pw.TextStyle(fontSize: 6.5, color: _muted)),
+        ],
+      ),
+    );
+  }
+
+  static String _packs(BillItem i) => PackSize.breakdown(i.qty, i.unit ?? '', i.packSize);
+
   static pw.Widget _a4Items(Bill bill) {
     final bool gst = _registered(bill);
     final List<(String, double, bool)> cols = <(String, double, bool)>[
@@ -319,7 +340,7 @@ class InvoicePdf {
           pw.TableRow(
             children: <pw.Widget>[
               _cell('${i.lineNo}'),
-              _cell(i.name),
+              _itemCell(i),
               _cell(i.hsn ?? '-'),
               _cell(i.batchNo ?? '-'),
               _cell(_exp(i.expiryDate)),
@@ -535,6 +556,7 @@ class InvoicePdf {
                   ),
                   pw.Text(
                     <String>[
+                      if (_packs(i).isNotEmpty) _packs(i),
                       if (i.batchNo != null) 'B: ${i.batchNo}',
                       'Exp ${_exp(i.expiryDate)}',
                       'MRP ${_amt(i.mrpPaise)}',

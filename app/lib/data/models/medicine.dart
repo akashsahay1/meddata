@@ -1,4 +1,5 @@
 import '../../core/constants.dart';
+import '../../domain/pack_size.dart';
 
 /// One batch of a product, flattened for the UI: [id] is the batch id and
 /// [productId] its product. Product fields (name, brand, unit, ...) are
@@ -13,6 +14,10 @@ class Medicine {
   final String barcode;
   final int quantity;
   final String unit;
+
+  /// Pieces in one pack of the product (tablets per strip, ml per bottle),
+  /// shared by its batches; 1 when not set. See [PackSize].
+  final int packSize;
   final int lowStockThreshold;
   final double purchasePrice;
   final double sellingPrice;
@@ -38,6 +43,7 @@ class Medicine {
     this.barcode = '',
     required this.quantity,
     this.unit = 'Tablets',
+    this.packSize = 1,
     this.lowStockThreshold = AppConstants.defaultLowStockThreshold,
     this.purchasePrice = 0,
     this.sellingPrice = 0,
@@ -62,6 +68,7 @@ class Medicine {
     String? barcode,
     int? quantity,
     String? unit,
+    int? packSize,
     int? lowStockThreshold,
     double? purchasePrice,
     double? sellingPrice,
@@ -84,6 +91,7 @@ class Medicine {
       barcode: barcode ?? this.barcode,
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
+      packSize: packSize ?? this.packSize,
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       purchasePrice: purchasePrice ?? this.purchasePrice,
       sellingPrice: sellingPrice ?? this.sellingPrice,
@@ -109,6 +117,7 @@ class Medicine {
       'barcode': barcode,
       'quantity': quantity,
       'unit': unit,
+      'pack_size': packSize,
       'low_stock_threshold': lowStockThreshold,
       'purchase_price': purchasePrice,
       'selling_price': sellingPrice,
@@ -134,6 +143,7 @@ class Medicine {
       barcode: (map['barcode'] as String?) ?? '',
       quantity: (map['quantity'] as int?) ?? 0,
       unit: AppConstants.canonicalUnit(map['unit'] as String?),
+      packSize: ((map['pack_size'] as num?) ?? 1).toInt().clamp(1, PackSize.max),
       lowStockThreshold: (map['low_stock_threshold'] as int?) ??
           AppConstants.defaultLowStockThreshold,
       purchasePrice: ((map['purchase_price'] as num?) ?? 0).toDouble(),

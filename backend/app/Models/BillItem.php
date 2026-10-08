@@ -17,6 +17,7 @@ class BillItem extends Model
         // expiry_date stays a plain 'Y-m-d' string, like bills.bill_date.
         return [
             'line_no' => 'integer',
+            'pack_size' => 'integer',
             'qty_units' => 'integer',
             'mrp_paise' => 'integer',
             'rate_paise' => 'integer',
@@ -46,6 +47,7 @@ class BillItem extends Model
             'name' => $this->name,
             'hsn' => $this->hsn,
             'unit' => $this->unit,
+            'pack_size' => $this->pack_size,
             'batch_no' => $this->batch_no,
             'expiry_date' => $this->expiry_date === null ? null : substr((string) $this->expiry_date, 0, 10),
             'qty_units' => $this->qty_units,

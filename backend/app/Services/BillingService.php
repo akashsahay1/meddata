@@ -176,6 +176,7 @@ class BillingService
                 'name' => $product->name,
                 'hsn' => $product->hsn,
                 'unit' => $product->unit,
+                'pack_size' => max(1, (int) $product->pack_size),
                 'batch_no' => $batch->batch_no,
                 'expiry_date' => $batch->expiry_date?->format('Y-m-d'),
                 'qty_units' => (int) $line['qty_units'],

@@ -2,7 +2,7 @@
 
 > Multi-device pharmacy inventory app for phones + Windows  
 > Repo: `D:\meddata` (branch `main`)  
-> Last updated: 5 Oct 2026 (P0b, P2, P3, P4 done)
+> Last updated: 8 Oct 2026 (P0b, P2, P3, P4 done; pack sizes)
 
 ---
 
@@ -111,9 +111,11 @@ backend/
 
 Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of unsynced `inv_movements`.
 
+**Pack size.** Stock, prices and bill quantities are always in the product's `unit`. `products.pack_size` is how many pieces one pack holds (tablets per strip, ml per bottle — e.g. 6, 1, 10, 15; it is never assumed). It only *does* anything when the unit counts pieces (`Tablets`, `Capsules`, `ML`) and is more than 1: then the Add/Edit screen takes stock as strips + loose and prices per strip (stored per piece), the bill screen takes quantities as strips + loose, and bills/invoices read "2 strips + 3 tablets" (`app/lib/domain/pack_size.dart`). A medicine counted in `Strips`/`Bottles` keeps its pack size (from the catalog label, the invoice pack text or the import's "10's") but is counted in whole packs. `bill_items.pack_size` is copied at bill time, like `unit`, so an invoice reads the same after the product changes.
+
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details, unit and pack_size copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
 
 ---
 
@@ -270,7 +272,7 @@ php artisan queue:work database   # needed for AI invoice reading
 # Backend (143 tests: sync, catalog, browser payment, payment security, invoice scans, billing + GST maths, admin)
 cd backend && php artisan test   # accounting: parties, purchases, payments, returns, ledgers, GSTR
 
-# App tests (398 tests: repository, product stock, expiry, status, auth token storage, invoice drafts/scan,
+# App tests (411 tests - 406 pass, 5 known contrast failures (see §8), 1 skipped: repository, product stock, pack sizes, expiry, status, auth token storage, invoice drafts/scan,
 #   Excel/CSV import, billing (GST maths, FEFO, cart, invoice PDF, new-bill screen),
 #   widget tests for Add/Edit + Home/Inventory + import wizard,
 #   accessibility on every screen, add→alert smoke test)
@@ -284,7 +286,7 @@ cd app && flutter test test/integration/
 
 ## 8. Task list
 
-### Status at a glance (5 Oct 2026)
+### Status at a glance (8 Oct 2026)
 
 | Area | Status |
 |------|--------|
@@ -377,6 +379,16 @@ cd app && flutter test test/integration/
   - To confirm: purchase rate is excl. GST (the manual field may need an "(excl. GST)" hint); profit uses the batch's current purchase rate and ignores free-quantity schemes; expiry loss grouped by expiry month
 - [ ] Follow-up: profit report doesn't yet subtract sale returns (credit notes)
 
+### P5 — Pack sizes ✅ Done (8 Oct 2026)
+
+- [x] `pack_size` is a real per-medicine field: "Tablets per strip" / "Capsules per strip" / "ML per bottle" on Add/Edit (shown for piece units), prefilled from the master catalog's pack label ("strip of 10 tablets"), the AI invoice's pack text (the shop's own pack size wins for a known medicine) and the import wizard's pack column; synced like any product field
+- [x] Add/Edit with a pack size: stock as **Strips + Loose tablets** ("= 63 tablets in stock"), purchase price and MRP **per strip**; stored per tablet. Clearing the pack size (or choosing a whole-pack unit) switches back to a plain quantity, converting what was typed
+- [x] New bill: search results show "23 Tablets (2 strips + 3 tablets) · MRP ₹3.00 (₹30.00/strip)"; quantity dialog takes strips + loose; "− 1 strip / + 1 strip" buttons; the line reads "= 2 strips + 3 tablets"
+- [x] Bill detail, A4 invoice and 80 mm receipt print the strips + loose breakdown under the item; the server copies `pack_size` onto `bill_items` (migration edited in place — fresh DB, as per §9)
+- [x] Product detail and batch detail show the breakdown; tests: `pack_size_test`, Add/Edit widget tests (enter, edit, clear, catalog), cart, draft, repository, PDF, backend billing
+- Known limit: a per-strip MRP that doesn't divide evenly (₹35.50 / 15) is stored per tablet to the paise (₹2.37), so the bill and the edit screen show ₹35.55 for a strip. Fixing this properly means per-pack pricing in GstMath on both sides — decide if it matters before go-live
+- Not done: switching a medicine's unit between Strips and Tablets does not convert its existing stock (the number stays as typed)
+
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
@@ -385,6 +397,7 @@ cd app && flutter test test/integration/
 - [x] Accessibility audit: 48dp touch targets (`TapTarget` in ui_kit), screen-reader names and statuses in words, muted text raised to AA (`#5B726F`), no overflow at 1.3x/1.5x text; enforced by `test/widget/accessibility_test.dart` (a new undersized or unlabelled button fails it)
 - [x] Accessibility coverage for screens added since the audit (billing, invoice scan + review, all import wizard steps, signed-in Profile): 48dp targets, labels, contrast, no overflow at 1.3x/1.5x, spoken statuses and amounts
 - [~] Contrast in brand colours: orange primary buttons now use ink text app-wide (5.0:1; orange unchanged). Status pills (2.2–3.4:1) and the Subscribe plan toggle (4.0:1) still need a design decision
+- [ ] **5 accessibility tests fail on `main`** (`test/widget/accessibility_test.dart`, contrast: Profile signed in, Shop settings, Import header row / columns / check rows — 12 px labels at 1.35:1). Already failing at `f396c76` (PR #1 "adaptive experience"), before the pack-size work; find what that PR changed for those labels
 - [x] Widget tests (Add/Edit 14, Home/Inventory 8) + smoke test add → list → expiry alerts scheduled (`test/integration/smoke_add_to_alert_test.dart`, no server needed)
 - [x] Fix: clearing a batch's manufacture date on Edit now saves (and syncs)
 - [x] Final README update
@@ -412,6 +425,8 @@ cd app && flutter test test/integration/
 | Master catalog | Shop's new medicines auto-added without moderation (max 200/shop/day) |
 | AI invoice | Server-side processing, not on-device |
 | Pricing | Plan prices not finalized yet |
+| Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
+| Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail |
 
 ---
 

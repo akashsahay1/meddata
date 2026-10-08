@@ -3,11 +3,10 @@ import 'dart:math' as math;
 import '../core/constants.dart';
 import '../data/models/medicine.dart';
 import 'medicine_name_key.dart';
+import 'pack_size.dart';
 import 'product_stock.dart';
 
-/// Units counted per piece of a pack (stock and prices per tablet, capsule
-/// or ml). Every other unit counts whole packs (strips, bottles, tubes...).
-const Set<String> kPieceUnits = <String>{'Tablets', 'Capsules', 'ML'};
+export 'pack_size.dart' show kPieceUnits;
 
 /// One line of a scanned purchase invoice, as the user reviews it before it
 /// is added to stock. Quantities and prices are per pack, as printed on the
@@ -129,6 +128,9 @@ class InvoiceDraftLine {
       barcode: p?.first.barcode ?? barcode.trim(),
       quantity: stockQuantity,
       unit: stockUnit,
+      // A new medicine remembers its pack as printed, so stock can later be
+      // entered and sold as strips + loose; a known one keeps its own.
+      packSize: p?.packSize ?? unitsPerPack,
       lowStockThreshold:
           p?.lowStockThreshold ?? AppConstants.defaultLowStockThreshold,
       purchasePrice: costPerUnit,
@@ -303,7 +305,10 @@ class InvoiceDraftMapper {
       hsn: _str(j['hsn']),
       barcode: barcode,
       unit: product?.unit ?? guessUnit(name, pack),
-      unitsPerPack: unitsPerPack(pack),
+      // The shop's own pack size wins over the invoice's pack text.
+      unitsPerPack: product != null && product.packSize > 1
+          ? product.packSize
+          : unitsPerPack(pack),
       product: product,
     );
   }
@@ -354,29 +359,9 @@ class InvoiceDraftMapper {
     return hits.first;
   }
 
-  /// Pieces in one pack: "15's" -> 15, "1x10" -> 10, "100ML" -> 100;
-  /// 1 when the pack doesn't say.
-  static int unitsPerPack(String pack) {
-    final String p = pack.toLowerCase();
-    int clamp(num n) => n.round().clamp(1, 10000).toInt();
-    final RegExpMatch? times = RegExp(
-      r'(\d{1,4})\s*[x×*]\s*(\d{1,4})',
-    ).firstMatch(p);
-    if (times != null) {
-      return clamp(int.parse(times[1]!) * int.parse(times[2]!));
-    }
-    final RegExpMatch? count = RegExp(
-      r"(\d{1,4})\s*['’`]?\s*s\b",
-    ).firstMatch(p);
-    if (count != null) return clamp(int.parse(count[1]!));
-    final RegExpMatch? measure = RegExp(
-      r'(\d{1,5}(?:\.\d+)?)\s*(ml|gm|g|tab|tabs|cap|caps|nos|no)\b',
-    ).firstMatch(p);
-    if (measure != null) return clamp(double.parse(measure[1]!));
-    final RegExpMatch? plain = RegExp(r'^\s*(\d{1,4})\s*$').firstMatch(p);
-    if (plain != null) return clamp(int.parse(plain[1]!));
-    return 1;
-  }
+  /// Pieces in one pack as printed: "15's" -> 15, "1x10" -> 10,
+  /// "100ML" -> 100; 1 when the pack doesn't say. See [PackSize.parse].
+  static int unitsPerPack(String pack) => PackSize.parse(pack);
 
   /// A unit for a new medicine from its printed name and pack. Invoices
   /// count packs, so tablets/capsules default to strips (no conversion).

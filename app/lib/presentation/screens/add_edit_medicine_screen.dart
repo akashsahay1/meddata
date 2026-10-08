@@ -9,6 +9,7 @@ import '../../core/constants.dart';
 import '../../core/platform.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
+import '../../domain/pack_size.dart';
 import '../../domain/product_stock.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
@@ -54,6 +55,19 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   late final TextEditingController _batch;
   late final TextEditingController _barcode;
   late final TextEditingController _quantity;
+
+  /// Pieces per pack (tablets per strip); blank = 1. With a pack size of
+  /// more than one and a unit that counts pieces, stock is entered as
+  /// [_packs] + [_loose] and prices per pack ([_packsMode]); stored values
+  /// are always per piece.
+  late final TextEditingController _packSize;
+  late final TextEditingController _packs;
+  late final TextEditingController _loose;
+  bool _packsMode = false;
+
+  /// The pack size the packs/loose and per-pack price fields are written
+  /// in while [_packsMode] is on (kept while the field is being retyped).
+  int _modePackSize = 1;
   late final TextEditingController _lowStock;
   late final TextEditingController _purchase;
   late final TextEditingController _selling;
@@ -101,6 +115,11 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     _hsn = TextEditingController(text: m?.hsn ?? '');
     _gstRateBp = m?.gstRateBp;
     _unit = m?.unit ?? 'Tablets';
+    _packSize = TextEditingController(
+        text: (m?.packSize ?? 1) > 1 ? '${m!.packSize}' : '');
+    _packs = TextEditingController();
+    _loose = TextEditingController();
+    _syncMode();
     final String stored = m?.category.trim() ?? '';
     _category = stored.isEmpty ? 'Uncategorised' : stored;
     _mfgDate = batchOnly ? null : m?.mfgDate;
@@ -116,7 +135,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     _searchDebounce?.cancel();
     _nameFocus.dispose();
     for (final TextEditingController c in <TextEditingController>[
-      _name, _brand, _batch, _barcode, _quantity,
+      _name, _brand, _batch, _barcode, _quantity, _packSize, _packs, _loose,
       _lowStock, _purchase, _selling, _notes, _hsn,
     ]) {
       c.dispose();
@@ -125,6 +144,61 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   }
 
   static DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  int get _packSizeValue =>
+      (int.tryParse(_packSize.text.trim()) ?? 1).clamp(1, PackSize.max);
+
+  /// Stock typed as packs + loose pieces, in pieces.
+  int _packsTotal() =>
+      (int.tryParse(_packs.text.trim()) ?? 0) * _modePackSize +
+      (int.tryParse(_loose.text.trim()) ?? 0);
+
+  /// Stock in pieces as typed, in either mode.
+  int get _quantityValue =>
+      _packsMode ? _packsTotal() : (int.tryParse(_quantity.text.trim()) ?? 0);
+
+  /// Switch the stock and price fields between pieces and packs when the
+  /// unit or pack size changes, keeping what was typed. A [keepSelling]
+  /// price is already per pack (the catalog lists pack prices).
+  void _syncMode({bool keepSelling = false}) {
+    final int ps = _packSizeValue;
+    final bool packs = PackSize.applies(_unit, ps);
+    final List<TextEditingController> prices = <TextEditingController>[
+      _purchase,
+      if (!keepSelling) _selling,
+    ];
+    void scale(double Function(double) f) {
+      for (final TextEditingController c in prices) {
+        final double? v = double.tryParse(c.text.trim());
+        if (v != null) c.text = _money(f(v));
+      }
+    }
+
+    if (packs == _packsMode) {
+      if (packs) _modePackSize = ps;
+      return;
+    }
+    if (packs) {
+      final String typed = _quantity.text.trim();
+      final (int p, int l) = PackSize.split(int.tryParse(typed) ?? 0, ps);
+      _packs.text = typed.isEmpty ? '' : '$p';
+      _loose.text = l == 0 ? '' : '$l';
+      scale((double v) => v * ps);
+      _modePackSize = ps;
+    } else {
+      final bool blank =
+          _packs.text.trim().isEmpty && _loose.text.trim().isEmpty;
+      _quantity.text = blank ? '' : '${_packsTotal()}';
+      scale((double v) => v / _modePackSize);
+    }
+    _packsMode = packs;
+  }
+
+  /// A price for a field: paise shown only when there are some.
+  static String _money(double v) {
+    final String s = v.toStringAsFixed(2);
+    return s.endsWith('.00') ? s.substring(0, s.length - 3) : s;
+  }
 
   /// Manufacture date can't be in the future and must fall before expiry;
   /// expiry must fall after the manufacture date. The pickers are bounded
@@ -276,6 +350,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     final DateTime now = DateTime.now();
     final String name = _name.text.trim();
     final String batch = _batch.text.trim();
+    // Prices are typed per pack in packs mode; stored per piece.
+    final int perPack = _packsMode ? _modePackSize : 1;
+    double price(TextEditingController c) =>
+        (double.tryParse(c.text.trim()) ?? 0) / perPack;
 
     Medicine medicine = (widget.existing ??
             Medicine(
@@ -292,12 +370,13 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       category: _category,
       batchNo: batch,
       barcode: _barcode.text.trim(),
-      quantity: int.tryParse(_quantity.text.trim()) ?? 0,
+      quantity: _quantityValue,
       unit: _unit,
+      packSize: _packSizeValue,
       lowStockThreshold: int.tryParse(_lowStock.text.trim()) ??
           AppConstants.defaultLowStockThreshold,
-      purchasePrice: double.tryParse(_purchase.text.trim()) ?? 0,
-      sellingPrice: double.tryParse(_selling.text.trim()) ?? 0,
+      purchasePrice: price(_purchase),
+      sellingPrice: price(_selling),
       mfgDate: _mfgDate,
       expiryDate: _expiryDate,
       notes: _notes.text.trim(),
@@ -409,20 +488,25 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                   const SizedBox(height: 18),
                   Container(height: 1, color: AppColors.divider),
                   const SizedBox(height: 18),
+                  // How the medicine is counted: the unit, and for tablets,
+                  // capsules and ml how many make a pack, so stock and
+                  // prices can be given per strip or bottle.
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Expanded(
-                        flex: 7,
-                        child: _numberField(
-                          _quantity,
-                          'Quantity *',
-                          hint: '0',
-                          required: true,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(flex: 6, child: _unitDropdown()),
+                      if (kPieceUnits.contains(_unit)) ...<Widget>[
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 7,
+                          child: _numberField(
+                            _packSize,
+                            PackSize.perPackLabel(_unit),
+                            hint: 'e.g. 10',
+                            onChanged: (_) => setState(_syncMode),
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 7,
@@ -435,13 +519,17 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
+                  _stockFields(),
+                  const SizedBox(height: 16),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Expanded(
                         child: _numberField(
                           _purchase,
-                          'Purchase price',
+                          _packsMode
+                              ? 'Purchase price per ${PackSize.packNoun(_unit)}'
+                              : 'Purchase price',
                           hint: '0.00',
                           decimal: true,
                         ),
@@ -450,7 +538,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                       Expanded(
                         child: _numberField(
                           _selling,
-                          'Selling price (MRP)',
+                          _packsMode
+                              ? 'MRP per ${PackSize.packNoun(_unit)}'
+                              : 'Selling price (MRP)',
                           hint: '0.00',
                           decimal: true,
                         ),
@@ -512,6 +602,64 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
           _bottomBar(),
         ],
       ),
+    );
+  }
+
+  /// Stock in pieces, or as packs + loose pieces when the pack size
+  /// applies ("6 strips + 3 tablets = 63 tablets").
+  Widget _stockFields() {
+    if (!_packsMode) {
+      return _numberField(_quantity, 'Quantity *', hint: '0', required: true);
+    }
+    final String pack = PackSize.packNoun(_unit);
+    final String piece = PackSize.pieceNoun(_unit);
+    final bool blank =
+        _packs.text.trim().isEmpty && _loose.text.trim().isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: _numberField(
+                _packs,
+                '${pack[0].toUpperCase()}${pack.substring(1)}s *',
+                hint: '0',
+                onChanged: (_) => setState(() {}),
+                // One of the two must be filled in.
+                validator: (String? v) => (v == null || v.trim().isEmpty) &&
+                        _loose.text.trim().isEmpty
+                    ? 'Required'
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _numberField(
+                _loose,
+                'Loose ${piece == 'ml' ? 'ml' : '${piece}s'}',
+                hint: '0',
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 6, left: 2),
+          child: Text(
+            blank
+                ? 'Stock is kept in ${_unit.toLowerCase()}; '
+                    '1 $pack = $_modePackSize ${_unit.toLowerCase()}'
+                : '= ${_packsTotal()} ${_unit.toLowerCase()} in stock',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -757,6 +905,13 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       final String canonical = AppConstants.canonicalUnit(unit);
       if (AppConstants.units.contains(canonical)) _unit = canonical;
     }
+    // "strip of 10 tablets" -> 10; the catalog price is for that pack.
+    final Object? pack = m['pack_size'];
+    if (pack is String) {
+      final int n = PackSize.parse(pack);
+      _packSize.text = n > 1 ? '$n' : '';
+    }
+    _syncMode(keepSelling: price is num);
     final Object? barcode = m['barcode'];
     if (_barcode.text.trim().isEmpty && barcode is String) {
       _barcode.text = barcode;
@@ -773,6 +928,8 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     String? hint,
     bool required = false,
     bool decimal = false,
+    ValueChanged<String>? onChanged,
+    FormFieldValidator<String>? validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,6 +937,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         _fieldLabel(label),
         TextFormField(
           controller: c,
+          onChanged: onChanged,
           keyboardType: TextInputType.numberWithOptions(decimal: decimal),
           inputFormatters: <TextInputFormatter>[
             FilteringTextInputFormatter.allow(
@@ -793,10 +951,11 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
           decoration: InputDecoration(hintText: hint),
           // Re-check as it's edited so a stale "Required" clears.
           autovalidateMode: AutovalidateMode.onUserInteraction,
-          validator: required
-              ? (String? v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null
-              : null,
+          validator: validator ??
+              (required
+                  ? (String? v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null
+                  : null),
         ),
       ],
     );
@@ -931,7 +1090,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
               .map((String u) =>
                   DropdownMenuItem<String>(value: u, child: Text(u)))
               .toList(),
-          onChanged: (String? v) => setState(() => _unit = v ?? 'Tablets'),
+          onChanged: (String? v) => setState(() {
+            _unit = v ?? 'Tablets';
+            _syncMode();
+          }),
         ),
       ],
     );

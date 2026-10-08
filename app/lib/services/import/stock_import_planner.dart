@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants.dart';
 import '../../data/models/medicine.dart';
 import '../../data/models/stock_import.dart';
+import '../../domain/pack_size.dart';
 import 'import_columns.dart';
 import 'import_values.dart';
 import 'sheet_table.dart';
@@ -368,6 +369,8 @@ class StockImportPlanner {
     if (unit.isNotEmpty) {
       d.unit = ImportValues.unitFrom(unit);
       if (d.unit == null) d.warnings.add('Unit "$unit" not recognised');
+      // "10's" / "1x10": a strip of 10, kept on the medicine.
+      d.packSize = PackSize.parse(unit);
     }
 
     final String low = line(ImportField.lowStock);
@@ -439,6 +442,7 @@ class StockImportPlanner {
         barcode: p.barcode,
         quantity: quantity,
         unit: p.unit,
+        packSize: p.packSize,
         lowStockThreshold: p.lowStock,
         purchasePrice: d.purchase ?? 0,
         sellingPrice: d.mrp ?? 0,
@@ -554,6 +558,7 @@ class _Draft {
   String barcode = '';
   int? quantity;
   String? unit;
+  int packSize = 1;
   int? lowStock;
   double? purchase;
   double? mrp;
@@ -589,6 +594,7 @@ class _Product {
         unit = m.unit,
         row = null,
         blocked = false,
+        packSize = m.packSize,
         category = m.category,
         barcode = m.barcode,
         notes = m.notes,
@@ -613,6 +619,7 @@ class _Product {
   String category = 'Uncategorised';
   String barcode = '';
   String notes = '';
+  int packSize = 1;
   int lowStock = AppConstants.defaultLowStockThreshold;
   bool _lowStockSet = false;
 
@@ -624,6 +631,7 @@ class _Product {
     if (existingId != null) return;
     if (category == 'Uncategorised') category = d.category;
     if (barcode.isEmpty) barcode = d.barcode;
+    if (packSize <= 1) packSize = d.packSize;
     if (notes.isEmpty) notes = d.notes;
     if (!_lowStockSet && d.lowStock != null) {
       lowStock = d.lowStock!;

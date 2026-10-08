@@ -88,6 +88,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('hsn', 16)->nullable();
             $table->string('unit', 32)->nullable();
+            // Pieces per pack when sold (tablets per strip), so the invoice
+            // can read "2 strips + 3 tablets" even after the product changes.
+            $table->unsignedInteger('pack_size')->default(1);
             $table->string('batch_no', 64)->nullable();
             $table->date('expiry_date')->nullable();
             $table->unsignedInteger('qty_units');

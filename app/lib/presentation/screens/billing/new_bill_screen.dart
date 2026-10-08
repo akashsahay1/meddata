@@ -12,6 +12,7 @@ import '../../../data/models/medicine.dart';
 import '../../../data/repositories/billing_repository.dart';
 import '../../../domain/fefo.dart';
 import '../../../domain/gst.dart';
+import '../../../domain/pack_size.dart';
 import '../../../domain/product_stock.dart';
 import '../../../data/models/accounting.dart';
 import '../../../services/accounting_api.dart';
@@ -629,8 +630,14 @@ class _NewBillScreenState extends State<NewBillScreen> {
         .toList();
     final int qty = sellable.fold(0, (int s, Medicine m) => s + m.quantity);
     final bool canSell = qty > 0;
+    final int mrp = canSell ? (sellable.first.sellingPrice * 100).round() : 0;
+    // MRP is per piece; with a pack size the strip price is what the
+    // customer asks for.
+    final String perPack = PackSize.applies(p.unit, p.packSize)
+        ? ' (${Inr.format(mrp * p.packSize)}/${PackSize.packNoun(p.unit)})'
+        : '';
     final String stock = canSell
-        ? '$qty ${p.unit} · MRP ${Inr.format((sellable.first.sellingPrice * 100).round())}'
+        ? '${PackSize.stock(qty, p.unit, p.packSize)} · MRP ${Inr.format(mrp)}$perPack'
         : (p.totalQty > 0 ? 'Only expired stock' : 'Out of stock');
     return ListTile(
       enabled: canSell,
@@ -687,13 +694,88 @@ class _NewBillScreenState extends State<NewBillScreen> {
   }
 
   Future<void> _editQty(CartItem item) async {
-    final int? qty = await _numberDialog(
-      title: 'Quantity (${item.unit})',
-      initial: '${item.qty}',
-      decimal: false,
-      validate: (String v) => (int.tryParse(v) ?? 0) >= 1 ? null : 'Enter 1 or more',
-    ).then((String? v) => v == null ? null : int.tryParse(v));
+    final int? qty = PackSize.applies(item.unit, item.packSize)
+        ? await _packQtyDialog(item)
+        : await _numberDialog(
+            title: 'Quantity (${item.unit})',
+            initial: '${item.qty}',
+            decimal: false,
+            validate: (String v) => (int.tryParse(v) ?? 0) >= 1 ? null : 'Enter 1 or more',
+          ).then((String? v) => v == null ? null : int.tryParse(v));
     if (qty != null) _cart.setQty(item, qty);
+  }
+
+  /// Quantity as packs + loose pieces ("2 strips + 3 tablets"); returns
+  /// the total in pieces.
+  Future<int?> _packQtyDialog(CartItem item) {
+    final (int packs, int loose) = PackSize.split(item.qty, item.packSize);
+    final TextEditingController packsCtrl = TextEditingController(text: packs == 0 ? '' : '$packs');
+    final TextEditingController looseCtrl = TextEditingController(text: loose == 0 ? '' : '$loose');
+    final String pack = PackSize.packNoun(item.unit);
+    final String piece = PackSize.pieceNoun(item.unit);
+    int total() =>
+        (int.tryParse(packsCtrl.text.trim()) ?? 0) * item.packSize +
+        (int.tryParse(looseCtrl.text.trim()) ?? 0);
+    return showDialog<int>(
+      context: context,
+      builder: (BuildContext ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (BuildContext ctx, StateSetter setLocal) {
+            void done() {
+              if (total() < 1) {
+                setLocal(() => error = 'Enter 1 or more');
+                return;
+              }
+              Navigator.of(ctx).pop(total());
+            }
+
+            Widget field(TextEditingController c, String label, {bool autofocus = false}) => TextField(
+                  controller: c,
+                  autofocus: autofocus,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (_) => setLocal(() => error = null),
+                  onSubmitted: (_) => done(),
+                  decoration: InputDecoration(labelText: label),
+                );
+
+            return AlertDialog(
+              title: Text('Quantity · 1 $pack = ${item.packSize} ${piece == 'ml' ? 'ml' : '${piece}s'}'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(child: field(packsCtrl, '${pack[0].toUpperCase()}${pack.substring(1)}s', autofocus: true)),
+                      const SizedBox(width: 12),
+                      Expanded(child: field(looseCtrl, 'Loose ${piece == 'ml' ? 'ml' : '${piece}s'}')),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    error ?? '= ${total()} ${item.unit.toLowerCase()}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: error == null ? AppColors.muted : AppColors.statusRed,
+                    ),
+                  ),
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
+                TextButton(onPressed: done, child: const Text('OK')),
+              ],
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      packsCtrl.dispose();
+      looseCtrl.dispose();
+    });
   }
 
   Future<void> _editDiscount(CartItem item) async {
@@ -1162,6 +1244,33 @@ class _CartItemCard extends StatelessWidget {
               ),
             ],
           ),
+          // Whole strips at a time, and the quantity read as strips + loose.
+          if (PackSize.applies(item.unit, item.packSize))
+            Row(
+              children: <Widget>[
+                TextButton(
+                  onPressed: item.qty > item.packSize
+                      ? () => cart.setQty(item, item.qty - item.packSize)
+                      : null,
+                  child: Text('− 1 ${PackSize.packNoun(item.unit)}'),
+                ),
+                TextButton(
+                  onPressed: item.qty + item.packSize <= available
+                      ? () => cart.setQty(item, item.qty + item.packSize)
+                      : null,
+                  child: Text('+ 1 ${PackSize.packNoun(item.unit)}'),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '= ${PackSize.breakdown(item.qty, item.unit, item.packSize)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.muted),
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 4),
           for (final CartLine l in lines)
             Padding(

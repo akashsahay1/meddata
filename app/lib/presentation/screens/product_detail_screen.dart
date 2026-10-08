@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../domain/medicine_status.dart';
+import '../../domain/pack_size.dart';
 import '../../domain/product_stock.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
@@ -33,7 +34,10 @@ class ProductDetailScreen extends StatelessWidget {
       if (p.brand.isNotEmpty) p.brand,
       if (p.category.isNotEmpty) p.category,
       p.unit,
+      if (PackSize.applies(p.unit, p.packSize))
+        '${p.packSize} per ${PackSize.packNoun(p.unit)}',
     ];
+    final String packs = PackSize.breakdown(p.totalQty, p.unit, p.packSize);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -67,6 +71,7 @@ class ProductDetailScreen extends StatelessWidget {
                               fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.ink)),
                       const SizedBox(height: 2),
                       Text(
+                        '${packs.isEmpty ? '' : '$packs · '}'
                         'in stock across ${p.batches.length} '
                         '${p.batches.length == 1 ? 'batch' : 'batches'}',
                         style: const TextStyle(color: AppColors.muted),

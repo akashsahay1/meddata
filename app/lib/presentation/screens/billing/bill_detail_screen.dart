@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/inr.dart';
 import '../../../data/models/accounting.dart' show NoteRef;
 import '../../../data/models/bill.dart';
+import '../../../domain/pack_size.dart';
 import '../../../data/repositories/billing_repository.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/billing_api.dart';
@@ -445,6 +446,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Widget _itemRow(BillItem i, bool registered) {
     final String exp = i.expiryDate == null ? '' : ' · Exp ${DateFormat('MM/yy').format(i.expiryDate!)}';
+    final String packs = PackSize.breakdown(i.qty, i.unit ?? '', i.packSize);
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Row(
@@ -463,6 +465,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 ),
                 Text(
                   '${i.qty} × ${Inr.format(i.mrpPaise)}'
+                  '${packs.isEmpty ? '' : ' ($packs)'}'
                   '${i.discountBp > 0 ? ' · ${Inr.percent(i.discountBp)} off' : ''}'
                   '${registered ? ' · GST ${Inr.percent(i.gstRateBp)}' : ''}',
                   style: const TextStyle(fontSize: 12, color: AppColors.muted),

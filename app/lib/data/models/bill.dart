@@ -73,6 +73,7 @@ class BillItem {
     required this.name,
     this.hsn,
     this.unit,
+    this.packSize = 1,
     this.batchNo,
     this.expiryDate,
     required this.qty,
@@ -97,6 +98,7 @@ class BillItem {
         name: _str(j['name']) ?? '',
         hsn: _str(j['hsn']),
         unit: _str(j['unit']),
+        packSize: _int(j['pack_size']) < 1 ? 1 : _int(j['pack_size']),
         batchNo: _str(j['batch_no']),
         expiryDate: _date(j['expiry_date']),
         qty: _int(j['qty_units']),
@@ -121,6 +123,9 @@ class BillItem {
   final String name;
   final String? hsn;
   final String? unit;
+
+  /// Pieces per pack of the product when the bill was made; 1 when not set.
+  final int packSize;
   final String? batchNo;
   final DateTime? expiryDate;
   final int qty;

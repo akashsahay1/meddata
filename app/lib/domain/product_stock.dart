@@ -17,6 +17,9 @@ class ProductStock {
   String get brand => first.brand;
   String get category => first.category;
   String get unit => first.unit;
+
+  /// Pieces per pack (tablets per strip); 1 when not set.
+  int get packSize => first.packSize;
   int get lowStockThreshold => first.lowStockThreshold;
 
   int get totalQty =>

@@ -73,7 +73,7 @@ class BillingApiTest extends TestCase
         $p = (string) Str::uuid();
         $b = (string) Str::uuid();
         $res = $this->push($token, [
-            ['table' => 'products', 'id' => $p, 'data' => $product + ['name' => 'Dolo 650', 'unit' => 'Strips', 'hsn' => '3004', 'gst_rate_bp' => 500]],
+            ['table' => 'products', 'id' => $p, 'data' => $product + ['name' => 'Dolo 650', 'unit' => 'Strips', 'pack_size' => 10, 'hsn' => '3004', 'gst_rate_bp' => 500]],
             ['table' => 'batches', 'id' => $b, 'data' => $batch + ['product_id' => $p, 'batch_no' => 'B1', 'expiry_date' => '2027-10-31', 'mrp_paise' => 3000]],
             ['table' => 'stock_movements', 'id' => (string) Str::uuid(), 'data' => [
                 'batch_id' => $b, 'delta_units' => $qty, 'reason' => 'opening', 'occurred_at' => now()->toIso8601String(),
@@ -112,7 +112,7 @@ class BillingApiTest extends TestCase
         $token = $this->token();
         $this->shop($token);
         $dolo = $this->stock($token);
-        $syrup = $this->stock($token, ['name' => 'Cough Syrup', 'unit' => 'Bottles', 'hsn' => '3004', 'gst_rate_bp' => 1200],
+        $syrup = $this->stock($token, ['name' => 'Cough Syrup', 'unit' => 'Bottles', 'pack_size' => 1, 'hsn' => '3004', 'gst_rate_bp' => 1200],
             ['batch_no' => 'S9', 'mrp_paise' => 11250]);
 
         $res = $this->bill($token, [
@@ -130,6 +130,9 @@ class BillingApiTest extends TestCase
             [$bill['subtotal_paise'], $bill['discount_paise'], $bill['taxable_paise'], $bill['cgst_paise'],
                 $bill['sgst_paise'], $bill['igst_paise'], $bill['round_off_paise'], $bill['total_paise']],
         );
+
+        // The pack size is copied onto the line, like the unit.
+        $this->assertSame([10, 1], [$bill['items'][0]['pack_size'], $bill['items'][1]['pack_size']]);
 
         $syrupLine = $bill['items'][1];
         $this->assertSame(['Cough Syrup', '3004', 'S9', '2027-10-31', 3, 11250, 1000, 1200],

@@ -10,6 +10,7 @@ ProductStock product(
   String name, {
   String brand = '',
   String unit = 'Strips',
+  int packSize = 1,
   String barcode = '',
 }) {
   final DateTime t = DateTime(2026, 1, 1);
@@ -22,6 +23,7 @@ ProductStock product(
       category: 'Pain Relief / Analgesic',
       barcode: barcode,
       unit: unit,
+      packSize: packSize,
       quantity: 5,
       lowStockThreshold: 20,
       expiryDate: DateTime(2027, 1, 31),
@@ -221,6 +223,7 @@ void main() {
       expect(m.batchNo, 'DOBS3975');
       expect(m.unit, 'Strips');
       expect(m.quantity, 12); // 10 billed + 2 free
+      expect(m.packSize, 15, reason: 'the pack as printed is remembered');
       expect(m.sellingPrice, 30);
       expect(m.purchasePrice, 18); // rate after the 10% discount
       expect(m.expiryDate, DateTime(2027, 6, 30));
@@ -308,6 +311,28 @@ void main() {
       expect(l.product?.productId, 'p-dolo'); // kept, so it can be undone
       expect(l.toMedicine(id: 'x', now: now).name, 'DOLO 650 TAB');
       expect(l.copyWith(asNew: false).target?.productId, 'p-dolo');
+    });
+
+    test("the shop's own pack size wins over the invoice's pack text", () {
+      final ProductStock dolo = product('p-dolo', 'Dolo 650',
+          brand: 'Micro Labs', unit: 'Tablets', packSize: 10);
+      final InvoiceDraftLine l = InvoiceDraftMapper.fromResult(<String, dynamic>{
+        'items': <Object?>[
+          item('DOLO 650 TAB', <String, dynamic>{
+            'manufacturer': 'MICRO',
+            'pack': "15's",
+            'quantity': 2,
+            'mrp': 30,
+            'expiry_date': '2027-06',
+          }),
+        ],
+      }, products: <ProductStock>[dolo]).lines.single;
+      expect(l.target?.productId, 'p-dolo');
+      expect(l.unitsPerPack, 10, reason: 'the supplier printed 15, the shop counts 10');
+      final Medicine m = l.toMedicine(id: 'b2', now: now);
+      expect(m.quantity, 20);
+      expect(m.packSize, 10);
+      expect(m.sellingPrice, 3);
     });
 
     test('a pack count of one never multiplies', () {
