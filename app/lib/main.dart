@@ -92,6 +92,7 @@ Future<void> main() async {
     if (auth.isLoggedIn) auth.refreshMe();
   });
   Timer.periodic(const Duration(hours: 1), (_) {
+    settings.recheckTrialEnd(); // works offline too
     if (auth.isLoggedIn) auth.refreshMe();
   });
 

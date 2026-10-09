@@ -139,22 +139,18 @@ class SettingsService extends ChangeNotifier {
   /// moment on a PC left open all day, not at the next restart.
   Timer? _trialEndTimer;
 
+  /// Arms [_trialEndTimer] once the trial has under a day left; the app's
+  /// hourly tick calls this again, so a later end is picked up in time.
+  void recheckTrialEnd() => _watchTrialEnd();
+
   void _watchTrialEnd() {
     _trialEndTimer?.cancel();
     _trialEndTimer = null;
     final DateTime? end = _trialEndsAt;
     if (end == null) return;
     final Duration left = end.difference(DateTime.now());
-    if (left.isNegative) return;
-    // Timer durations beyond ~24 days overflow on some platforms; re-arm.
-    const Duration cap = Duration(days: 1);
-    _trialEndTimer = Timer(left > cap ? cap : left + const Duration(seconds: 1), () {
-      if (left > cap) {
-        _watchTrialEnd();
-      } else {
-        notifyListeners();
-      }
-    });
+    if (left.isNegative || left > const Duration(days: 1)) return;
+    _trialEndTimer = Timer(left + const Duration(seconds: 1), notifyListeners);
   }
 
   @override
