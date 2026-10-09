@@ -78,7 +78,7 @@ class AuthValidators {
 
   static String? password(String? v) {
     if (v == null || v.isEmpty) return 'Enter a password';
-    if (v.length < 6) return 'At least 6 characters';
+    if (v.length < 8) return 'At least 8 characters';
     return null;
   }
 }

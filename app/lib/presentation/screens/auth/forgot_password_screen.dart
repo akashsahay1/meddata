@@ -286,7 +286,7 @@ class _PasswordField extends StatelessWidget {
             color: Theme.of(context).colorScheme.onSurface,
           ),
           decoration: InputDecoration(
-            hintText: 'At least 6 characters',
+            hintText: 'At least 8 characters',
             suffixIcon: IconButton(
               icon: Icon(
                 obscure

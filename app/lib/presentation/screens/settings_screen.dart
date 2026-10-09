@@ -979,7 +979,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextField(
               controller: newCtrl,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'New password'),
+              decoration: const InputDecoration(
+                  labelText: 'New password', hintText: 'At least 8 characters'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -1009,6 +1010,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (current.isEmpty || next.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+    if (next.length < 8) {
+      // Same rule as the server (and sign-up).
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('The new password needs at least 8 characters')),
       );
       return;
     }
