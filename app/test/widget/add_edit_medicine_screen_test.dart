@@ -115,11 +115,32 @@ void main() {
       await answer(tester, 'OK'); // picks today
       expect(find.text(Fmt.date(day(0))), findsOneWidget);
 
+      // Expiry is typed as printed on the strip: MM/YY.
       await tester.tap(dateField('Expiry date *'));
       await tester.pumpAndSettle();
+      expect(find.text('Expiry (month / year)'), findsOneWidget);
+      await tester.enterText(find.byType(TextField).last, '0120');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.byType(TextField).last).controller!.text,
+          '01/20', reason: 'the slash types itself');
+      await answer(tester, 'OK');
+      expect(find.text('Expiry must be after the manufacture date'), findsOneWidget);
+
+      // A calendar is one tap away, starting the day after manufacture.
+      await answer(tester, 'Pick a day');
       picker = tester.widget<DatePickerDialog>(find.byType(DatePickerDialog));
       expect(picker.firstDate, day(1), reason: 'expiry after manufacture');
+      // The calendar's Cancel (on top), then the month dialog's.
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
       await answer(tester, 'Cancel');
+
+      await tester.tap(dateField('Expiry date *'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, '08/28');
+      await answer(tester, 'OK');
+      expect(find.text(Fmt.date(DateTime(2028, 8, 31))), findsOneWidget,
+          reason: 'a month expiry is its last day');
     });
 
     testWidgets('an expired batch can only get a manufacture date before expiry',

@@ -70,6 +70,9 @@ void main() {
     await tester.enterText(fieldLabeled('Selling price (MRP)'), '95');
     await tester.tap(dateField('Expiry date *'));
     await tester.pumpAndSettle();
+    // An exact day (not month/year): through the calendar.
+    await tester.tap(find.text('Pick a day'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Switch to input'));
     await tester.pumpAndSettle();
     final MaterialLocalizations l10n = MaterialLocalizations.of(
@@ -79,7 +82,8 @@ void main() {
             of: find.byType(DatePickerDialog),
             matching: find.byType(TextField)),
         l10n.formatCompactDate(expiry));
-    await answerDialog(tester, 'OK');
+    await tester.tap(find.text('OK').last); // the calendar's, over the month dialog
+    await tester.pumpAndSettle();
     expect(find.text(Fmt.date(expiry)), findsOneWidget);
     await tester.tap(find.text('Add medicine'));
     await tester.pumpAndSettle();

@@ -337,6 +337,8 @@ void main() {
       await tester.ensureVisible(find.text('Not set').first);
       await tester.tap(find.text('Not set').first);
       await tester.pumpAndSettle();
+      await tester.enterText(
+          find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), '06/28');
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
     }

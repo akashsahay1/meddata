@@ -188,6 +188,8 @@ Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
   expect(find.text('Edit item'), findsOneWidget);
   await tester.tap(find.text('Not set').first);
   await tester.pumpAndSettle();
+  await tester.enterText(
+      find.descendant(of: find.byType(AlertDialog), matching: find.byType(TextField)), '03/28');
   await tester.tap(find.text('OK'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('Save')); // pinned below the fields

@@ -15,6 +15,7 @@ import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/expiry_picker.dart';
 import '../widgets/ui_kit.dart';
 import 'barcode_scan_screen.dart';
 import 'invoice_scan_screen.dart';
@@ -249,31 +250,24 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   /// expiry must fall after the manufacture date. The pickers are bounded
   /// accordingly and [_dateError] re-checks on save.
   Future<void> _pickDate({required bool isExpiry}) async {
-    final DateTime today = _day(DateTime.now());
-    final DateTime earliest = DateTime(2000);
-    final DateTime latest = DateTime(2100);
-    final DateTime first;
-    final DateTime last;
-    DateTime initial;
     if (isExpiry) {
-      first = _mfgDate == null
-          ? earliest
-          : _day(_mfgDate!).add(const Duration(days: 1));
-      last = latest;
-      initial = _expiryDate;
-    } else {
-      final DateTime beforeExpiry =
-          _day(_expiryDate).subtract(const Duration(days: 1));
-      last = beforeExpiry.isBefore(today) ? beforeExpiry : today;
-      first = earliest;
-      initial = _mfgDate ?? last;
-    }
-    if (last.isBefore(first)) {
-      _showDateError(isExpiry
-          ? 'No valid expiry date after this manufacture date.'
-          : 'Set a later expiry date first.');
+      // Strips print MM/YY: typed as such (a calendar is one tap away).
+      final DateTime? picked =
+          await pickExpiry(context, initial: _expiryDate, after: _mfgDate);
+      if (picked != null && mounted) setState(() => _expiryDate = picked);
       return;
     }
+    // Manufacture date: not in the future, and before the expiry.
+    final DateTime today = _day(DateTime.now());
+    final DateTime first = DateTime(2000);
+    final DateTime beforeExpiry =
+        _day(_expiryDate).subtract(const Duration(days: 1));
+    final DateTime last = beforeExpiry.isBefore(today) ? beforeExpiry : today;
+    if (last.isBefore(first)) {
+      _showDateError('Set a later expiry date first.');
+      return;
+    }
+    DateTime initial = _mfgDate ?? last;
     if (initial.isBefore(first)) initial = first;
     if (initial.isAfter(last)) initial = last;
     final DateTime? picked = await showDatePicker(
@@ -282,15 +276,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       firstDate: first,
       lastDate: last,
     );
-    if (picked != null) {
-      setState(() {
-        if (isExpiry) {
-          _expiryDate = picked;
-        } else {
-          _mfgDate = picked;
-        }
-      });
-    }
+    if (picked != null) setState(() => _mfgDate = picked);
   }
 
   /// Null when the dates are consistent, otherwise a message for the user.

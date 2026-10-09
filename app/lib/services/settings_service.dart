@@ -46,7 +46,14 @@ class SettingsService extends ChangeNotifier {
   DateTime? get trialEndsAt => _trialEndsAt;
   String get currency => _currency;
   String get localeCode => _localeCode;
-  Locale get locale => Locale(_localeCode);
+  /// India: dates read day/month/year (date pickers, typed dates).
+  Locale get locale => Locale(_localeCode, 'IN');
+
+  /// The app's languages, as Indian locales.
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en', 'IN'),
+    Locale('hi', 'IN'),
+  ];
 
   /// Whether the free trial is currently active.
   bool get isTrialActive =>

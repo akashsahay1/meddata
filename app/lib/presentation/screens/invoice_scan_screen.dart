@@ -21,6 +21,7 @@ import '../../services/invoice_scan_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/expiry_picker.dart';
 import '../widgets/ui_kit.dart';
 import 'accounts/party_picker.dart';
 import 'upgrade_screen.dart';
@@ -1679,6 +1680,16 @@ class _LineEditorState extends State<_LineEditor> {
   );
 
   Future<void> _pickDate({required bool expiry}) async {
+    if (expiry) {
+      final DateTime? picked =
+          await pickExpiry(context, initial: _expiry, after: _mfg);
+      if (picked == null || !mounted) return;
+      setState(() {
+        _expiry = picked;
+        _problem = null;
+      });
+      return;
+    }
     final DateTime now = DateTime.now();
     final DateTime initial =
         (expiry ? _expiry : _mfg) ??

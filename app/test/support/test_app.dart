@@ -273,7 +273,7 @@ class TestApp {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         locale: settings.locale,
-        supportedLocales: AppLocalizations.supportedLocales,
+        supportedLocales: SettingsService.supportedLocales,
         localizationsDelegates: const <LocalizationsDelegate<Object?>>[
           AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,

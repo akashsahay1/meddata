@@ -203,7 +203,7 @@ class MeddataApp extends StatelessWidget {
             darkTheme: AppTheme.dark,
             themeMode: s.themeMode,
             locale: s.locale,
-            supportedLocales: AppLocalizations.supportedLocales,
+            supportedLocales: SettingsService.supportedLocales,
             localizationsDelegates: const <LocalizationsDelegate<Object?>>[
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
