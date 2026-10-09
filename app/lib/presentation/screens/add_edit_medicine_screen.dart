@@ -169,6 +169,19 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     final (int p, int l) = PackSize.split(int.tryParse(typed) ?? 0, ps);
     _packs.text = typed.isEmpty ? '' : '$p';
     _loose.text = l == 0 ? '' : '$l';
+    _lowStockToPacks(ps);
+  }
+
+  /// The low-stock alert is kept in pieces; in packs mode it is typed and
+  /// shown in whole packs (rounded up: alert while a strip is still left).
+  void _lowStockToPacks(int ps) {
+    final int? v = int.tryParse(_lowStock.text.trim());
+    if (v != null) _lowStock.text = '${(v + ps - 1) ~/ ps}';
+  }
+
+  void _lowStockToPieces(int ps) {
+    final int? v = int.tryParse(_lowStock.text.trim());
+    if (v != null) _lowStock.text = '${v * ps}';
   }
 
   /// Switch the stock and price fields between pieces and packs when the
@@ -207,6 +220,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         _packs.text = typed.isEmpty ? '' : '$p';
         _loose.text = l == 0 ? '' : '$l';
         scale((double v) => v * ps);
+        _lowStockToPacks(ps);
       }
       _modePackSize = ps;
     } else {
@@ -216,7 +230,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         _quantity.text = _packs.text.trim(); // 12 strips stay 12 strips
       } else {
         _quantity.text = blank ? '' : '${_packsTotal()}';
-        if (!wholeChange) scale((double v) => v / _modePackSize);
+        if (!wholeChange) {
+          scale((double v) => v / _modePackSize);
+          _lowStockToPieces(_modePackSize);
+        }
       }
     }
     _packsMode = packs;
@@ -401,8 +418,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
       quantity: _quantityValue,
       unit: _unit,
       packSize: _packSizeValue,
-      lowStockThreshold: int.tryParse(_lowStock.text.trim()) ??
-          AppConstants.defaultLowStockThreshold,
+      // Typed in strips in packs mode; kept in pieces.
+      lowStockThreshold: (int.tryParse(_lowStock.text.trim()) ??
+              AppConstants.defaultLowStockThreshold) *
+          (_packsMode ? _modePackSize : 1),
       purchasePrice: price(_purchase),
       sellingPrice: price(_selling),
       mfgDate: _mfgDate,
@@ -636,8 +655,10 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                         flex: 7,
                         child: _numberField(
                           _lowStock,
-                          'Low-stock at',
-                          hint: '10',
+                          _packsMode
+                              ? 'Low-stock at (${PackSize.packNoun(_unit)}s)'
+                              : 'Low-stock at',
+                          hint: _packsMode ? '2' : '10',
                         ),
                       ),
                     ],

@@ -298,6 +298,9 @@ void main() {
       expect(find.text('Required'), findsOneWidget);
       expect(app.medicines.productCount, 0);
 
+      expect(fieldText(tester, 'Low-stock at (strips)'), '1',
+          reason: 'the default 10 tablets, as whole strips (rounded up)');
+      await tester.enterText(fieldLabeled('Low-stock at (strips)'), '4');
       await tester.enterText(fieldLabeled('Strips *'), '2');
       await tester.enterText(fieldLabeled('Loose tablets'), '3');
       await tester.pump();
@@ -309,6 +312,7 @@ void main() {
       expect(find.byType(AddEditMedicineScreen), findsNothing);
       final ProductStock p = app.medicines.products.single;
       expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 33));
+      expect(p.lowStockThreshold, 60, reason: '4 strips, kept in tablets');
       final Medicine b = p.batches.single;
       expect(b.sellingPrice, 30, reason: 'stored per strip (PackSize.pricePack)');
       expect(b.purchasePrice, 15);
@@ -323,6 +327,7 @@ void main() {
           tester, AddEditMedicineScreen(existing: m, api: app.backend.api));
 
       expect(fieldText(tester, 'Tablets per strip'), '10');
+      expect(fieldText(tester, 'Low-stock at (strips)'), '1', reason: '10 tablets');
       expect(fieldText(tester, 'Strips *'), '6');
       expect(fieldText(tester, 'Loose tablets'), '3');
       expect(fieldText(tester, 'MRP per strip'), '25.0', reason: 'as stored, per strip');
@@ -352,6 +357,7 @@ void main() {
       await tester.enterText(fieldLabeled('Tablets per strip'), '');
       await tester.pump();
       expect(fieldText(tester, 'Quantity *'), '63');
+      expect(fieldText(tester, 'Low-stock at'), '10');
       expect(fieldText(tester, 'Selling price (MRP)'), '2.50');
       expect(fieldText(tester, 'Purchase price'), '1.80');
       expect(find.text('Strips *'), findsNothing);
