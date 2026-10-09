@@ -298,12 +298,17 @@ class _SubscribeViewState extends State<SubscribeView> {
   }
 
   void _selectPlan(SubscriptionPlan p) {
+    if (p == _selected) return;
+    final bool hadCoupon = _couponApplied != null;
     setState(() {
       _selected = p;
-      _couponResult = null; // re-validate coupon for the new plan
+      // A coupon is checked per plan: drop the old discount, then apply the
+      // same code to the new plan (the owner shouldn't have to notice and
+      // type it again).
+      _couponResult = null;
       _couponApplied = null;
-      _coupon.clear();
     });
+    if (hadCoupon && _coupon.text.trim().isNotEmpty) _applyCoupon();
   }
 
   @override
