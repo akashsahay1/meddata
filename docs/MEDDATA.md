@@ -12,7 +12,7 @@ An offline-first inventory app for Indian pharmacy / medical-shop owners. Each s
 
 ### Target users
 
-Independent pharmacy and medical-store owners in India (₹ pricing, English + Hindi), often on budget Android hardware, limited/intermittent internet.
+Independent pharmacy and medical-store owners in India (₹ pricing, English; dates day/month/year), often on budget Android hardware, limited/intermittent internet.
 
 ### Repository layout
 
@@ -38,7 +38,6 @@ app/lib/
 │   ├── models/     Medicine, StockMovement, SubscriptionPlan
 │   └── repositories/  MedicineRepository (CRUD against local DB)
 ├── domain/         ExpiryAlertPlan, MedicineStatus, ProductStock
-├── l10n/           EN + HI localization
 ├── presentation/
 │   ├── screens/    Home, Inventory, ProductDetail, AddEdit, Alerts, Settings, Login/Signup,
 │   │               billing/ (NewBill, Bills, BillDetail, ShopSettings), import/ (ImportWizard), InvoiceScan,
@@ -240,7 +239,6 @@ Otherwise → LockScreen.
 ```bash
 cd app
 flutter pub get
-flutter gen-l10n                    # localization (EN/HI)
 flutter run                         # connected device / emulator
 flutter build apk --release --split-per-abi   # release APK
 flutter build windows --release     # Windows (needs Visual Studio C++ workload)
@@ -397,7 +395,9 @@ cd app && flutter test test/integration/
 - [x] **Reports reachable**: Profile → Accounts → Reports, and the Home "Stock value" card; open during the trial
 - [x] Home summary cards took no taps on their top 40px (overlap with the header was a separate list item)
 - [x] Plan re-checked while the app stays open (resume + hourly; lock at the trial-end moment); Reports overview counts medicines, not batches; bill dialogs no longer crash on close
-- Still open from the journey: bill lines start at 1 tablet (not 1 strip); low-stock threshold in tablets; full-date expiry entry; Hindi not wired; password 6 vs 8; coupon silently dropped on plan change; GST % / HSN not editable on a typed purchase line (the medicine's or the shop's default rate applies)
+- [x] Journey follow-ups, round 2 (9 Oct): a strip medicine goes on a bill a strip at a time (or what's left); "Low-stock at (strips)" in strips mode; expiry typed as MM/YY (month's last day, "Pick a day" for full dates) and the app locale en-IN (day/month/year); passwords 8 characters in the app as on the server; switching plan re-applies the coupon
+- [x] Hindi removed (owner's decision, 9 Oct): the app is English only; the unused l10n files (17 strings) and the language setting are gone
+- Still open: GST % / HSN not editable on a typed purchase line (the medicine's or the shop's default rate applies)
 
 ### Remaining from original task list
 

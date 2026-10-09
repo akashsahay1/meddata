@@ -10,7 +10,6 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'core/platform.dart';
 import 'data/db/database_helper.dart';
-import 'l10n/app_localizations.dart';
 
 import 'services/auth_service.dart';
 import 'services/device_id.dart';
@@ -205,7 +204,6 @@ class MeddataApp extends StatelessWidget {
             locale: s.locale,
             supportedLocales: SettingsService.supportedLocales,
             localizationsDelegates: const <LocalizationsDelegate<Object?>>[
-              AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,

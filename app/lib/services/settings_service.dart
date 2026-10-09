@@ -17,7 +17,6 @@ class SettingsService extends ChangeNotifier {
   static const String _kPremium = 'cached_premium';
   static const String _kTrialEndsAt = 'trial_ends_at';
   static const String _kCurrency = 'currency_symbol';
-  static const String _kLocale = 'locale_code';
 
   late SharedPreferences _prefs;
 
@@ -31,7 +30,6 @@ class SettingsService extends ChangeNotifier {
   bool _premium = false;
   DateTime? _trialEndsAt;
   String _currency = '₹';
-  String _localeCode = 'en';
 
   ThemeMode get themeMode => _themeMode;
   int get warningDays => _warningDays;
@@ -45,16 +43,11 @@ class SettingsService extends ChangeNotifier {
   bool get isPremium => _premium;
   DateTime? get trialEndsAt => _trialEndsAt;
   String get currency => _currency;
-  String get localeCode => _localeCode;
-  /// India: dates read day/month/year (date pickers, typed dates).
-  Locale get locale => Locale(_localeCode, 'IN');
+  /// English (India): dates read day/month/year (date pickers, typed
+  /// dates). The app is English only.
+  Locale get locale => const Locale('en', 'IN');
 
-  /// The app's languages, as Indian locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('en', 'IN'),
-    Locale('hi', 'IN'),
-  ];
-
+  static const List<Locale> supportedLocales = <Locale>[Locale('en', 'IN')];
   /// Whether the free trial is currently active.
   bool get isTrialActive =>
       _trialEndsAt != null && _trialEndsAt!.isAfter(DateTime.now());
@@ -95,7 +88,6 @@ class SettingsService extends ChangeNotifier {
         trialMs == null ? null : DateTime.fromMillisecondsSinceEpoch(trialMs);
     _watchTrialEnd();
     _currency = _prefs.getString(_kCurrency) ?? '₹';
-    _localeCode = _prefs.getString(_kLocale) ?? 'en';
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -183,9 +175,4 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setLocale(String code) async {
-    _localeCode = code;
-    await _prefs.setString(_kLocale, code);
-    notifyListeners();
-  }
 }

@@ -12,7 +12,6 @@ import 'package:http/testing.dart';
 import 'package:med_stock/data/db/database_helper.dart';
 import 'package:med_stock/data/models/medicine.dart';
 import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/l10n/app_localizations.dart';
 import 'package:med_stock/services/api_client.dart';
 import 'package:med_stock/services/auth_service.dart';
 import 'package:med_stock/services/settings_service.dart';
@@ -275,7 +274,6 @@ class TestApp {
         locale: settings.locale,
         supportedLocales: SettingsService.supportedLocales,
         localizationsDelegates: const <LocalizationsDelegate<Object?>>[
-          AppLocalizations.delegate,
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
