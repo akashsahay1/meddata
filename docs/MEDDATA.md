@@ -391,6 +391,14 @@ cd app && flutter test test/integration/
 - [x] Per-pack pricing (8 Oct): batch MRP and purchase rate are per strip when the pack size applies (see §3 "Prices are per price pack"); `GstMath.line` / `GstMath::line` and `purchaseLine` take `packSize` and round once per line; valuation, expiry loss, profit, sale returns (`sale_return_items.pack_size`), purchases from invoices (`lines.*.product.pack_size` now validated and saved) and the catalog price all follow. Shared vectors added to `gst_math_test.dart` / `GstMathTest.php`
 - [x] Unit change with stock (9 Oct): changing a medicine between a whole-pack unit (Strips, Bottles…) and pieces (Tablets, Capsules, ML) asks first ("It has 16 strips in stock across 2 batches. At 15 tablets a strip, that becomes 240 tablets. Prices stay per strip.") and converts every batch with synced 'adjust' movements; Tablets → Strips is refused while any batch has loose tablets, and needs the pack size
 
+### Journey follow-ups ✅ (9 Oct 2026)
+
+- [x] **Purchases typed by hand**: Purchases → "Add supplier bill" → *Type the bill* (or *Scan a photo or PDF*). The typed bill uses the scan's review screen from an empty bill: "Add item" per medicine (packs, free, pack size, rate and MRP per pack, batch, expiry), matched to the shop's medicines by name; supplier, invoice no./date, duplicate-invoice check and "Record purchase" as for a scan
+- [x] **Reports reachable**: Profile → Accounts → Reports, and the Home "Stock value" card; open during the trial
+- [x] Home summary cards took no taps on their top 40px (overlap with the header was a separate list item)
+- [x] Plan re-checked while the app stays open (resume + hourly; lock at the trial-end moment); Reports overview counts medicines, not batches; bill dialogs no longer crash on close
+- Still open from the journey: bill lines start at 1 tablet (not 1 strip); low-stock threshold in tablets; full-date expiry entry; Hindi not wired; password 6 vs 8; coupon silently dropped on plan change; GST % / HSN not editable on a typed purchase line (the medicine's or the shop's default rate applies)
+
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)

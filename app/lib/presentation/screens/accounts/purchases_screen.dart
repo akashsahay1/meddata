@@ -102,6 +102,35 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
     if (mounted) _load();
   }
 
+  /// Type the bill in, or scan a photo / PDF of it.
+  Future<void> _addBill() async {
+    final bool? manual = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.card,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.keyboard_outlined),
+              title: const Text('Type the bill'),
+              subtitle: const Text('Enter each medicine as printed on the bill'),
+              onTap: () => Navigator.of(ctx).pop(true),
+            ),
+            ListTile(
+              leading: const Icon(Icons.document_scanner_outlined),
+              title: const Text('Scan a photo or PDF'),
+              subtitle: const Text('Meddata reads it; you check every item'),
+              onTap: () => Navigator.of(ctx).pop(false),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (manual == null || !mounted) return;
+    await _open(manual ? const InvoiceScanScreen.manual() : const InvoiceScanScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     final ApiPage<PurchaseSummary>? p = _page;
@@ -109,10 +138,10 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: const Text('Purchases')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(const InvoiceScanScreen()),
+        onPressed: _addBill,
         foregroundColor: AppColors.ink,
-        icon: const Icon(Icons.document_scanner_outlined),
-        label: const Text('Scan supplier bill'),
+        icon: const Icon(Icons.add),
+        label: const Text('Add supplier bill'),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,7 +205,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 32),
                             child: Text(
-                              'No purchases here yet. Scan a supplier bill and choose the supplier to record it.',
+                              'No purchases here yet. Add a supplier bill - type it in or scan it - and choose the supplier to record it.',
                               textAlign: TextAlign.center,
                               style: TextStyle(color: AppColors.muted),
                             ),

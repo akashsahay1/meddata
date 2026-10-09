@@ -323,6 +323,102 @@ void main() {
         <Object?>['credit', 'p-ramesh', 'Ramesh Kumar', '9876543210']);
   });
 
+  group('a supplier bill typed by hand', () {
+    Future<void> fill(WidgetTester tester, String label, String text) async {
+      final Finder f = find.descendant(
+          of: find.ancestor(of: find.text(label), matching: find.byType(Column)).first,
+          matching: find.byType(TextFormField));
+      await tester.ensureVisible(f.first);
+      await tester.enterText(f.first, text);
+      await tester.pump();
+    }
+
+    Future<void> pickExpiry(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('Not set').first);
+      await tester.tap(find.text('Not set').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('add items, choose the supplier, record the purchase',
+        (WidgetTester tester) async {
+      final AccountsApp app = await start(tester, height: 2000);
+      await app.open(tester, InvoiceScanScreen.manual(accountingApi: app.server.api));
+
+      expect(find.text('Enter supplier bill'), findsOneWidget);
+      expect(find.text('Supplier bill, typed in'), findsOneWidget);
+      expect(find.textContaining('No items yet'), findsOneWidget);
+      expect(find.text('Choose supplier'), findsOneWidget);
+
+      // A new medicine counted in tablets, 10 a strip.
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add item'), findsWidgets, reason: 'the editor title');
+      await fill(tester, 'Medicine name *', 'Azithral 500');
+      await fill(tester, 'Manufacturer', 'Alembic');
+      await fill(tester, 'Batch no.', 'AZ1');
+      await fill(tester, 'Qty (packs) *', '10');
+      await fill(tester, 'Free', '1');
+      await fill(tester, 'Tablets per pack', '5');
+      await fill(tester, 'MRP / pack', '119.50');
+      await fill(tester, 'Rate / pack', '80');
+      await pickExpiry(tester);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('1 item'), findsWidgets);
+
+      // An empty item can't be saved.
+      await tester.tap(find.text('Add item'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Save'), findsOneWidget, reason: 'still in the editor');
+      await tester.tap(find.text('Cancel').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Choose supplier'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pune Pharma Distributors'));
+      await tester.pumpAndSettle();
+      expect(find.text('Supplier: Pune Pharma Distributors'), findsOneWidget);
+      await tester.enterText(find.widgetWithText(TextField, "Supplier's invoice no."), 'PPD/90');
+      await tester.pump();
+
+      await tester.tap(find.text('Record purchase (1)'));
+      await tester.pumpAndSettle();
+
+      final Map<String, dynamic> sent = app.server.bodyOf('POST /purchases')!;
+      expect(<Object?>[sent['party_id'], sent['supplier_invoice_no'], sent['invoice_scan_id']],
+          <Object?>['p-ppd', 'PPD/90', null]);
+      final Map<String, dynamic> line = (sent['lines'] as List<dynamic>).single as Map<String, dynamic>;
+      expect(<Object?>[line['qty'], line['free_qty'], line['units_per_pack'], line['rate_paise'], line['mrp_paise'], line['batch_no']],
+          <Object?>[10, 1, 5, 8000, 11950, 'AZ1']);
+      expect(line['product'], containsPair('pack_size', 5));
+      expect((line['product'] as Map<String, dynamic>)['unit'], 'Tablets');
+      expect(find.byType(InvoiceScanScreen), findsNothing);
+    });
+
+    testWidgets('Purchases: one button, type the bill or scan it', (WidgetTester tester) async {
+      final AccountsApp app = await start(tester);
+      await app.open(tester, PurchasesScreen(api: app.server.api));
+      await tester.tap(find.text('Add supplier bill'));
+      await tester.pumpAndSettle();
+      expect(find.text('Scan a photo or PDF'), findsOneWidget);
+      await tester.tap(find.text('Type the bill'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter supplier bill'), findsOneWidget);
+    });
+
+    testWidgets('an empty typed bill can be left without a question', (WidgetTester tester) async {
+      final AccountsApp app = await start(tester);
+      await app.open(tester, InvoiceScanScreen.manual(accountingApi: app.server.api));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(InvoiceScanScreen), findsNothing);
+    });
+  });
+
   group('invoice scan records a purchase', () {
     const InvoiceScan scan = InvoiceScan(
       id: 5,

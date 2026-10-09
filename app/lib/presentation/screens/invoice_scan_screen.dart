@@ -35,7 +35,17 @@ class InvoiceScanScreen extends StatefulWidget {
     this.service,
     this.initialScan,
     this.accountingApi,
-  });
+  }) : manual = false;
+
+  /// A supplier bill typed in by hand: no photo or AI, the same review
+  /// (supplier, invoice no. and date, items) starting from an empty bill.
+  const InvoiceScanScreen.manual({super.key, this.accountingApi})
+      : manual = true,
+        service = null,
+        initialScan = null;
+
+  /// Typed by hand rather than scanned.
+  final bool manual;
 
   /// Replaced in tests.
   final InvoiceScanService? service;
@@ -131,6 +141,11 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.manual) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startManual();
+      });
+    }
     final InvoiceScan? scan = widget.initialScan;
     if (scan != null) {
       _scanId = scan.id;
@@ -390,6 +405,62 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       for (final InvoiceDraftLine l in _draft!.lines)
         l.id == line.id ? next : l,
     ]);
+  }
+
+  /// An empty bill to type in (manual mode, and its Start over).
+  void _startManual() {
+    setState(() {
+      _draft = const InvoiceDraft();
+      _stage = _Stage.review;
+      _error = null;
+      _invoiceNo.text = '';
+      _invoiceDate = DateTime.now();
+      _purchaseId = const Uuid().v4();
+      _newProductIds.clear();
+      _duplicates = <String>{};
+    });
+    _findSupplier();
+  }
+
+  /// A new item typed from the bill; matched to the shop's medicines by
+  /// name, as a scanned line is.
+  Future<void> _addItem() async {
+    final InvoiceDraftLine? added =
+        await showModalBottomSheet<InvoiceDraftLine>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: AppColors.card,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadii.cardLg),
+            ),
+          ),
+          builder: (_) => _LineEditor(
+            line: InvoiceDraftLine(
+              id: const Uuid().v4(),
+              name: '',
+              unit: 'Tablets',
+              expiry: null,
+            ),
+          ),
+        );
+    if (added == null || !mounted || _draft == null) return;
+    InvoiceDraftLine next = added;
+    final ProductStock? p = InvoiceDraftMapper.matchProduct(
+      name: next.name,
+      manufacturer: next.manufacturer,
+      barcode: next.barcode,
+      products: context.read<MedicineProvider>().products,
+    );
+    if (p != null) {
+      next = next.copyWith(
+        product: p,
+        unit: p.unit,
+        unitsPerPack: p.packSize > 1 ? p.packSize : next.unitsPerPack,
+      );
+    }
+    _setLines(<InvoiceDraftLine>[..._draft!.lines, next]);
   }
 
   void _remove(InvoiceDraftLine line) {
@@ -744,13 +815,16 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     final bool reviewing = _stage == _Stage.review;
     return PopScope(
       // Leaving the review would lose the checked items: ask first.
-      canPop: !saving && !reviewing,
+      canPop: !saving &&
+          (!reviewing || (widget.manual && (_draft?.lines.isEmpty ?? true))),
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (!didPop && !saving) _leaveAfterConfirm();
       },
       child: Scaffold(
         backgroundColor: AppColors.canvas,
-        appBar: AppBar(title: const Text('Scan purchase invoice')),
+        appBar: AppBar(
+          title: Text(widget.manual ? 'Enter supplier bill' : 'Scan purchase invoice'),
+        ),
         body: SafeArea(top: false, child: _readable(_body())),
         bottomNavigationBar: reviewing || saving ? _reviewBar() : null,
       ),
@@ -931,7 +1005,9 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                draft.supplierName.isEmpty
+                widget.manual
+                    ? 'Supplier bill, typed in'
+                    : draft.supplierName.isEmpty
                     ? 'Supplier not found on the bill'
                     : draft.supplierName,
                 style: const TextStyle(
@@ -959,9 +1035,12 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Check each item against the bill. Tap an item to fix it.',
-                style: TextStyle(fontSize: 12.5, color: AppColors.muted),
+              Text(
+                widget.manual
+                    ? 'Add each medicine on the bill as it is printed: packs, '
+                        'free packs, rate and MRP per pack. Tap an item to fix it.'
+                    : 'Check each item against the bill. Tap an item to fix it.',
+                style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
               ),
             ],
           ),
@@ -1015,12 +1094,23 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             ),
           ),
         if (draft.lines.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              'All items removed. Scan another invoice, or go back.',
+              widget.manual
+                  ? 'No items yet. Tap "Add item" for each medicine on the bill.'
+                  : 'All items removed. Scan another invoice, or go back.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.muted),
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ),
+        if (widget.manual && _stage == _Stage.review)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _addItem,
+              icon: const Icon(Icons.add),
+              label: const Text('Add item'),
             ),
           ),
       ],
@@ -1150,7 +1240,9 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
                 onPressed: saving
                     ? null
                     : () async {
-                        if (await _confirmDiscard() && mounted) _startOver();
+                        if (await _confirmDiscard() && mounted) {
+                          widget.manual ? _startManual() : _startOver();
+                        }
                       },
               ),
             ),
@@ -1638,10 +1730,10 @@ class _LineEditorState extends State<_LineEditor> {
               padding: const EdgeInsets.fromLTRB(18, 6, 6, 0),
               child: Row(
                 children: <Widget>[
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Edit item',
-                      style: TextStyle(
+                      widget.line.name.isEmpty ? 'Add item' : 'Edit item',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.ink,
