@@ -300,8 +300,11 @@ class MedicineProvider extends ChangeNotifier {
     return AddResult.success;
   }
 
-  Future<void> update(Medicine m) async {
-    await _repo.update(m);
+  /// See [MedicineRepository.update] for [stockMultiply] / [stockDivide].
+  Future<void> update(Medicine m,
+      {int stockMultiply = 1, int stockDivide = 1}) async {
+    await _repo.update(m,
+        stockMultiply: stockMultiply, stockDivide: stockDivide);
     await load();
   }
 

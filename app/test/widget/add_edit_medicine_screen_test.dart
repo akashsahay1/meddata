@@ -377,6 +377,101 @@ void main() {
     });
   });
 
+  group('changing the unit of a medicine in stock', () {
+    Future<void> pickUnit(WidgetTester tester, String from, String to) async {
+      await tester.tap(find.text(from).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(to).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Strips to Tablets asks, then converts every batch',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine a = await app.addBatch('Dolo 650',
+          unit: 'Strips', packSize: 15, batch: 'D1', qty: 12, mrp: 30);
+      await app.addBatch('Dolo 650',
+          unit: 'Strips', packSize: 15, batch: 'D2', qty: 4, mrp: 30);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: a, api: app.backend.api));
+
+      await pickUnit(tester, 'Strips', 'Tablets');
+      expect(fieldText(tester, 'Tablets per strip'), '15');
+      expect(fieldText(tester, 'Strips *'), '12', reason: 'still 12 strips');
+      expect(fieldText(tester, 'MRP per strip'), '30.0',
+          reason: 'a strip price stays the strip price');
+      await save(tester, 'Save changes');
+
+      expect(find.text('Count Dolo 650 in Tablets?'), findsOneWidget);
+      expect(
+          find.text('It has 16 strips in stock across 2 batches. At 15 '
+              'tablets a strip, that becomes 240 tablets. Prices stay per strip.'),
+          findsOneWidget);
+      await answer(tester, 'Convert stock');
+
+      expect(find.byType(AddEditMedicineScreen), findsNothing);
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.packSize, p.totalQty), ('Tablets', 15, 240));
+      expect(p.batches.map((Medicine b) => (b.batchNo, b.quantity)),
+          containsAll(<(String, int)>[('D1', 180), ('D2', 60)]));
+      expect(p.batches.every((Medicine b) => b.sellingPrice == 30), isTrue);
+    });
+
+    testWidgets('Tablets to Strips is refused while a batch has loose tablets',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine a = await app.addBatch('Okacet 10',
+          packSize: 10, batch: 'O1', qty: 30, mrp: 19);
+      await app.addBatch('Okacet 10', packSize: 10, batch: 'O2', qty: 25, mrp: 19);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: a, api: app.backend.api));
+
+      await pickUnit(tester, 'Tablets', 'Strips');
+      await save(tester, 'Save changes');
+      expect(find.text("Can't count Okacet 10 in strips yet"), findsOneWidget);
+      expect(find.textContaining('Batch O2 has 2 strips + 5 tablets'), findsOneWidget);
+      await answer(tester, 'OK');
+      expect(find.byType(AddEditMedicineScreen), findsOneWidget);
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.totalQty), ('Tablets', 55), reason: 'nothing changed');
+    });
+
+    testWidgets('Tablets to Strips in whole strips converts; Cancel keeps it',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine a = await app.addBatch('Okacet 10',
+          packSize: 10, batch: 'O1', qty: 30, mrp: 19);
+      await app.addBatch('Okacet 10', packSize: 10, batch: 'O2', qty: 20, mrp: 19);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: a, api: app.backend.api));
+
+      await pickUnit(tester, 'Tablets', 'Strips');
+      await save(tester, 'Save changes');
+      expect(find.text('Count Okacet 10 in Strips?'), findsOneWidget);
+      await answer(tester, 'Cancel');
+      expect(app.medicines.products.single.unit, 'Tablets');
+
+      await save(tester, 'Save changes');
+      await answer(tester, 'Convert stock');
+      final ProductStock p = app.medicines.products.single;
+      expect((p.unit, p.totalQty), ('Strips', 5));
+      expect(p.batches.map((Medicine b) => b.quantity), containsAll(<int>[3, 2]));
+    });
+
+    testWidgets('no stock, or Tablets to Capsules: no question',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester);
+      final Medicine a = await app.addBatch('Becosules', qty: 20, packSize: 20);
+      await app.open(
+          tester, AddEditMedicineScreen(existing: a, api: app.backend.api));
+      await pickUnit(tester, 'Tablets', 'Capsules');
+      await save(tester, 'Save changes');
+      expect(find.byType(AddEditMedicineScreen), findsNothing);
+      expect((app.medicines.products.single.unit, app.medicines.products.single.totalQty),
+          ('Capsules', 20));
+    });
+  });
+
   group('barcode and catalog', () {
     testWidgets('a barcode the shop already has offers a new batch of it',
         (WidgetTester tester) async {

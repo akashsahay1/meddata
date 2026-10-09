@@ -174,8 +174,12 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
   /// Switch the stock and price fields between pieces and packs when the
   /// unit or pack size changes, keeping what was typed: a price per tablet
   /// becomes the same price per strip and back. A [keepSelling] price is
-  /// already per pack (the catalog lists pack prices).
-  void _syncMode({bool keepSelling = false}) {
+  /// already per pack (the catalog lists pack prices). [fromUnit] is the
+  /// unit before a unit change: from or to a whole-pack unit (Strips) the
+  /// prices are per strip on both sides and the typed number is strips.
+  void _syncMode({bool keepSelling = false, String? fromUnit}) {
+    final bool wholeChange = fromUnit != null &&
+        kPieceUnits.contains(fromUnit) != kPieceUnits.contains(_unit);
     final int ps = _packSizeValue;
     final bool packs = PackSize.applies(_unit, ps);
     final List<TextEditingController> prices = <TextEditingController>[
@@ -195,16 +199,25 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     }
     if (packs) {
       final String typed = _quantity.text.trim();
-      final (int p, int l) = PackSize.split(int.tryParse(typed) ?? 0, ps);
-      _packs.text = typed.isEmpty ? '' : '$p';
-      _loose.text = l == 0 ? '' : '$l';
-      scale((double v) => v * ps);
+      if (wholeChange) {
+        _packs.text = typed; // 12 strips stay 12 strips
+        _loose.text = '';
+      } else {
+        final (int p, int l) = PackSize.split(int.tryParse(typed) ?? 0, ps);
+        _packs.text = typed.isEmpty ? '' : '$p';
+        _loose.text = l == 0 ? '' : '$l';
+        scale((double v) => v * ps);
+      }
       _modePackSize = ps;
     } else {
       final bool blank =
           _packs.text.trim().isEmpty && _loose.text.trim().isEmpty;
-      _quantity.text = blank ? '' : '${_packsTotal()}';
-      scale((double v) => v / _modePackSize);
+      if (wholeChange && _loose.text.trim().isEmpty) {
+        _quantity.text = _packs.text.trim(); // 12 strips stay 12 strips
+      } else {
+        _quantity.text = blank ? '' : '${_packsTotal()}';
+        if (!wholeChange) scale((double v) => v / _modePackSize);
+      }
     }
     _packsMode = packs;
   }
@@ -408,7 +421,16 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     }
 
     if (_isEdit) {
-      await mp.update(medicine);
+      final (int, int)? convert = await _unitConversion(widget.existing!);
+      if (convert == null || !mounted) return;
+      final (int mul, int div) = convert;
+      if (mul != 1 || div != 1) {
+        // The whole medicine is converted from its stored stock; a
+        // quantity typed in the old unit would be ambiguous.
+        medicine = medicine.copyWith(
+            quantity: widget.existing!.quantity * mul ~/ div);
+      }
+      await mp.update(medicine, stockMultiply: mul, stockDivide: div);
       if (!mounted) return;
       Navigator.of(context).pop();
       return;
@@ -441,6 +463,93 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         break;
     }
   }
+
+  /// When the unit changes between a whole pack (Strips, Bottles...) and
+  /// pieces (Tablets, Capsules, ML) on a medicine with stock, the stock has
+  /// to change with it: 12 strips of 15 are 180 tablets. Asks first and
+  /// returns the factor (x mul / div): (1, 1) when nothing needs
+  /// converting, null when the owner cancelled or it can't be done.
+  Future<(int, int)?> _unitConversion(Medicine old) async {
+    final String from = old.unit;
+    final String to = _unit;
+    final bool toPieces = kPieceUnits.contains(to);
+    if (from == to || kPieceUnits.contains(from) == toPieces) return (1, 1);
+    final ProductStock? p =
+        context.read<MedicineProvider>().productById(old.productId);
+    final List<Medicine> batches = p?.batches ?? <Medicine>[old];
+    final int total = batches.fold(0, (int s, Medicine b) => s + b.quantity);
+    if (total == 0) return (1, 1);
+
+    // The piece unit (tablets) and the pack unit (strips) of this change.
+    final String pieceUnit = toPieces ? to : from;
+    final String packUnit = toPieces ? from : to;
+    final String pieces = pieceUnit.toLowerCase();
+    final String packs = packUnit.toLowerCase();
+    final String packNoun = PackSize.packNoun(pieceUnit);
+    final int pack = toPieces ? _packSizeValue : old.packSize;
+    if (pack <= 1) {
+      await _tellUnit(
+          'How many $pieces in one $packNoun?',
+          toPieces
+              ? '${old.name} has $total $packs in stock. Fill in '
+                  '"${PackSize.perPackLabel(to)}" so they can be converted to $pieces.'
+              : '${old.name} has $total $pieces in stock but no pack size, so '
+                  "they can't be counted as $packs. Set the pack size first.");
+      return null;
+    }
+    if (!toPieces) {
+      final List<Medicine> loose =
+          batches.where((Medicine b) => b.quantity % pack != 0).toList();
+      if (loose.isNotEmpty) {
+        final String which = loose
+            .map((Medicine b) =>
+                '${b.batchNo.isEmpty ? 'A batch' : 'Batch ${b.batchNo}'} has '
+                '${PackSize.breakdown(b.quantity, from, pack)}')
+            .join('; ');
+        await _tellUnit(
+            "Can't count ${old.name} in $packs yet",
+            '$which. Only whole ${packNoun}s of $pack can become $packs. '
+                'Sell or adjust the loose $pieces first.');
+        return null;
+      }
+    }
+    final int converted = toPieces ? total * pack : total ~/ pack;
+    final bool ok = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext ctx) => AlertDialog(
+            title: Text('Count ${old.name} in $to?'),
+            content: Text(
+                'It has $total ${from.toLowerCase()} in stock'
+                '${batches.length > 1 ? ' across ${batches.length} batches' : ''}. '
+                'At $pack $pieces a $packNoun, that becomes '
+                '$converted ${to.toLowerCase()}. Prices stay per $packNoun.'),
+            actions: <Widget>[
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Cancel')),
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Convert stock')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok) return null;
+    return toPieces ? (pack, 1) : (1, pack);
+  }
+
+  Future<void> _tellUnit(String title, String message) => showDialog<void>(
+        context: context,
+        builder: (BuildContext ctx) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK')),
+          ],
+        ),
+      );
 
   Future<bool?> _confirmDuplicate() {
     return showDialog<bool>(
@@ -1106,8 +1215,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
                   DropdownMenuItem<String>(value: u, child: Text(u)))
               .toList(),
           onChanged: (String? v) => setState(() {
+            final String before = _unit;
             _unit = v ?? 'Tablets';
-            _syncMode();
+            _syncMode(fromUnit: before);
           }),
         ),
       ],

@@ -129,7 +129,13 @@ class MedicineRepository {
 
   /// Save edits from the form: product fields (shared by all its batches),
   /// batch fields, and a quantity change as an 'adjust' movement.
-  Future<void> update(Medicine m) async {
+  ///
+  /// A unit change (Strips -> Tablets) passes [stockMultiply] /
+  /// [stockDivide]: the product's other batches are converted with
+  /// 'adjust' movements in the same transaction ([m] already carries its
+  /// own converted quantity). The caller checks a division is exact.
+  Future<void> update(Medicine m,
+      {int stockMultiply = 1, int stockDivide = 1}) async {
     final Database db = await _dbHelper.database;
     await db.transaction((Transaction txn) async {
       final Map<String, Object?>? b = await _row(txn, 'batches', m.id);
@@ -172,6 +178,19 @@ class MedicineRepository {
 
       final int delta = m.quantity - await _qty(txn, m.id);
       if (delta != 0) await _move(txn, m.id, productId, delta, 'adjust');
+
+      if (stockMultiply != 1 || stockDivide != 1) {
+        final List<Map<String, Object?>> others = await txn.query('batches',
+            columns: <String>['id'],
+            where: 'product_id = ? AND id != ? AND is_deleted = 0',
+            whereArgs: <Object?>[productId, m.id]);
+        for (final Map<String, Object?> o in others) {
+          final String id = o['id']! as String;
+          final int q = await _qty(txn, id);
+          final int d = q * stockMultiply ~/ stockDivide - q;
+          if (d != 0) await _move(txn, id, productId, d, 'adjust');
+        }
+      }
     });
   }
 

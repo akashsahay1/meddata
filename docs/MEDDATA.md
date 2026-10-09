@@ -389,7 +389,7 @@ cd app && flutter test test/integration/
 - [x] Bill detail, A4 invoice and 80 mm receipt print the strips + loose breakdown under the item; the server copies `pack_size` onto `bill_items` (migration edited in place — fresh DB, as per §9)
 - [x] Product detail and batch detail show the breakdown; tests: `pack_size_test`, Add/Edit widget tests (enter, edit, clear, catalog), cart, draft, repository, PDF, backend billing
 - [x] Per-pack pricing (8 Oct): batch MRP and purchase rate are per strip when the pack size applies (see §3 "Prices are per price pack"); `GstMath.line` / `GstMath::line` and `purchaseLine` take `packSize` and round once per line; valuation, expiry loss, profit, sale returns (`sale_return_items.pack_size`), purchases from invoices (`lines.*.product.pack_size` now validated and saved) and the catalog price all follow. Shared vectors added to `gst_math_test.dart` / `GstMathTest.php`
-- Not done: switching a medicine's unit between Strips and Tablets does not convert its existing stock or prices (the numbers stay as typed) — see §9 for the options
+- [x] Unit change with stock (9 Oct): changing a medicine between a whole-pack unit (Strips, Bottles…) and pieces (Tablets, Capsules, ML) asks first ("It has 16 strips in stock across 2 batches. At 15 tablets a strip, that becomes 240 tablets. Prices stay per strip.") and converts every batch with synced 'adjust' movements; Tablets → Strips is refused while any batch has loose tablets, and needs the pack size
 
 ### Remaining from original task list
 
@@ -429,7 +429,7 @@ cd app && flutter test test/integration/
 | Pricing | Plan prices not finalized yet |
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
 | Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
-| Unit change with stock | **Open.** Changing Strips ↔ Tablets on a medicine that has stock leaves the numbers as typed. Options: (a) refuse while stock > 0, (b) convert stock ×/÷ pack size (refuse when not divisible) and keep prices (they are per strip either way) |
+| Unit change with stock | Ask, then convert every batch ×/÷ pack size (owner's decision, 9 Oct); refused when not whole strips. Prices are per strip either way, so they stay |
 | Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail |
 
 ---
