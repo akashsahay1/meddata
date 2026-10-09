@@ -28,6 +28,32 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('overview counts medicines, not batches, and every category',
+      (WidgetTester tester) async {
+    usePhoneScreen(tester, height: 2400);
+    final TestApp app = await TestApp.create();
+    addTearDown(app.dispose);
+    // One medicine with three batches, then nine more in nine categories.
+    for (final String b in <String>['D1', 'D2', 'D3']) {
+      await app.addBatch('Dolo 650', batch: b, category: 'Antipyretic (Fever)');
+    }
+    const List<String> cats = <String>[
+      'Antibiotic', 'Antacid / Gastro', 'Cough & Cold', 'Allergy / Antihistamine',
+      'Diabetes', 'Cardiac / Blood Pressure', 'Vitamins & Supplements',
+      'Dermatology / Skin', 'First Aid',
+    ];
+    for (int i = 0; i < cats.length; i++) {
+      await app.addBatch('Medicine $i', category: cats[i]);
+    }
+    await tester.pumpWidget(app.wrap(const ReportsScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('10'), findsWidgets, reason: '10 medicines (12 batches)');
+    expect(find.text('12'), findsNothing);
+    expect(find.text('10 categories'), findsOneWidget,
+        reason: 'all categories, not just the eight in the chart');
+  });
+
   testWidgets('valuation: stock at cost and MRP, expired apart, by category',
       (WidgetTester tester) async {
     final TestApp app = await start(tester);

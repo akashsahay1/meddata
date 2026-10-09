@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
+import '../../domain/product_stock.dart';
 import '../../services/invoice_pdf.dart';
 import '../../services/reports_api.dart';
 import '../../services/settings_service.dart';
@@ -114,7 +115,7 @@ class _OverviewSection extends StatelessWidget {
     final SettingsService settings = context.watch<SettingsService>();
     final MedicineProvider mp = context.watch<MedicineProvider>();
     final String cur = settings.currency;
-    final Map<String, int> byCategory = _byCategory(mp.visibleAllForAlerts);
+    final Map<String, int> byCategory = _byCategory(mp.products);
     final int maxCat =
         byCategory.values.fold(0, (int a, int b) => a > b ? a : b);
     final Color amber = mp.lowStockCount > 0 ? AppColors.statusAmber : AppColors.muted;
@@ -131,7 +132,7 @@ class _OverviewSection extends StatelessWidget {
             Expanded(
               child: StatCard(
                 label: 'Total medicines',
-                value: '${mp.totalCount}',
+                value: '${mp.productCount}',
                 sub: '${byCategory.length} categories',
               ),
             ),
@@ -210,7 +211,7 @@ class _OverviewSection extends StatelessWidget {
                 )
               : Column(
                   children: <Widget>[
-                    for (final MapEntry<String, int> e in byCategory.entries)
+                    for (final MapEntry<String, int> e in byCategory.entries.take(8))
                       _BarRow(label: e.key, value: e.value, max: maxCat),
                   ],
                 ),
@@ -219,16 +220,18 @@ class _OverviewSection extends StatelessWidget {
     );
   }
 
-  static Map<String, int> _byCategory(List<Medicine> all) {
+  /// Medicines (not batches) per category, largest first. All categories:
+  /// the chart shows the top eight, the count and the PDF use them all.
+  static Map<String, int> _byCategory(List<ProductStock> products) {
     final Map<String, int> map = <String, int>{};
-    for (final Medicine m in all) {
-      final String key = m.category.trim().isEmpty ? 'Uncategorised' : m.category.trim();
+    for (final ProductStock p in products) {
+      final String key = p.category.trim().isEmpty ? 'Uncategorised' : p.category.trim();
       map[key] = (map[key] ?? 0) + 1;
     }
     final List<MapEntry<String, int>> sorted = map.entries.toList()
       ..sort((MapEntry<String, int> a, MapEntry<String, int> b) =>
           b.value.compareTo(a.value));
-    return Map<String, int>.fromEntries(sorted.take(8));
+    return Map<String, int>.fromEntries(sorted);
   }
 
   static double _expiredValue(MedicineProvider mp) {
@@ -244,7 +247,7 @@ class _OverviewSection extends StatelessWidget {
     final InvoiceFonts fonts = await InvoiceFonts.load();
     final pw.Document doc = pw.Document(
         theme: pw.ThemeData.withFont(base: fonts.regular, bold: fonts.bold));
-    final Map<String, int> byCat = _byCategory(mp.visibleAllForAlerts);
+    final Map<String, int> byCat = _byCategory(mp.products);
     doc.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
@@ -255,7 +258,7 @@ class _OverviewSection extends StatelessWidget {
                 style: pw.TextStyle(
                     fontSize: 22, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 12),
-            pw.Text('Total medicines: ${mp.totalCount}'),
+            pw.Text('Total medicines: ${mp.productCount}'),
             pw.Text('Stock value: ${Fmt.money(mp.totalStockValue, symbol: cur)}'),
             pw.Text('Expiring soon: ${mp.expiringCount}'),
             pw.Text('Expired: ${mp.expiredCount}'),
