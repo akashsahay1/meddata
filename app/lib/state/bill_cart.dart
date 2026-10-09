@@ -5,6 +5,7 @@ import '../data/models/accounting.dart';
 import '../data/models/bill.dart';
 import '../domain/fefo.dart';
 import '../domain/gst.dart';
+import '../domain/pack_size.dart';
 import '../services/billing_api.dart';
 
 /// One medicine on the bill being made. Its quantity is split over the
@@ -115,10 +116,12 @@ class BillCart extends ChangeNotifier {
   // ---- items ----------------------------------------------------------------
 
   /// Add [qty] units of a product (more of it if it's already on the bill).
-  Future<AddOutcome> addProduct(String productId, {int qty = 1}) async {
+  /// Without [qty]: one strip of a medicine sold by the strip (tablets with
+  /// a pack size), as little as is left in stock; else one unit.
+  Future<AddOutcome> addProduct(String productId, {int? qty}) async {
     for (final CartItem i in items) {
       if (i.productId == productId) {
-        setQty(i, i.qty + qty);
+        setQty(i, i.qty + (qty ?? _oneStep(i)));
         return AddOutcome.added;
       }
     }
@@ -132,16 +135,28 @@ class BillCart extends ChangeNotifier {
     }
     _batches[productId] = List<SaleBatch>.of(batches);
     final SaleBatch first = sellable.first;
-    items.add(CartItem(
+    final CartItem item = CartItem(
       productId: productId,
       name: first.productName,
       unit: first.unit,
       packSize: first.packSize,
-      qty: qty,
+      qty: 1,
       discountBp: first.discountBp,
-    ));
+    );
+    item.qty = qty ?? _oneStep(item);
+    items.add(item);
     notifyListeners();
     return AddOutcome.added;
+  }
+
+  /// What one tap adds: a strip when the medicine is sold by the strip,
+  /// but no more than the stock that can be sold; else one unit.
+  int _oneStep(CartItem item) {
+    if (!PackSize.applies(item.unit, item.packSize)) return 1;
+    final int left = Fefo.sellable(_batches[item.productId] ?? const <SaleBatch>[], today)
+            .fold(0, (int sum, SaleBatch b) => sum + b.qty) -
+        (items.contains(item) ? item.qty : 0);
+    return left <= 0 ? item.packSize : (left < item.packSize ? left : item.packSize);
   }
 
   void setQty(CartItem item, int qty) {

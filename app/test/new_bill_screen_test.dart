@@ -245,10 +245,10 @@ void main() {
     expect(find.textContaining('100 Tablets (6 strips + 10 tablets) · MRP ₹30.00/strip'), findsOneWidget);
     await tester.tap(find.text('Dolo 650'));
     await tester.pumpAndSettle();
-    expect(find.text('= 1 tablet'), findsOneWidget);
-    expect(find.textContaining('MRP ₹30.00/strip × 1'), findsOneWidget);
+    expect(find.text('= 1 strip'), findsOneWidget, reason: 'a strip medicine starts at a strip');
+    expect(find.textContaining('MRP ₹30.00/strip × 15'), findsOneWidget);
 
-    await tester.tap(find.text('+ 1 strip'));
+    await tester.tap(find.byTooltip('One more'));
     await tester.pumpAndSettle();
     expect(find.text('= 1 strip + 1 tablet'), findsOneWidget);
     expect(find.text('₹32.00'), findsWidgets, reason: '16 tablets at ₹30 a strip of 15, rounded once');

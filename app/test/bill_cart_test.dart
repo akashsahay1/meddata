@@ -16,8 +16,8 @@ void main() {
         productId: product,
         productName: product == 'dolo' ? 'Dolo 650' : product == 'tabs' ? 'Zincovit' : 'Cough Syrup',
         // Zincovit is counted in tablets, priced per strip of 15.
-        unit: product == 'tabs' ? 'Tablets' : 'Strips',
-        packSize: product == 'tabs' ? 15 : 1,
+        unit: product.startsWith('tabs') ? 'Tablets' : 'Strips',
+        packSize: product.startsWith('tabs') ? 15 : 1,
         batchNo: id,
         expiryDate: expiry,
         mrpPaise: mrp,
@@ -37,6 +37,7 @@ void main() {
     'old': <SaleBatch>[b('O1', 'old', DateTime(2025, 1, 1), 5)],
     'none': <SaleBatch>[b('N1', 'none', DateTime(2027, 1, 1), 0)],
     'tabs': <SaleBatch>[b('Z1', 'tabs', DateTime(2028, 1, 1), 100, mrp: 3550, gst: 1200)],
+    'tabsfew': <SaleBatch>[b('F1', 'tabsfew', DateTime(2028, 1, 1), 7, mrp: 3550)],
   };
 
   BillCart cart() => BillCart(
@@ -58,6 +59,20 @@ void main() {
     expect(await c.addProduct('none'), AddOutcome.outOfStock);
     expect(await c.addProduct('missing'), AddOutcome.notFound);
     expect(c.items, hasLength(1));
+  });
+
+  test('a medicine sold by the strip goes on the bill a strip at a time', () async {
+    final BillCart c = cart();
+    expect(await c.addProduct('tabs'), AddOutcome.added);
+    expect(c.items.single.qty, 15, reason: 'one strip, not one tablet');
+    await c.addProduct('tabs'); // scanned again
+    expect(c.items.single.qty, 30);
+    // Only 7 tablets left: as many as there are.
+    await c.addProduct('tabsfew');
+    expect(c.items.last.qty, 7);
+    // Counted in strips (no pack): one at a time, as before.
+    await c.addProduct('dolo');
+    expect(c.items.last.qty, 1);
   });
 
   test('a medicine priced per strip is billed on the whole line, in tablets', () async {
