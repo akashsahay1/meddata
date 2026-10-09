@@ -15,6 +15,7 @@ import 'alerts_screen.dart';
 import 'billing/new_bill_screen.dart';
 import 'medicine_detail_screen.dart';
 import 'product_detail_screen.dart';
+import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'upgrade_screen.dart';
 
@@ -60,28 +61,35 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: EdgeInsets.zero,
           physics: const AlwaysScrollableScrollPhysics(),
           children: <Widget>[
-            _Header(
-              onProfile: () => _open(const SettingsScreen()),
-              onSearch: _addMedicine,
-              onNewBill: () => _open(const NewBillScreen()),
-            ),
-            // The cards overlap the rounded green header by ~40px, matching the design.
-            Transform.translate(
-              offset: const Offset(0, -40),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AdaptiveLayout.pageGutter(context),
+            // One list item: the cards overlap the rounded green header by
+            // ~40px (the design). As separate items the list routed taps on
+            // that overlap to the header, so the cards' top 40px was dead.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _Header(
+                  onProfile: () => _open(const SettingsScreen()),
+                  onSearch: _addMedicine,
+                  onNewBill: () => _open(const NewBillScreen()),
                 ),
-                child: _DashboardBody(
-                  mp: mp,
-                  settings: settings,
-                  currency: settings.currency,
-                  onUpgrade: _openUpgrade,
-                  onAlerts: () => _open(const AlertsScreen()),
-                  onOpenMedicine: (Medicine m) =>
-                      _open(MedicineDetailScreen(medicineId: m.id)),
+                Transform.translate(
+                  offset: const Offset(0, -40),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AdaptiveLayout.pageGutter(context),
+                    ),
+                    child: _DashboardBody(
+                      mp: mp,
+                      settings: settings,
+                      currency: settings.currency,
+                      onUpgrade: _openUpgrade,
+                      onAlerts: () => _open(const AlertsScreen()),
+                      onOpenMedicine: (Medicine m) =>
+                          _open(MedicineDetailScreen(medicineId: m.id)),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 56),
           ],
@@ -332,6 +340,8 @@ class _DashboardBody extends StatelessWidget {
           lowStockCount: mp.lowStockCount,
           expiringCount: mp.expiringCount,
           onAlerts: onAlerts,
+          onStockValue: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const ReportsScreen())),
         ),
         if (!settings.isPremium && settings.isTrialActive) ...<Widget>[
           const SizedBox(height: 14),
@@ -409,6 +419,9 @@ class _DashboardSummary extends StatelessWidget {
   final int expiringCount;
   final VoidCallback onAlerts;
 
+  /// Opens Reports (valuation, profit, expiry).
+  final VoidCallback onStockValue;
+
   const _DashboardSummary({
     required this.desktop,
     required this.stockValue,
@@ -418,6 +431,7 @@ class _DashboardSummary extends StatelessWidget {
     required this.lowStockCount,
     required this.expiringCount,
     required this.onAlerts,
+    required this.onStockValue,
   });
 
   @override
@@ -428,6 +442,7 @@ class _DashboardSummary extends StatelessWidget {
         value: stockValue,
         sub: totalUnits,
         subColor: AppColors.statusGreen,
+        onTap: onStockValue,
       ),
       StatCard(label: 'Medicines', value: medicineCount, sub: categoryLabel),
       AlertCard(

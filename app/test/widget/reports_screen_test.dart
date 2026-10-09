@@ -144,10 +144,16 @@ void main() {
     expect(asked, hasLength(2));
   });
 
-  testWidgets('reports stay locked without Premium', (WidgetTester tester) async {
+  testWidgets('reports are open during the trial, locked with neither plan nor trial',
+      (WidgetTester tester) async {
     final TestApp app = await start(tester);
     await app.settings.setPremium(false);
+    await app.settings.setTrialEndsAt(DateTime.now().add(const Duration(days: 5)));
     await tester.pumpWidget(app.wrap(const ReportsScreen()));
+    await tester.pumpAndSettle();
+    expect(find.text('Valuation'), findsOneWidget, reason: 'the trial shows the reports');
+
+    await app.settings.setTrialEndsAt(null);
     await tester.pumpAndSettle();
     expect(find.text('Reports are a Premium feature'), findsOneWidget);
     expect(find.text('Valuation'), findsNothing);

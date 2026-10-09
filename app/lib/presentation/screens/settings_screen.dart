@@ -20,6 +20,7 @@ import '../widgets/ui_kit.dart';
 import 'accounts/gst_reports_screen.dart';
 import 'accounts/parties_screen.dart';
 import 'accounts/purchases_screen.dart';
+import 'reports_screen.dart';
 import 'billing/shop_settings_screen.dart';
 import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
@@ -129,6 +130,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // Accounts (online, like billing)
               _sectionLabel('Accounts'),
               _menuCard(<Widget>[
+                _menuRow(
+                  icon: Icons.insights_outlined,
+                  label: 'Reports (stock value, profit, expiry)',
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const ReportsScreen())),
+                ),
                 _menuRow(
                   icon: Icons.people_outline,
                   label: 'Parties (customers & suppliers)',

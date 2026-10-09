@@ -56,7 +56,10 @@ class _ReportsScreenState extends State<ReportsScreen>
   Widget build(BuildContext context) {
     final SettingsService settings = context.watch<SettingsService>();
 
-    if (!settings.isPremium) {
+    // Trial users see their reports too: they are what the plan is for.
+    // (After the trial the whole app locks, so this only shows if a cached
+    // plan lapsed while the screen was open.)
+    if (!settings.hasAccess) {
       return Scaffold(
         appBar: AppBar(title: const Text('Reports')),
         body: _PremiumLock(

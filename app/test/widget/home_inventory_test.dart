@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:med_stock/core/formatters.dart';
 import 'package:med_stock/presentation/screens/alerts_screen.dart';
 import 'package:med_stock/presentation/screens/home_screen.dart';
+import 'package:med_stock/presentation/screens/reports_screen.dart';
 import 'package:med_stock/presentation/screens/inventory_screen.dart';
 import 'package:med_stock/presentation/screens/product_detail_screen.dart';
 import 'package:med_stock/presentation/widgets/ui_kit.dart';
@@ -36,6 +37,11 @@ void main() {
       expect(find.text('71 units'), findsOneWidget);
       expect(cardValue(AlertCard, 'Low on stock', '3'), findsOneWidget);
       expect(cardValue(AlertCard, 'Expiring soon', '1'), findsOneWidget);
+
+      // The stock value card opens Reports.
+      await tester.tap(find.text('Stock value'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReportsScreen), findsOneWidget);
     });
 
     testWidgets('needs attention lists each problem medicine, worst first',
