@@ -83,8 +83,17 @@ Future<void> main() async {
 
   auth.addListener(followLogin);
   followLogin();
-  // Catch up as soon as the app comes back to the foreground.
-  AppLifecycleListener(onResume: sync.syncNow);
+  // Catch up as soon as the app comes back to the foreground, plan
+  // included. The counter PC can stay open for days: the plan is also
+  // re-read every hour, so a renewal, an expiry or a change made in the
+  // admin panel reaches the app without a restart.
+  AppLifecycleListener(onResume: () {
+    sync.syncNow();
+    if (auth.isLoggedIn) auth.refreshMe();
+  });
+  Timer.periodic(const Duration(hours: 1), (_) {
+    if (auth.isLoggedIn) auth.refreshMe();
+  });
 
   runApp(
     MeddataApp(

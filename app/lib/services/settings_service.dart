@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -84,6 +86,7 @@ class SettingsService extends ChangeNotifier {
     final int? trialMs = _prefs.getInt(_kTrialEndsAt);
     _trialEndsAt =
         trialMs == null ? null : DateTime.fromMillisecondsSinceEpoch(trialMs);
+    _watchTrialEnd();
     _currency = _prefs.getString(_kCurrency) ?? '₹';
     _localeCode = _prefs.getString(_kLocale) ?? 'en';
   }
@@ -132,8 +135,37 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fires when the trial runs out, so the lock screen shows at that
+  /// moment on a PC left open all day, not at the next restart.
+  Timer? _trialEndTimer;
+
+  void _watchTrialEnd() {
+    _trialEndTimer?.cancel();
+    _trialEndTimer = null;
+    final DateTime? end = _trialEndsAt;
+    if (end == null) return;
+    final Duration left = end.difference(DateTime.now());
+    if (left.isNegative) return;
+    // Timer durations beyond ~24 days overflow on some platforms; re-arm.
+    const Duration cap = Duration(days: 1);
+    _trialEndTimer = Timer(left > cap ? cap : left + const Duration(seconds: 1), () {
+      if (left > cap) {
+        _watchTrialEnd();
+      } else {
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _trialEndTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> setTrialEndsAt(DateTime? when) async {
     _trialEndsAt = when;
+    _watchTrialEnd();
     if (when == null) {
       await _prefs.remove(_kTrialEndsAt);
     } else {
