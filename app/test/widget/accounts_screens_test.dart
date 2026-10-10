@@ -365,6 +365,12 @@ void main() {
       await fill(tester, 'Tablets per pack', '5');
       await fill(tester, 'MRP / pack', '119.50');
       await fill(tester, 'Rate / pack', '80');
+      await fill(tester, 'HSN code', '30049099');
+      await tester.ensureVisible(find.text('Medicine / shop default'));
+      await tester.tap(find.text('Medicine / shop default'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('12%').last);
+      await tester.pumpAndSettle();
       await pickExpiry(tester);
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
@@ -396,6 +402,7 @@ void main() {
       final Map<String, dynamic> line = (sent['lines'] as List<dynamic>).single as Map<String, dynamic>;
       expect(<Object?>[line['qty'], line['free_qty'], line['units_per_pack'], line['rate_paise'], line['mrp_paise'], line['batch_no']],
           <Object?>[10, 1, 5, 8000, 11950, 'AZ1']);
+      expect(<Object?>[line['gst_rate_bp'], line['hsn']], <Object?>[1200, '30049099']);
       expect(line['product'], containsPair('pack_size', 5));
       expect((line['product'] as Map<String, dynamic>)['unit'], 'Tablets');
       expect(find.byType(InvoiceScanScreen), findsNothing);

@@ -1607,9 +1607,11 @@ class _LineEditorState extends State<_LineEditor> {
   late final TextEditingController _mrp;
   late final TextEditingController _rate;
   late final TextEditingController _discount;
+  late final TextEditingController _hsn;
   late DateTime? _expiry;
   late DateTime? _mfg;
   late String _unit;
+  int? _gstRateBp;
 
   /// Add as a batch of the matched product (false = as a new medicine).
   late bool _linked;
@@ -1633,9 +1635,11 @@ class _LineEditorState extends State<_LineEditor> {
     _discount = TextEditingController(
       text: l.discountPercent > 0 ? _LineCard.pct(l.discountPercent) : '',
     );
+    _hsn = TextEditingController(text: l.hsn);
     _expiry = l.expiry;
     _mfg = l.mfgDate;
     _unit = l.unit;
+    _gstRateBp = l.gstRateBp;
     _linked = l.target != null;
   }
 
@@ -1651,6 +1655,7 @@ class _LineEditorState extends State<_LineEditor> {
       _mrp,
       _rate,
       _discount,
+      _hsn,
     ]) {
       c.dispose();
     }
@@ -1674,6 +1679,9 @@ class _LineEditorState extends State<_LineEditor> {
     mrp: _double(_mrp),
     rate: _double(_rate),
     discountPercent: _double(_discount).clamp(0.0, 100.0).toDouble(),
+    hsn: _hsn.text.trim(),
+    gstPercent: _gstRateBp == null ? null : _gstRateBp! / 100,
+    clearGstPercent: _gstRateBp == null,
     unit: _unit,
     unitsPerPack: _int(_perPack) < 1 ? 1 : _int(_perPack),
     asNew: widget.line.product != null && !_linked,
@@ -1881,6 +1889,17 @@ class _LineEditorState extends State<_LineEditor> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: _field(_hsn, 'HSN code', number: true),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: _gstDropdown()),
+                      ],
+                    ),
                     const SizedBox(height: 14),
                     Text(
                       'Adds ${preview.stockQuantity} $unit · MRP '
@@ -2008,6 +2027,39 @@ class _LineEditorState extends State<_LineEditor> {
               color: AppColors.ink,
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _gstDropdown() {
+    const List<int> commonRates = <int>[0, 500, 1200, 1800, 2800];
+    final List<int> rates = <int>[
+      ...commonRates,
+      if (_gstRateBp != null && !commonRates.contains(_gstRateBp))
+        _gstRateBp!,
+    ]..sort();
+    String label(int basisPoints) =>
+        '${(basisPoints / 100).toStringAsFixed(2).replaceFirst(RegExp(r'\.?0+$'), '')}%';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _label('GST %'),
+        DropdownButtonFormField<int?>(
+          initialValue: _gstRateBp,
+          isExpanded: true,
+          items: <DropdownMenuItem<int?>>[
+            const DropdownMenuItem<int?>(
+              child: Text('Medicine / shop default', maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            for (final int rate in rates)
+              DropdownMenuItem<int?>(
+                value: rate,
+                child: Text(label(rate)),
+              ),
+          ],
+          onChanged: (int? rate) => setState(() => _gstRateBp = rate),
         ),
       ],
     );

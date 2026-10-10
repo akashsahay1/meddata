@@ -41,16 +41,13 @@ Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
 
 ## Open work (most useful first)
 
-1. GST % / HSN not editable per item on a typed purchase line (the medicine's
-   rate or the shop default 5% applies). Add fields to `_LineEditor` in
-   `app/lib/presentation/screens/invoice_scan_screen.dart` if needed.
-2. Profit report doesn't subtract sale returns (credit notes).
-3. Owner decisions still listed in `docs/MEDDATA.md` §8/§9 ("confirm"), and a
+1. Profit report doesn't subtract sale returns (credit notes).
+2. Owner decisions still listed in `docs/MEDDATA.md` §8/§9 ("confirm"), and a
    CA should review GSTR-1/3B output.
-4. Real-device checks: Android phone sync, notifications under battery
+3. Real-device checks: Android phone sync, notifications under battery
    optimisation, Windows installer (`app/tool/build_windows_installer.ps1`,
    needs Inno Setup), USB barcode scanner.
-5. Deploy checklist `docs/MEDDATA.md` §10 (fresh migrate, `APP_ENV=production`,
+4. Deploy checklist `docs/MEDDATA.md` §10 (fresh migrate, `APP_ENV=production`,
    live Razorpay keys, queue worker, upload limits, rotate old passwords).
 
 ## How to run

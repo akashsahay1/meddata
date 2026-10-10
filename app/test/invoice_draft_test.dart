@@ -214,6 +214,22 @@ void main() {
           product: match,
         );
 
+    test('line GST and HSN can be overridden or returned to defaults', () {
+      final InvoiceDraftLine original = line();
+      final InvoiceDraftLine override = original.copyWith(
+        gstPercent: 12,
+        hsn: '30049099',
+      );
+      expect(<Object?>[override.gstRateBp, override.hsn], <Object?>[1200, '30049099']);
+
+      final InvoiceDraftLine cleared = override.copyWith(
+        clearGstPercent: true,
+        hsn: '',
+      );
+      expect(cleared.gstRateBp, isNull);
+      expect(cleared.hsn, isEmpty);
+    });
+
     test('a new medicine counts packs as printed on the bill', () {
       final Medicine m = line().toMedicine(id: 'new-id', now: now);
       expect(m.id, 'new-id');
