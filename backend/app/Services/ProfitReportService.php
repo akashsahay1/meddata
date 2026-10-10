@@ -9,7 +9,7 @@ use App\Models\Shop;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Gross profit from the shop's bills over a date range.
+ * Gross profit from the shop's sales over a date range.
  *
  * Revenue is each line's taxable value (price excluding GST, after the
  * line discount) - GST collected is not the shop's income. Cost is the
@@ -18,9 +18,10 @@ use Illuminate\Support\Facades\DB;
  * claimed back as input tax credit). It is the batch's current rate, so
  * correcting a missing or wrong rate also corrects past profit.
  *
- * A batch without a purchase rate (0) has an unknown cost: its lines are
- * listed separately and left out of cost, profit and margin, instead of
- * being counted as 100% margin. Cancelled bills are excluded.
+ * Credit notes reduce revenue, sales and cost on their return date. A batch
+ * without a purchase rate (0) has an unknown cost: its lines are listed
+ * separately and left out of cost, profit and margin, instead of being
+ * counted as 100% margin. Cancelled bills are excluded.
  */
 class ProfitReportService
 {
@@ -43,7 +44,7 @@ class ProfitReportService
             ->where('b.bill_date', '>=', $from)
             ->where('b.bill_date', '<=', $to)
             ->groupBy('b.bill_date', 'i.batch_id', 'i.product_id')
-            ->selectRaw('b.bill_date AS bill_date, i.batch_id AS batch_id, i.product_id AS product_id,
+            ->selectRaw('b.bill_date AS activity_date, i.batch_id AS batch_id, i.product_id AS product_id,
                 MAX(i.name) AS name, MAX(i.batch_no) AS batch_no, MAX(p.name) AS product_name,
                 MAX(p.category) AS category, MAX(p.unit) AS unit, MAX(p.pack_size) AS pack_size,
                 SUM(i.qty_units) AS qty,
@@ -51,6 +52,27 @@ class ProfitReportService
                 MAX(bt.purchase_rate_paise) AS rate')
             ->orderBy('b.bill_date')
             ->get();
+
+        // Credit notes are negative sales on the date they were issued, even
+        // when the original bill is outside this report's date range.
+        $returns = DB::table('sale_return_items as i')
+            ->join('sale_returns as r', 'r.id', '=', 'i.sale_return_id')
+            ->leftJoin('batches as bt', fn ($j) => $j->on('bt.id', '=', 'i.batch_id')->on('bt.shop_id', '=', 'r.shop_id'))
+            ->leftJoin('products as p', fn ($j) => $j->on('p.id', '=', 'i.product_id')->on('p.shop_id', '=', 'r.shop_id'))
+            ->where('r.shop_id', $shop->id)
+            ->where('r.return_date', '>=', $from)
+            ->where('r.return_date', '<=', $to)
+            ->groupBy('r.return_date', 'i.batch_id', 'i.product_id')
+            ->selectRaw('r.return_date AS activity_date, i.batch_id AS batch_id, i.product_id AS product_id,
+                MAX(i.name) AS name, MAX(i.batch_no) AS batch_no, MAX(p.name) AS product_name,
+                MAX(p.category) AS category, MAX(p.unit) AS unit, MAX(p.pack_size) AS pack_size,
+                -SUM(i.qty_units) AS qty,
+                -SUM(i.taxable_paise) AS revenue, -SUM(i.total_paise) AS sales,
+                MAX(bt.purchase_rate_paise) AS rate')
+            ->orderBy('r.return_date')
+            ->get();
+
+        $rows = $rows->merge($returns);
 
         $bills = Bill::query()->where('shop_id', $shop->id)
             ->where('status', Bill::STATUS_FINAL)
@@ -62,15 +84,19 @@ class ProfitReportService
         $days = $products = $categories = $unknown = [];
 
         foreach ($rows as $r) {
-            $date = substr((string) $r->bill_date, 0, 10);
+            $date = substr((string) $r->activity_date, 0, 10);
             $qty = (int) $r->qty;
             $revenue = (int) $r->revenue;
             $sales = (int) $r->sales;
             $rate = (int) ($r->rate ?? 0);
             // The rate is per price pack (a strip); qty is in units.
-            $cost = $rate > 0
-                ? GstMath::roundDiv($qty * $rate, PackSize::pricePack($r->unit, (int) ($r->pack_size ?? 1)))
-                : null;
+            $cost = null;
+            if ($rate > 0) {
+                $cost = GstMath::roundDiv(abs($qty) * $rate, PackSize::pricePack($r->unit, (int) ($r->pack_size ?? 1)));
+                if ($qty < 0) {
+                    $cost = -$cost;
+                }
+            }
             $name = (string) ($r->product_name ?? $r->name);
             $category = trim((string) ($r->category ?? '')) ?: 'Uncategorised';
 
@@ -93,6 +119,8 @@ class ProfitReportService
                 $unknown[$r->batch_id]['revenue_paise'] += $revenue;
             }
         }
+
+        ksort($days);
 
         $byRevenue = fn (array $a, array $b) => [$b['revenue_paise'], $a['name'] ?? $a['category']]
             <=> [$a['revenue_paise'], $b['name'] ?? $b['category']];

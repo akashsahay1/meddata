@@ -374,10 +374,10 @@ cd app && flutter test test/integration/
 - [x] Accounting calls sign out on a 401, like billing
 - Decisions to confirm (§9): only credit bills go on a party's account (cash/UPI/card don't); purchase rates are before GST and the total is rounded to the rupee (may differ from the supplier's printed total by paise); free goods can't be on debit notes; GSTR basis — B2CL = inter-state > ₹1,00,000, ITC by supplier invoice date, CN against B2CS netted, HSN summary uses the stock unit (not UQC), a bill cancelled after its month isn't adjusted — **have a CA review the GSTR output**
 - [x] Stock valuation report (Reports → Valuation): stock per batch at purchase rate (cost) and MRP, by category; expired and near-expiry shown apart; as of today or any past date, worked out from the local stock ledger (works offline)
-- [x] Profit calculation (Reports → Profit): `GET /reports/profit?from&to` (final bills only, ≤366 days) — revenue = taxable value after discount, cost = qty × batch purchase rate (excl. GST, current rate); profit and margin by day, product, category; sales with no purchase rate flagged, never counted as 100% margin
+- [x] Profit calculation (Reports → Profit): `GET /reports/profit?from&to` (final bills less credit notes dated in the range, ≤366 days) — revenue = taxable value after discount, less returned taxable value; cost = sold qty less returned qty × batch purchase rate (excl. GST, current rate); by-day totals use bill and return dates; product/category totals and unknown-cost sales are net of returns
 - [x] Expiry loss tracking (Reports → Expiry): value expiring in 30/60/90 days; expired-unsold value per expiry month (written off vs still on the shelf); "Write off" records an `expiry_writeoff` movement through the repository + outbox so it syncs and leaves valuation. PDF (₹ font) + CSV export per tab
   - To confirm: purchase rate is excl. GST (the manual field may need an "(excl. GST)" hint); profit uses the batch's current purchase rate and ignores free-quantity schemes; expiry loss grouped by expiry month
-- [ ] Follow-up: profit report doesn't yet subtract sale returns (credit notes)
+- [x] Profit-report follow-up (10 Oct): sale returns subtract qty, taxable revenue, customer sales and batch cost on the credit note date; a credit note appears in its own date range even when its bill is earlier
 
 ### P5 — Pack sizes ✅ Done (8 Oct 2026)
 

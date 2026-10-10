@@ -16,9 +16,10 @@ so Play listing, upload keystore and app bundles are out of scope; build
 
 ## State on 10 Oct 2026
 
-`main` at `a3c782f`, **20 commits ahead of `origin/main` (not pushed)**. Working
-tree clean. Tests: app 432 pass + 1 skipped (`test/integration/
-sync_two_devices_test.dart`, needs a live server); backend 148 pass.
+`main` was at `1d4eb46`, synced with `origin/main`, before the profit-report
+credit-note fix. Baseline tests at that point: app 433 pass + 1 skipped
+(`test/integration/sync_two_devices_test.dart`, needs a live server); backend
+148 pass.
 
 Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
 `docs/MEDDATA.md`):
@@ -31,6 +32,8 @@ Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
 - Unit change on a medicine with stock asks, then converts every batch.
 - Typed supplier bills (Purchases → Add supplier bill → Type the bill); AI scan
   still there.
+- Profit reports subtract credit notes on the return date, including qty,
+  taxable revenue, customer sales and batch cost.
 - Reports reachable (Profile → Accounts → Reports, Home "Stock value" card),
   open during the trial.
 - Plan re-checked while the app stays open (resume + hourly; lock at trial end).
@@ -41,13 +44,12 @@ Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
 
 ## Open work (most useful first)
 
-1. Profit report doesn't subtract sale returns (credit notes).
-2. Owner decisions still listed in `docs/MEDDATA.md` §8/§9 ("confirm"), and a
+1. Owner decisions still listed in `docs/MEDDATA.md` §8/§9 ("confirm"), and a
    CA should review GSTR-1/3B output.
-3. Real-device checks: Android phone sync, notifications under battery
+2. Real-device checks: Android phone sync, notifications under battery
    optimisation, Windows installer (`app/tool/build_windows_installer.ps1`,
    needs Inno Setup), USB barcode scanner.
-4. Deploy checklist `docs/MEDDATA.md` §10 (fresh migrate, `APP_ENV=production`,
+3. Deploy checklist `docs/MEDDATA.md` §10 (fresh migrate, `APP_ENV=production`,
    live Razorpay keys, queue worker, upload limits, rotate old passwords).
 
 ## How to run

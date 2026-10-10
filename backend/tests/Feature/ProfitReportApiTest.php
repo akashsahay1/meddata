@@ -164,6 +164,86 @@ class ProfitReportApiTest extends TestCase
         $this->assertSame([3, 2], [$one['qty_units'], $one['bills']]);
     }
 
+    public function test_profit_subtracts_credit_notes_on_the_return_date(): void
+    {
+        $token = $this->token();
+        $dolo = $this->stock($token, 'Dolo 650', 3000, 2000);
+
+        Carbon::setTestNow('2026-10-03 06:00:00');
+        $billId = $this->bill($token, [$dolo => 2]);
+        $item = $this->withToken($token)->getJson("/api/v1/bills/{$billId}")->assertOk()->json('bill.items.0');
+
+        Carbon::setTestNow('2026-10-05 06:00:00');
+        $creditNote = $this->withToken($token)->postJson('/api/v1/sale-returns', [
+            'id' => (string) Str::uuid(),
+            'device_id' => 'phone',
+            'bill_id' => $billId,
+            'lines' => [['bill_item_id' => $item['id'], 'qty_units' => 1]],
+        ])->assertCreated()->json('sale_return');
+        $returned = $creditNote['items'][0];
+
+        $res = $this->report($token, '2026-10-03', '2026-10-05')->assertOk();
+        $totals = $res->json('totals');
+        $this->assertSame([
+            1,
+            $item['taxable_paise'] - $returned['taxable_paise'],
+            $item['total_paise'] - $returned['total_paise'],
+            2000,
+            $item['taxable_paise'] - $returned['taxable_paise'] - 2000,
+            1,
+        ], [
+            $totals['qty_units'], $totals['revenue_paise'], $totals['sales_paise'],
+            $totals['cost_paise'], $totals['profit_paise'], $totals['bills'],
+        ]);
+        $this->assertSame(['2026-10-03', '2026-10-05'], array_column($res->json('by_day'), 'date'));
+        $this->assertSame([2, -1], array_column($res->json('by_day'), 'qty_units'));
+        $doloTotals = collect($res->json('by_product'))->keyBy('name')['Dolo 650'];
+        $this->assertSame([
+            1, $item['taxable_paise'] - $returned['taxable_paise'], 2000,
+            $item['taxable_paise'] - $returned['taxable_paise'] - 2000,
+        ], [$doloTotals['qty_units'], $doloTotals['revenue_paise'], $doloTotals['cost_paise'], $doloTotals['profit_paise']]);
+        $painRelief = collect($res->json('by_category'))->keyBy('category')['Pain Relief'];
+        $this->assertSame($doloTotals['profit_paise'], $painRelief['profit_paise']);
+
+        // A report for the note date includes its credit even though its sale was earlier.
+        $returnDay = $this->report($token, '2026-10-05', '2026-10-05')->json('totals');
+        $this->assertSame([
+            -1,
+            -$returned['taxable_paise'],
+            -$returned['total_paise'],
+            -2000,
+            -$returned['taxable_paise'] + 2000,
+            0,
+        ], [
+            $returnDay['qty_units'], $returnDay['revenue_paise'], $returnDay['sales_paise'],
+            $returnDay['cost_paise'], $returnDay['profit_paise'], $returnDay['bills'],
+        ]);
+    }
+
+    public function test_profit_subtracts_returns_from_unknown_cost_lines(): void
+    {
+        $token = $this->token();
+        $mystery = $this->stock($token, 'Mystery Tonic', 5000, 0, 'Tonics');
+        $billId = $this->bill($token, [$mystery => 2]);
+        $item = $this->withToken($token)->getJson("/api/v1/bills/{$billId}")->assertOk()->json('bill.items.0');
+
+        $creditNote = $this->withToken($token)->postJson('/api/v1/sale-returns', [
+            'id' => (string) Str::uuid(),
+            'device_id' => 'phone',
+            'bill_id' => $billId,
+            'lines' => [['bill_item_id' => $item['id'], 'qty_units' => 1]],
+        ])->assertCreated()->json('sale_return');
+        $returned = $creditNote['items'][0];
+
+        $res = $this->report($token)->assertOk();
+        $this->assertSame([1, $item['taxable_paise'] - $returned['taxable_paise']], [
+            $res->json('totals.unknown_cost_qty_units'), $res->json('totals.unknown_cost_revenue_paise'),
+        ]);
+        $this->assertSame([1, $item['taxable_paise'] - $returned['taxable_paise']], [
+            $res->json('unknown_cost.0.qty_units'), $res->json('unknown_cost.0.revenue_paise'),
+        ]);
+    }
+
     public function test_lines_without_a_purchase_rate_are_flagged_not_counted_as_profit(): void
     {
         $token = $this->token();
