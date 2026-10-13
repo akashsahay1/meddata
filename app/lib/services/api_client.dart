@@ -11,7 +11,7 @@ class ApiClient {
   /// tunnel at `http://127.0.0.1:8000/api/v1`).
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://meddata.akashxdev.com/api/v1',
+    defaultValue: 'https://www.medikabiz.com/api/v1',
   );
 
   final http.Client _http;
