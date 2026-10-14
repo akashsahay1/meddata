@@ -41,10 +41,11 @@ class AdminPanelProvider extends PanelProvider
             // '/' is the login form, so send authenticated users to '/dashboard'
             // instead of the panel root (avoids a post-login redirect loop).
             ->homeUrl(fn (): string => Dashboard::getUrl())
-            ->brandName('Meddata')
-            ->brandLogo(asset('images/meddata_logo.png'))
+            ->brandName('Medikabiz')
+            ->brandLogo(asset('images/medikabiz_logo.png'))
+            ->darkModeBrandLogo(asset('images/medikabiz_logo_dark.png'))
             ->brandLogoHeight('2.2rem')
-            ->favicon(asset('images/meddata_logo.png'))
+            ->favicon(asset('images/favicon.svg'))
             ->font('Poppins')
             ->colors([
                 'primary' => Color::Amber,

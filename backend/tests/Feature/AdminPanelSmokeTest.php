@@ -105,7 +105,7 @@ class AdminPanelSmokeTest extends TestCase
     {
         $this->get('/')
             ->assertStatus(200)
-            ->assertSee('Meddata');
+            ->assertSee('Medikabiz');
     }
 
     public function test_dashboard_renders_with_shop_data(): void

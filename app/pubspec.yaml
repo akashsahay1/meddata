@@ -64,27 +64,36 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_native_splash: ^2.4.8
 
-# App launcher icon (Meddata colored logo).
+# App launcher icon (Medikabiz "M" mark, from the brand pack).
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/logo.png"
   min_sdk_android: 23
   remove_alpha_ios: true
-  # Android adaptive icon: logo as foreground on a white background layer.
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/logo.png"
+  # Android adaptive icon: the M (already inside the safe zone) on the brand's
+  # light background.
+  adaptive_icon_background: "#F5FBFF"
+  adaptive_icon_foreground: "assets/images/launcher_foreground.png"
+  adaptive_icon_foreground_inset: 0
+  windows:
+    generate: true
+    image_path: "assets/images/logo.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/images/logo.png"
 
-# Native splash screen (deep green with the Meddata logo).
+# Native splash screen (Medikabiz dark blue with the app icon).
 flutter_native_splash:
-  color: "#0A302E"
+  color: "#071D3B"
   image: assets/images/splash.png
   # Android 12+ masks the splash icon to a circle (MIUI crops a square), so it
-  # gets the artwork scaled into the safe zone on a white icon background.
+  # gets the M scaled into the safe zone on the brand's light icon background.
   android_12:
-    color: "#0A302E"
+    color: "#071D3B"
     image: assets/images/splash_android12.png
-    icon_background_color: "#FFFFFF"
+    icon_background_color: "#F5FBFF"
   android: true
   ios: true
   web: false

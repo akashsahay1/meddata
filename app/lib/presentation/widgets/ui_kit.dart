@@ -128,7 +128,7 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// The Meddata logo as used on the website (images/meddata_logo.png),
+/// The Medikabiz "M" mark (from the brand pack's launcher icon),
 /// cropped to its artwork.
 class BrandMark extends StatelessWidget {
   final double size;
