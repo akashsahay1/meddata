@@ -115,7 +115,7 @@ class _GstReportsScreenState extends State<GstReportsScreen> {
                 Expanded(
                   child: Text(
                     'For review by your CA. These summaries are worked out from your bills and '
-                    'purchases in Meddata; they are not filed with the GST portal. Share the CSV '
+                    'purchases in Medikabiz; they are not filed with the GST portal. Share the CSV '
                     'with your CA before filing.',
                     style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.ink),
                   ),

@@ -22,7 +22,7 @@ class RazorpayCheckoutScreen extends StatefulWidget {
     required this.keyId,
     required this.orderId,
     required this.amountPaise,
-    this.name = 'Meddata',
+    this.name = 'Medikabiz',
     this.description = '',
     this.prefillEmail = '',
     this.prefillContact = '',

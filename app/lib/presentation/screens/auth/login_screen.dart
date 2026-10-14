@@ -74,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // Signed out because the server refused the saved login.
     return expired
         ? 'Your session has expired. Please log in again.'
-        : 'Log in to your Meddata account';
+        : 'Log in to your Medikabiz account';
   }
 
   @override

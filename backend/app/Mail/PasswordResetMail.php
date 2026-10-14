@@ -21,7 +21,7 @@ class PasswordResetMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Your Meddata password reset code');
+        return new Envelope(subject: 'Your Medikabiz password reset code');
     }
 
     public function content(): Content
@@ -29,7 +29,7 @@ class PasswordResetMail extends Mailable
         return new Content(
             view: 'emails.password_reset',
             with: [
-                'supportEmail' => AppSetting::get('support_email', 'support@meddata.app'),
+                'supportEmail' => AppSetting::get('support_email', 'support@medikabiz.com'),
             ],
         );
     }

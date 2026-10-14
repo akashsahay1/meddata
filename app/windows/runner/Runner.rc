@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Meddata" "\0"
-            VALUE "FileDescription", "Meddata" "\0"
+            VALUE "CompanyName", "Medikabiz" "\0"
+            VALUE "FileDescription", "Medikabiz" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "Meddata" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 Meddata. All rights reserved." "\0"
-            VALUE "OriginalFilename", "Meddata.exe" "\0"
-            VALUE "ProductName", "Meddata" "\0"
+            VALUE "InternalName", "Medikabiz" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Medikabiz. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Medikabiz.exe" "\0"
+            VALUE "ProductName", "Medikabiz" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

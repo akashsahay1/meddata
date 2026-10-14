@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meddata — Secure checkout</title>
+<title>Medikabiz — Secure checkout</title>
 <style>
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
          background: #EEF2F1; color: #0A302E; font: 16px -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 <div class="card">
-  <h2>Meddata Pro</h2>
+  <h2>Medikabiz Pro</h2>
   <p>Opening secure Razorpay checkout…</p>
   <button id="pay" type="button">Pay now</button>
 </div>

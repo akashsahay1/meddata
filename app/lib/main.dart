@@ -96,7 +96,7 @@ Future<void> main() async {
   });
 
   runApp(
-    MeddataApp(
+    MedikabizApp(
       settings: settings,
       auth: auth,
       subscription: subscription,
@@ -157,15 +157,16 @@ Future<void> _startBackgroundServices(
   await refreshAlerts();
 }
 
-/// Root application widget. The package identifier remains `med_stock` for
-/// compatibility, while the customer-facing product name is Meddata.
-class MeddataApp extends StatelessWidget {
+/// Root application widget. The Android application ID, the data folder and
+/// the database file keep their old med_stock / meddata names so installed
+/// copies keep their data; everything shown to users says Medikabiz.
+class MedikabizApp extends StatelessWidget {
   final SettingsService settings;
   final AuthService auth;
   final SubscriptionService subscription;
   final MedicineProvider medicines;
   final SyncEngine sync;
-  const MeddataApp({
+  const MedikabizApp({
     super.key,
     required this.settings,
     required this.auth,
@@ -196,7 +197,7 @@ class MeddataApp extends StatelessWidget {
 
           return MaterialApp(
             navigatorKey: _navigator,
-            title: 'Meddata — Medicine Stock & Expiry Tracker',
+            title: 'Medikabiz — Medicine Stock & Expiry Tracker',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,

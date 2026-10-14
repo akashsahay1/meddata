@@ -51,7 +51,7 @@ class BillingOfflineNotice extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  offline ? 'Billing needs internet' : "Couldn't reach Meddata",
+                  offline ? 'Billing needs internet' : "Couldn't reach Medikabiz",
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 19,

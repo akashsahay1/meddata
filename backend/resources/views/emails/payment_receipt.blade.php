@@ -1,6 +1,6 @@
 @extends('emails.layout')
 
-@section('title', $isRenewal ? 'Your Meddata subscription was renewed' : 'Your Meddata payment receipt')
+@section('title', $isRenewal ? 'Your Medikabiz subscription was renewed' : 'Your Medikabiz payment receipt')
 
 @section('content')
     <h1 style="margin:0 0 16px; color:#0d1b2a; font-size:22px; font-weight:700;">
@@ -9,7 +9,7 @@
 
     <p style="margin:0 0 20px; color:#3d4852; font-size:15px; line-height:24px;">
         Hi {{ $user->name }}, thank you for your {{ $isRenewal ? 'renewal' : 'purchase' }}.
-        Your Meddata Premium is active.
+        Your Medikabiz Premium is active.
     </p>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px; border:1px solid #eceff1; border-radius:8px;">

@@ -42,8 +42,8 @@ class NotificationService {
     const DarwinInitializationSettings ios = DarwinInitializationSettings();
     // Windows toasts need an app identity; the GUID must stay fixed.
     const WindowsInitializationSettings windows = WindowsInitializationSettings(
-      appName: 'Meddata',
-      appUserModelId: 'Meddata.MedicineStock',
+      appName: 'Medikabiz',
+      appUserModelId: 'Medikabiz.MedicineStock',
       guid: 'f9033c7c-2a2e-4eba-a999-7a5e7b2653e4',
     );
     const InitializationSettings settings = InitializationSettings(

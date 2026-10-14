@@ -173,7 +173,7 @@ class FakeAccountsServer {
     'month': '2026-10',
     'gstin': '27AAPFU0939F1ZV',
     'registered': true,
-    'disclaimer': 'Prepared by Meddata from your bills and purchases for review by your CA.',
+    'disclaimer': 'Prepared by Medikabiz from your bills and purchases for review by your CA.',
     'b2b': <Object?>[
       <String, Object?>{
         'gstin': '29AABCU9603R1ZJ', 'name': 'Lakshmi Clinic', 'invoice_count': 1, 'invoice_value_paise': 44800,
@@ -222,7 +222,7 @@ class FakeAccountsServer {
     'month': '2026-10',
     'gstin': '27AAPFU0939F1ZV',
     'registered': true,
-    'disclaimer': 'Prepared by Meddata from your bills and purchases for review by your CA.',
+    'disclaimer': 'Prepared by Medikabiz from your bills and purchases for review by your CA.',
     'outward_taxable': <String, Object?>{'taxable_paise': 140000, 'igst_paise': 4800, 'cgst_paise': 2500, 'sgst_paise': 2500},
     'outward_nil_rated': <String, Object?>{'taxable_paise': 0},
     'inter_state_unregistered': <Object?>[],

@@ -34,7 +34,7 @@ class GstReportService
     /** B2C large: inter-state invoice value above Rs 1,00,000 (since Aug 2024). */
     public const B2CL_LIMIT_PAISE = 10_000_000;
 
-    public const DISCLAIMER = 'Prepared by Meddata from your bills and purchases for review by your CA. '
+    public const DISCLAIMER = 'Prepared by Medikabiz from your bills and purchases for review by your CA. '
         .'It is not filed with the GST portal; check it before filing.';
 
     private const TAX = ['taxable_paise', 'igst_paise', 'cgst_paise', 'sgst_paise'];

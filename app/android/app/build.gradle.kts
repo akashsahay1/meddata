@@ -58,7 +58,7 @@ android {
     buildTypes {
         release {
             // Real upload key when android/key.properties exists (see
-            // docs/MEDDATA.md §10), else the debug key for local release runs.
+            // docs/MEDIKABIZ.md §10), else the debug key for local release runs.
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

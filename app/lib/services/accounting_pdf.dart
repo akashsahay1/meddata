@@ -35,7 +35,7 @@ class AccountingPdf {
   static pw.Document _doc(String title, InvoiceFonts fonts, bool compress) => pw.Document(
         compress: compress,
         title: title,
-        creator: 'Meddata',
+        creator: 'Medikabiz',
         theme: pw.ThemeData.withFont(base: fonts.regular, bold: fonts.bold),
       );
 

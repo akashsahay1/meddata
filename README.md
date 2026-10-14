@@ -1,8 +1,8 @@
-# Meddata
+# Medikabiz
 
 Offline-first stock and expiry tracker for Indian pharmacies and medical shops. One account per shop; every device (Android phones, Windows PCs) shares the shop's inventory through the server. Medicines are tracked by batch (stock, MRP, expiry), with low-stock and expiry alerts, reports, barcode lookup, a 7-day trial and Razorpay subscriptions.
 
-**[docs/MEDDATA.md](docs/MEDDATA.md) is the source of truth**: architecture, data model, sync protocol, API, task list and deploy checklist.
+**[docs/MEDIKABIZ.md](docs/MEDIKABIZ.md) is the source of truth**: architecture, data model, sync protocol, API, task list and deploy checklist.
 
 ## Repository layout
 
@@ -11,7 +11,7 @@ meddata/
 ├── app/        Flutter app: Android, iOS, Windows (local SQLite + sync engine)
 ├── backend/    Laravel 13 + Filament 5: REST API (/api/v1) and admin panel (/admin)
 ├── docs/
-│   └── MEDDATA.md
+│   └── MEDIKABIZ.md
 └── README.md
 ```
 
@@ -103,8 +103,8 @@ This must be run on Windows with the Visual Studio C++ workload. To produce a pe
 ./app/tool/build_windows_installer.ps1
 ```
 
-The installer is written to `app/build/installer/Meddata-Setup-<version>.exe`. Windows builds need Visual Studio 2026 with the Desktop development with C++ workload and the C++ ATL component. Pass `-SkipBuild` to package an existing release build.
+The installer is written to `app/build/installer/Medikabiz-Setup-<version>.exe`. Windows builds need Visual Studio 2026 with the Desktop development with C++ workload and the C++ ATL component. Pass `-SkipBuild` to package an existing release build.
 
 ## Picking up work
 
-Open [docs/MEDDATA.md](docs/MEDDATA.md) §8 (task list), take the first unchecked item, and check `git log --oneline -5` for the latest changes.
+Open [docs/MEDIKABIZ.md](docs/MEDIKABIZ.md) §8 (task list), take the first unchecked item, and check `git log --oneline -5` for the latest changes.

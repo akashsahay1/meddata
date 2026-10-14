@@ -374,7 +374,7 @@ class _SubscribeViewState extends State<SubscribeView> {
         const BrandMark(size: 44),
         const SizedBox(height: 16),
         const Text(
-          'Unlock Meddata Pro',
+          'Unlock Medikabiz Pro',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 26,
@@ -512,7 +512,7 @@ class _SubscribeViewState extends State<SubscribeView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: <Widget>[
               const Text(
-                'Meddata Pro',
+                'Medikabiz Pro',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,

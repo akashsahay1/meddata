@@ -156,7 +156,7 @@ class _Header extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     const Text(
-                      'Meddata',
+                      'Medikabiz',
                       style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,

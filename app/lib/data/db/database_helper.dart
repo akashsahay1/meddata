@@ -19,6 +19,7 @@ class DatabaseHelper {
   final DatabaseFactory? _factory;
   final String? _path;
 
+  // Old name kept on purpose: renaming it would leave installed copies empty.
   static const String _dbName = 'meddata.db';
   static const int _dbVersion = 1;
 

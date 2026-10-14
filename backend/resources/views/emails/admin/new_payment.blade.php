@@ -1,6 +1,6 @@
 @extends('emails.layout')
 
-@section('title', 'New Meddata payment')
+@section('title', 'New Medikabiz payment')
 
 @section('content')
     <h1 style="margin:0 0 16px; color:#0d1b2a; font-size:20px; font-weight:700;">

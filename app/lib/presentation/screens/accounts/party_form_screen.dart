@@ -330,7 +330,7 @@ class _PartyFormScreenState extends State<PartyFormScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'What was due before you started using Meddata.',
+              'What was due before you started using Medikabiz.',
               style: TextStyle(fontSize: 12, color: AppColors.muted),
             ),
             const SizedBox(height: 10),

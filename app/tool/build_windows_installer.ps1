@@ -13,7 +13,7 @@ if (-not $versionMatch.Success) {
 $appVersion = $versionMatch.Groups[1].Value
 
 $releaseDir = Join-Path $appRoot 'build\windows\x64\runner\Release'
-$appExecutable = Join-Path $releaseDir 'Meddata.exe'
+$appExecutable = Join-Path $releaseDir 'Medikabiz.exe'
 if (-not $SkipBuild) {
     Push-Location $appRoot
     try {
@@ -58,11 +58,11 @@ if (-not $compiler -or -not (Test-Path -LiteralPath $compiler)) {
     throw 'Inno Setup 7 or 6 was not found. Install it, or set INNO_SETUP_COMPILER to the full path of ISCC.exe.'
 }
 
-$installerSpec = Join-Path $appRoot 'windows\installer\meddata.iss'
+$installerSpec = Join-Path $appRoot 'windows\installer\medikabiz.iss'
 & $compiler "/DAppVersion=$appVersion" $installerSpec
 if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup failed with exit code $LASTEXITCODE."
 }
 
-$installer = Join-Path $appRoot "build\installer\Meddata-Setup-$appVersion.exe"
+$installer = Join-Path $appRoot "build\installer\Medikabiz-Setup-$appVersion.exe"
 Write-Output "Installer created: $installer"

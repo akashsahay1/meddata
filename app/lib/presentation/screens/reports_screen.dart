@@ -278,7 +278,7 @@ class _OverviewSection extends StatelessWidget {
       ),
     );
     await Printing.sharePdf(
-        bytes: await doc.save(), filename: 'med_stock_report.pdf');
+        bytes: await doc.save(), filename: 'medikabiz_report.pdf');
   }
 }
 

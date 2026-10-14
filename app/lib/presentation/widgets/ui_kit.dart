@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 
-/// Shared UI kit for the Meddata redesign. Every screen composes these pieces
+/// Shared UI kit for the Medikabiz redesign. Every screen composes these pieces
 /// so spacing, radii, colors and weights stay consistent with the design
 /// handoff. Nothing here holds state or talks to providers.
 

@@ -20,7 +20,7 @@ class Documentation extends Page
 
     public function getTitle(): string
     {
-        return 'Meddata Backend — Documentation';
+        return 'Medikabiz Backend — Documentation';
     }
 
     public function getHeading(): string
@@ -30,6 +30,6 @@ class Documentation extends Page
 
     public function getSubheading(): ?string
     {
-        return 'How the Meddata backend, admin panel and API work.';
+        return 'How the Medikabiz backend, admin panel and API work.';
     }
 }

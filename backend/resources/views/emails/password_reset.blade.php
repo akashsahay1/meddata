@@ -1,12 +1,12 @@
 @extends('emails.layout')
 
-@section('title', 'Your Meddata password reset code')
+@section('title', 'Your Medikabiz password reset code')
 
 @section('content')
     <h1 style="margin:0 0 16px; color:#0d1b2a; font-size:22px; font-weight:700;">Password reset</h1>
 
     <p style="margin:0 0 20px; color:#3d4852; font-size:15px; line-height:24px;">
-        We received a request to reset the password for your Meddata account. Enter the
+        We received a request to reset the password for your Medikabiz account. Enter the
         code below in the app to continue. This code expires in <strong>{{ $ttlMinutes }} minutes</strong>.
     </p>
 

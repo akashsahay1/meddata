@@ -1,4 +1,4 @@
-# med_stock
+# Medikabiz app
 
 A new Flutter project.
 

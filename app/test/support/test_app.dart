@@ -181,7 +181,7 @@ class TestApp {
     final SubscriptionService subscription =
         SubscriptionService(settings, 'test-device', fake.api);
     final DatabaseHelper database = db ?? memoryDatabase();
-    // Same wiring as MedStockApp: alert window and plan come from settings.
+    // Same wiring as MedikabizApp: alert window and plan come from settings.
     final MedicineProvider medicines =
         MedicineProvider(MedicineRepository(database))
           ..warningDays = settings.warningDays

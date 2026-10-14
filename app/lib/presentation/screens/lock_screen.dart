@@ -28,7 +28,7 @@ class LockScreen extends StatelessWidget {
                   children: <Widget>[
                     BrandMark(size: 26),
                     SizedBox(width: 10),
-                    Text('Meddata',
+                    Text('Medikabiz',
                         style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,

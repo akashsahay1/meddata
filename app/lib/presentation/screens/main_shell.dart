@@ -151,7 +151,7 @@ builder: (_) => const AddEditMedicineScreen()),
                               BrandMark(size: 32),
                               SizedBox(width: 9),
                               Text(
-                                'Meddata',
+                                'Medikabiz',
                                 style: TextStyle(
                                   color: AppColors.greenDarkest,
                                   fontSize: 20,

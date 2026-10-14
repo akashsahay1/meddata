@@ -81,7 +81,7 @@ class InvoicePdf {
       compress: compress,
       title: 'Invoice ${bill.invoiceNo}',
       author: bill.seller.displayName,
-      creator: 'Meddata',
+      creator: 'Medikabiz',
     );
     final pw.ThemeData theme =
         pw.ThemeData.withFont(base: fonts.regular, bold: fonts.bold);

@@ -4,20 +4,20 @@
 
 [Setup]
 AppId={{7D1E0205-ECD0-407D-96F7-E61BD74F65C2}
-AppName=Meddata
+AppName=Medikabiz
 AppVersion={#AppVersion}
-AppVerName=Meddata {#AppVersion}
-AppPublisher=Meddata
-DefaultDirName={localappdata}\Programs\Meddata
-DefaultGroupName=Meddata
+AppVerName=Medikabiz {#AppVersion}
+AppPublisher=Medikabiz
+DefaultDirName={localappdata}\Programs\Medikabiz
+DefaultGroupName=Medikabiz
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\..\build\installer
-OutputBaseFilename=Meddata-Setup-{#AppVersion}
+OutputBaseFilename=Medikabiz-Setup-{#AppVersion}
 SetupIconFile=..\runner\resources\app_icon.ico
-UninstallDisplayIcon={app}\Meddata.exe
+UninstallDisplayIcon={app}\Medikabiz.exe
 WizardStyle=modern
 Compression=lzma2
 SolidCompression=yes
@@ -30,8 +30,8 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Meddata"; Filename: "{app}\Meddata.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\Meddata"; Filename: "{app}\Meddata.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autoprograms}\Medikabiz"; Filename: "{app}\Medikabiz.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\Medikabiz"; Filename: "{app}\Medikabiz.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Meddata.exe"; Description: "Launch Meddata"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\Medikabiz.exe"; Description: "Launch Medikabiz"; Flags: postinstall nowait skipifsilent

@@ -126,7 +126,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
             ListTile(
               leading: const Icon(Icons.document_scanner_outlined),
               title: const Text('Scan a photo or PDF'),
-              subtitle: const Text('Meddata reads it; you check every item'),
+              subtitle: const Text('Medikabiz reads it; you check every item'),
               onTap: () => Navigator.of(ctx).pop(false),
             ),
           ],

@@ -1,7 +1,7 @@
-# Meddata — notes for coding agents
+# Medikabiz — notes for coding agents
 
 Handover written 10 Oct 2026 (Claude Code → Codex CLI). Read this, then
-`docs/MEDDATA.md` (the full project document: architecture, data model, API,
+`docs/MEDIKABIZ.md` (the full project document: architecture, data model, API,
 task list in §8, locked decisions in §9, deploy checklist in §10).
 
 ## What this is
@@ -22,7 +22,7 @@ credit-note fix. Baseline tests at that point: app 433 pass + 1 skipped
 148 pass.
 
 Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
-`docs/MEDDATA.md`):
+`docs/MEDIKABIZ.md`):
 
 - **Pack sizes**: `products.pack_size` per medicine; stock always in pieces;
   strips + loose entry/display. **Prices are per strip** when the pack size
@@ -44,12 +44,12 @@ Done recently (see §8 "P5 — Pack sizes" and "Journey follow-ups" in
 
 ## Open work (most useful first)
 
-1. Owner decisions still listed in `docs/MEDDATA.md` §8/§9 ("confirm"), and a
+1. Owner decisions still listed in `docs/MEDIKABIZ.md` §8/§9 ("confirm"), and a
    CA should review GSTR-1/3B output.
 2. Real-device checks: Android phone sync, notifications under battery
    optimisation, Windows installer (`app/tool/build_windows_installer.ps1`,
    needs Inno Setup), USB barcode scanner.
-3. Deploy checklist `docs/MEDDATA.md` §10 (fresh migrate, `APP_ENV=production`,
+3. Deploy checklist `docs/MEDIKABIZ.md` §10 (fresh migrate, `APP_ENV=production`,
    live Razorpay keys, queue worker, upload limits, rotate old passwords).
 
 ## How to run
@@ -71,7 +71,7 @@ the C++ ATL component; run `flutter clean` once after pulling plugin changes.
 - Every behaviour change gets a test that fails on the old code; keep the full
   suites green; `flutter analyze` must report no issues.
 - Commit one fix per commit with a plain-English message saying what was wrong
-  and what changed; update `docs/MEDDATA.md` (§8 task list, §9 decisions) when
+  and what changed; update `docs/MEDIKABIZ.md` (§8 task list, §9 decisions) when
   behaviour or decisions change. Don't push unless asked.
 - Schema changes: edit the create migrations in place (no upgrade migrations
   while there are no real users; deploy does `migrate:fresh`).

@@ -4,7 +4,7 @@ project(med_stock LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "Meddata")
+set(BINARY_NAME "Medikabiz")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

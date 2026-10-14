@@ -284,7 +284,7 @@ builder: (_) => const ImportWizardScreen()),
                   child: const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'Meddata v$_appVersion',
+                      'Medikabiz v$_appVersion',
                       // Small muted text needs w600: at w500 the thin
                       // strokes never reach the full colour (contrast test).
                       style: TextStyle(
@@ -321,7 +321,7 @@ builder: (_) => const ImportWizardScreen()),
         .where((String v) => v.isNotEmpty)
         .join(' · ');
     final String platform = AppPlatform.name;
-    return '— $who\nMeddata v$_appVersion ($platform)';
+    return '— $who\nMedikabiz v$_appVersion ($platform)';
   }
 
   /// The support WhatsApp number from /config (digits with country code), or
@@ -352,7 +352,7 @@ builder: (_) => const ImportWizardScreen()),
   }
 
   Future<void> _openSupportChat(AuthService auth) =>
-      _openWhatsApp('Hi Meddata support,\n\n\n${_signature(auth)}');
+      _openWhatsApp('Hi Medikabiz support,\n\n\n${_signature(auth)}');
 
   Future<void> _sendFeedback(AuthService auth) async {
     final ({int rating, String message})? result =
@@ -363,7 +363,7 @@ builder: (_) => const ImportWizardScreen()),
     if (result == null || !mounted) return;
     final int rating = result.rating;
     final String stars = '★' * rating + '☆' * (5 - rating);
-    await _openWhatsApp('Meddata feedback: $stars ($rating/5)\n'
+    await _openWhatsApp('Medikabiz feedback: $stars ($rating/5)\n'
         '${result.message.isEmpty ? '' : '\n${result.message}\n'}'
         '\n${_signature(auth)}');
   }
@@ -591,7 +591,7 @@ builder: (_) => const ImportWizardScreen()),
     final bool premium = s.isPremium;
     final int daysLeft = s.trialDaysLeft;
 
-    final String eyebrow = premium ? 'Meddata Pro' : 'Free trial';
+    final String eyebrow = premium ? 'Medikabiz Pro' : 'Free trial';
     final String headline = premium
         ? 'Premium active'
         : (daysLeft > 0 ? '$daysLeft days left' : 'Trial ended');
@@ -1041,11 +1041,11 @@ builder: (_) => const ImportWizardScreen()),
     );
   }
 
-  /// Restore a Meddata JSON backup. Spreadsheets go through the import
+  /// Restore a Medikabiz JSON backup. Spreadsheets go through the import
   /// wizard instead.
   Future<void> _importJson(BuildContext context) async {
     const XTypeGroup group = XTypeGroup(
-      label: 'Meddata backup',
+      label: 'Medikabiz backup',
       extensions: <String>['json'],
       mimeTypes: <String>['application/json', 'application/octet-stream'],
       uniformTypeIdentifiers: <String>['public.json'],
@@ -1060,7 +1060,7 @@ builder: (_) => const ImportWizardScreen()),
     } catch (e) {
       debugPrint('[Backup] restore failed: $e');
       messenger.showSnackBar(const SnackBar(
-        content: Text('This is not a Meddata backup. For Excel or CSV files '
+        content: Text('This is not a Medikabiz backup. For Excel or CSV files '
             'use "Import stock from Excel / CSV".'),
       ));
       return;
@@ -1098,7 +1098,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Text('How is Meddata working for you?'),
+          const Text('How is Medikabiz working for you?'),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,

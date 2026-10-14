@@ -29,8 +29,8 @@ class PaymentReceiptMail extends Mailable
     {
         return new Envelope(
             subject: $this->isRenewal
-                ? 'Your Meddata subscription was renewed'
-                : 'Your Meddata payment receipt',
+                ? 'Your Medikabiz subscription was renewed'
+                : 'Your Medikabiz payment receipt',
         );
     }
 
@@ -39,7 +39,7 @@ class PaymentReceiptMail extends Mailable
         return new Content(
             view: 'emails.payment_receipt',
             with: [
-                'supportEmail' => AppSetting::get('support_email', 'support@meddata.app'),
+                'supportEmail' => AppSetting::get('support_email', 'support@medikabiz.com'),
             ],
         );
     }

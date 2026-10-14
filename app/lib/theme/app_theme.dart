@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Meddata design system (green + orange), sourced from the product design
+/// Medikabiz design system (green + orange), sourced from the product design
 /// handoff. Light-first: a calm off-white canvas, deep-green headers/surfaces,
 /// and an orange accent reserved for primary actions.
 class AppColors {

@@ -4,14 +4,14 @@ import 'package:medikabiz/main.dart';
 import 'support/test_app.dart';
 
 void main() {
-  testWidgets('app opens the Meddata login screen when signed out', (
+  testWidgets('app opens the Medikabiz login screen when signed out', (
     WidgetTester tester,
   ) async {
     final TestApp app = await TestApp.create();
     addTearDown(app.dispose);
 
     await tester.pumpWidget(
-      MeddataApp(
+      MedikabizApp(
         settings: app.settings,
         auth: app.auth,
         subscription: app.subscription,

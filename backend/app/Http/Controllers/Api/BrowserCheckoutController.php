@@ -38,8 +38,8 @@ class BrowserCheckoutController extends Controller
             'order_id' => $payment->razorpay_order_id,
             'amount' => (int) round(((float) $payment->amount) * 100),
             'currency' => 'INR',
-            'name' => 'Meddata',
-            'description' => 'Meddata Pro',
+            'name' => 'Medikabiz',
+            'description' => 'Medikabiz Pro',
             'prefill' => ['email' => (string) User::whereKey($payment->user_id)->value('email')],
             'theme' => ['color' => '#0E4D4A'],
             'redirect' => true,
@@ -80,7 +80,7 @@ class BrowserCheckoutController extends Controller
 
         // A replayed callback for an order paid long ago activates nothing.
         return $ent->isActivePaid()
-            ? $this->result(true, 'Payment successful. Premium is active — go back to the Meddata app.')
+            ? $this->result(true, 'Payment successful. Premium is active — go back to the Medikabiz app.')
             : $this->result(false, 'This order was already used. If money was deducted, contact support.');
     }
 

@@ -1,4 +1,4 @@
-# Meddata — Project Document
+# Medikabiz — Project Document
 
 > Multi-device pharmacy inventory app for phones + Windows  
 > Repo: `D:\meddata` (branch `main`)  
@@ -6,7 +6,7 @@
 
 ---
 
-## 1. What is Meddata
+## 1. What is Medikabiz
 
 An offline-first inventory app for Indian pharmacy / medical-shop owners. Each shop gets one account; all devices (Android phones, Windows PCs) share the same inventory through the server. The owner can add medicines, track stock and expiry by batch, get alerts, and see reports. Free 7-day trial, then Razorpay-based paid subscription.
 
@@ -499,7 +499,7 @@ Newest first. Run `git log --oneline` for the live state.
 | `d3bfa60` | Docs: security fixes, deploy notes |
 | `c6b15b4` | Security: payment bypasses closed, debug-only test tools, secure token storage |
 | `7edea47` | App: barcode lookup — shop products first, then master catalog |
-| `bd2caa4` | Docs unified into docs/MEDDATA.md |
+| `bd2caa4` | Docs unified into docs/MEDIKABIZ.md |
 | `1635c23` | App: Windows desktop support (build pending Visual Studio) |
 | `e7ce9e4` | Payments: desktop browser checkout |
 | `a778ff0` | Admin: demo tables removed; Shops + Master catalog pages |
@@ -529,7 +529,7 @@ Newest first. Run `git log --oneline` for the live state.
 
 ## 12. How to resume in a new session
 
-1. Read this file (`docs/MEDDATA.md`).
+1. Read this file (`docs/MEDIKABIZ.md`).
 2. Check the task list in §8 — find the first unchecked item.
 3. Run `git log --oneline -5` to see what was last done.
 4. Continue from the next unchecked task.

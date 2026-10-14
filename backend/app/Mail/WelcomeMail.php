@@ -25,7 +25,7 @@ class WelcomeMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Welcome to Meddata');
+        return new Envelope(subject: 'Welcome to Medikabiz');
     }
 
     public function content(): Content
@@ -33,7 +33,7 @@ class WelcomeMail extends Mailable
         return new Content(
             view: 'emails.welcome',
             with: [
-                'supportEmail' => AppSetting::get('support_email', 'support@meddata.app'),
+                'supportEmail' => AppSetting::get('support_email', 'support@medikabiz.com'),
             ],
         );
     }

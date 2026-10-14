@@ -20,7 +20,7 @@ class AdminNewUserMail extends Mailable
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'New Meddata signup: ' . $this->user->email);
+        return new Envelope(subject: 'New Medikabiz signup: ' . $this->user->email);
     }
 
     public function content(): Content
@@ -28,7 +28,7 @@ class AdminNewUserMail extends Mailable
         return new Content(
             view: 'emails.admin.new_user',
             with: [
-                'supportEmail' => AppSetting::get('support_email', 'support@meddata.app'),
+                'supportEmail' => AppSetting::get('support_email', 'support@medikabiz.com'),
             ],
         );
     }

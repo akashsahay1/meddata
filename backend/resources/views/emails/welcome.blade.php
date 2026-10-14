@@ -1,12 +1,12 @@
 @extends('emails.layout')
 
-@section('title', 'Welcome to Meddata')
+@section('title', 'Welcome to Medikabiz')
 
 @section('content')
     <h1 style="margin:0 0 16px; color:#0d1b2a; font-size:22px; font-weight:700;">Welcome, {{ $user->name }} 👋</h1>
 
     <p style="margin:0 0 16px; color:#3d4852; font-size:15px; line-height:24px;">
-        Your Meddata account is ready. You can now track your medicine stock, get expiry
+        Your Medikabiz account is ready. You can now track your medicine stock, get expiry
         reminders, and keep everything backed up securely.
     </p>
 

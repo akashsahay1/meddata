@@ -41,7 +41,7 @@ class BackupService {
     final String csvContent = Csv().encode(rows);
     final Directory dir = await getTemporaryDirectory();
     final String stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
-    final File file = await _fileIn(dir.path, 'med_stock_$stamp.csv');
+    final File file = await _fileIn(dir.path, 'medikabiz_$stamp.csv');
     await file.writeAsString(csvContent);
     return file;
   }

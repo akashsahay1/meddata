@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Meddata — {{ $ok ? 'Payment successful' : 'Payment not completed' }}</title>
+<title>Medikabiz — {{ $ok ? 'Payment successful' : 'Payment not completed' }}</title>
 <style>
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
          background: #EEF2F1; color: #0A302E; font: 16px -apple-system, "Segoe UI", Roboto, sans-serif; }

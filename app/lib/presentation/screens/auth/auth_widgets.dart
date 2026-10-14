@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 
-/// Shared header for the auth screens: Meddata brand mark + wordmark, a bold
+/// Shared header for the auth screens: Medikabiz brand mark + wordmark, a bold
 /// title and a muted subtitle, in the green/orange design language.
 class AuthHeader extends StatelessWidget {
   final String title;
@@ -27,7 +27,7 @@ class AuthHeader extends StatelessWidget {
             const BrandMark(size: 40),
             const SizedBox(width: 12),
             Text(
-              'Meddata',
+              'Medikabiz',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,

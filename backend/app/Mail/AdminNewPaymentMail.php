@@ -37,7 +37,7 @@ class AdminNewPaymentMail extends Mailable
         return new Content(
             view: 'emails.admin.new_payment',
             with: [
-                'supportEmail' => AppSetting::get('support_email', 'support@meddata.app'),
+                'supportEmail' => AppSetting::get('support_email', 'support@medikabiz.com'),
             ],
         );
     }

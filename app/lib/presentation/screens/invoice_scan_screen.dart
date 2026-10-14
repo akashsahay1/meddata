@@ -874,7 +874,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
           bg: AppColors.card,
           title: 'Add stock from a supplier bill',
           text:
-              'Photograph the purchase invoice or pick a PDF. Meddata reads '
+              'Photograph the purchase invoice or pick a PDF. Medikabiz reads '
               'the medicines, batches, expiry dates and rates; you check '
               'every item before anything is added.',
         ),

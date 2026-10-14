@@ -206,13 +206,13 @@ class AuthService extends ChangeNotifier {
     ({int status, Map<String, dynamic>? body}) r,
   ) async {
     if (r.status == 0) {
-      return 'Cannot reach the Meddata server. Check your connection and make sure the backend is deployed.';
+      return 'Cannot reach the Medikabiz server. Check your connection and make sure the backend is deployed.';
     }
     if (r.status == 404 || r.status == 405) {
-      return 'This Meddata server needs an update before this version of the app can sign in.';
+      return 'This Medikabiz server needs an update before this version of the app can sign in.';
     }
     if (r.status >= 500) {
-      return 'The Meddata server is unavailable. Please try again shortly.';
+      return 'The Medikabiz server is unavailable. Please try again shortly.';
     }
     final Map<String, dynamic>? b = r.body;
     if (r.status >= 200 && r.status < 300 && b != null && b['token'] != null) {

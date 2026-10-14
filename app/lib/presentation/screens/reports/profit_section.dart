@@ -155,7 +155,7 @@ class _ProfitSectionState extends State<ProfitSection> {
           ReportMessage(
             icon: Icons.person_outline,
             title: 'Log in to see profit',
-            body: 'Profit is worked out from your bills on the Meddata '
+            body: 'Profit is worked out from your bills on the Medikabiz '
                 'server. Log in (Profile) and connect to the internet.',
           ),
         ];
@@ -165,7 +165,7 @@ class _ProfitSectionState extends State<ProfitSection> {
           ReportMessage(
             icon: Icons.wifi_off_rounded,
             title: 'You are offline',
-            body: 'Profit is worked out from your bills on the Meddata '
+            body: 'Profit is worked out from your bills on the Medikabiz '
                 'server, so it needs the internet. Stock value and expiry '
                 'reports work offline.',
             actionLabel: 'Try again',

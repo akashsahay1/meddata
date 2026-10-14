@@ -32,7 +32,7 @@ class AccountsOfflineNotice extends StatelessWidget {
               Icon(offline ? Icons.cloud_off : Icons.sync_problem, size: 40, color: AppColors.statusAmber),
               const SizedBox(height: 14),
               Text(
-                offline ? 'Accounts need internet' : "Couldn't reach Meddata",
+                offline ? 'Accounts need internet' : "Couldn't reach Medikabiz",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: AppColors.ink),
               ),

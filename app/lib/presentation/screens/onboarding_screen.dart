@@ -331,7 +331,7 @@ class _DesktopBrandPanel extends StatelessWidget {
                 BrandMark(size: 38),
                 SizedBox(width: 12),
                 Text(
-                  'Meddata',
+                  'Medikabiz',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 23,
