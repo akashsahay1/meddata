@@ -20,6 +20,7 @@ import '../../widgets/ui_kit.dart';
 import '../accounts/note_detail_screen.dart';
 import '../accounts/return_screen.dart';
 import 'billing_widgets.dart';
+import '../../widgets/adaptive_layout.dart';
 
 /// One bill as the server has it: items, GST, totals. Print or share the
 /// invoice (A4 or 80 mm), send it on WhatsApp, or cancel the bill (its
@@ -159,7 +160,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   /// A sale return (credit note) against this bill; reloads it after.
   Future<void> _returnItems() async {
     await Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => ReturnScreen.sale(bill: _bill!)));
+        .push(AdaptiveLayout.route<void>(context, builder: (_) => ReturnScreen.sale(bill: _bill!)));
     if (mounted) await _load();
   }
 
@@ -296,7 +297,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           subtitle: Text(DateFormat('dd MMM yyyy').format(n.date)),
                           trailing: Text('-${Inr.format(n.totalPaise)}',
                               style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.ink)),
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
                               builder: (_) => NoteDetailScreen(noteId: n.id, sale: true))),
                         ),
                       ),

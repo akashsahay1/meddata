@@ -27,6 +27,7 @@ import '../barcode_lookup.dart';
 import 'bill_detail_screen.dart';
 import 'billing_widgets.dart';
 import 'shop_settings_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 enum _Gate { checking, ready, offline, failed }
 
@@ -303,7 +304,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
     await mp.load();
     unawaited(sync.syncNow());
     if (!mounted) return;
-    final Object? next = await nav.push<Object>(MaterialPageRoute<Object>(
+    final Object? next = await nav.push<Object>(AdaptiveLayout.route<Object>(context, 
       builder: (_) => BillDetailScreen(
           bill: created.bill, justCreated: true, alreadySaved: created.replayed),
     ));
@@ -416,7 +417,8 @@ class _NewBillScreenState extends State<NewBillScreen> {
 
   Future<void> _openShopSettings() async {
     await Navigator.of(context).push(
-        MaterialPageRoute<void>(builder: (_) => ShopSettingsScreen(api: _api)));
+        AdaptiveLayout.route<void>(context, maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => ShopSettingsScreen(api: _api)));
     if (mounted) await _reloadShop();
   }
 

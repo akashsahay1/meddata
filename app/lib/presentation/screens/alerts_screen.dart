@@ -9,7 +9,8 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'medicine_detail_screen.dart';
-import 'product_detail_screen.dart';
+import 'product_detail_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// Soft border tints from the design handoff (not part of the core palette:
 /// a low-alpha version of each status hue used only for the alert tile edges).
@@ -224,7 +225,7 @@ class _AlertSection extends StatelessWidget {
       priceLabel: priceLabel,
       expLabel: expLabel,
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
+        AdaptiveLayout.route<void>(context, 
           builder: (_) => kind == _AlertKind.lowStock
               ? ProductDetailScreen(productId: m.productId)
               : MedicineDetailScreen(medicineId: m.id),

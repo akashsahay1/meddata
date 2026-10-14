@@ -12,7 +12,8 @@ import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import 'bill_detail_screen.dart';
 import 'billing_widgets.dart';
-import 'new_bill_screen.dart';
+import 'new_bill_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 enum _Range { today, yesterday, week, month, custom }
 
@@ -145,7 +146,12 @@ class _BillsScreenState extends State<BillsScreen> {
   }
 
   Future<void> _open(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+    await Navigator.of(context).push(AdaptiveLayout.route<void>(context,
+      maxWidth: screen is NewBillScreen
+          ? AdaptiveLayout.contentMaxWidth
+          : AdaptiveLayout.desktopPageMaxWidth,
+      builder: (_) => screen,
+    ));
     if (mounted) _refresh();
   }
 

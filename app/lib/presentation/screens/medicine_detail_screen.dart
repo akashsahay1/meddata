@@ -11,6 +11,7 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'add_edit_medicine_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 class MedicineDetailScreen extends StatelessWidget {
   final String medicineId;
@@ -53,8 +54,9 @@ class MedicineDetailScreen extends StatelessWidget {
             icon: Icons.edit_outlined,
             label: 'Edit medicine',
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => AddEditMedicineScreen(existing: med),
+              AdaptiveLayout.route<void>(context, 
+                maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => AddEditMedicineScreen(existing: med),
               ),
             ),
           ),

@@ -24,6 +24,7 @@ import 'reports_screen.dart';
 import 'billing/shop_settings_screen.dart';
 import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -122,8 +123,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _menuRow(
                   icon: Icons.storefront_outlined,
                   label: 'Shop & invoice details',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => const ShopSettingsScreen())),
+                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+                      maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => const ShopSettingsScreen())),
                 ),
               ]),
 
@@ -133,26 +135,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _menuRow(
                   icon: Icons.insights_outlined,
                   label: 'Reports (stock value, profit, expiry)',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => const ReportsScreen())),
+                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+                      maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ReportsScreen())),
                 ),
                 _menuRow(
                   icon: Icons.people_outline,
                   label: 'Parties (customers & suppliers)',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
                       builder: (_) => const PartiesScreen())),
                 ),
                 _menuRow(
                   icon: Icons.local_shipping_outlined,
                   label: 'Purchases',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
                       builder: (_) => const PurchasesScreen())),
                 ),
                 _menuRow(
                   icon: Icons.account_balance_outlined,
                   label: 'GST returns (GSTR-1 / 3B)',
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) => const GstReportsScreen())),
+                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+                      maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const GstReportsScreen())),
                 ),
               ]),
 
@@ -207,8 +211,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   icon: Icons.upload_file_outlined,
                   label: 'Import stock from Excel / CSV',
                   onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                        builder: (_) => const ImportWizardScreen()),
+                    AdaptiveLayout.route<void>(context, 
+                        maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ImportWizardScreen()),
                   ),
                 ),
                 _menuRow(
@@ -663,7 +668,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+                  AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()),
                 ),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(46),

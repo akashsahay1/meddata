@@ -17,6 +17,7 @@ import 'reports/expiry_section.dart';
 import 'reports/profit_section.dart';
 import 'reports/stock_value_section.dart';
 import 'upgrade_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// Reports (Premium): an overview, stock valuation, profit and expiry loss,
 /// each a tab. Stock value and expiry read this device's inventory (work
@@ -64,7 +65,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         appBar: AppBar(title: const Text('Reports')),
         body: _PremiumLock(
           onUpgrade: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+            AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()),
           ),
         ),
       );

@@ -20,6 +20,7 @@ import '../../../state/medicine_provider.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import '../upgrade_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 /// Reads a picked file (in a background isolate).
 ({List<SheetTable>? sheets, String? error}) _readFile(
@@ -309,7 +310,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
   Future<void> _upgrade() async {
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+      AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()),
     );
     // The plan may have changed (e.g. now unlimited).
     if (mounted && _step == _Step.check) await _check();

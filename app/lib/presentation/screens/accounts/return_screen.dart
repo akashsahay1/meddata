@@ -16,7 +16,8 @@ import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
 import '../billing/billing_widgets.dart';
 import 'accounts_widgets.dart';
-import 'note_detail_screen.dart';
+import 'note_detail_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 /// Goods coming back: a customer returning items of a bill (credit note,
 /// stock back) or goods going back to a supplier from a purchase (debit
@@ -91,7 +92,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
     }
     // The stock movements reach this device with the next sync.
     unawaited(sync.syncNow().then((_) => meds.load()));
-    await nav.pushReplacement(MaterialPageRoute<void>(
+    await nav.pushReplacement(AdaptiveLayout.route<void>(context, 
       builder: (_) => NoteDetailScreen(note: r.value, sale: _sale, justCreated: true, api: _api),
     ));
   }

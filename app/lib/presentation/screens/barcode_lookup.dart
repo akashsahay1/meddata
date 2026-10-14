@@ -9,14 +9,15 @@ import '../../state/medicine_provider.dart';
 import 'add_edit_medicine_screen.dart';
 import 'barcode_scan_screen.dart';
 import 'product_detail_screen.dart';
-import 'upgrade_screen.dart';
+import 'upgrade_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// Get a barcode from the user: the camera on phones, a small input dialog on
 /// desktop (a USB scanner types the code and presses Enter).
 Future<String?> readBarcode(BuildContext context) async {
   final String? code = AppPlatform.supportsCamera
       ? await Navigator.of(context).push<String>(
-          MaterialPageRoute<String>(builder: (_) => const BarcodeScanScreen()))
+          AdaptiveLayout.route<String>(context, builder: (_) => const BarcodeScanScreen()))
       : await showDialog<String>(
           context: context, builder: (_) => const _BarcodeInputDialog());
   final String trimmed = code?.trim() ?? '';
@@ -34,13 +35,13 @@ Future<void> scanAndOpen(BuildContext context) async {
   final NavigatorState nav = Navigator.of(context);
   final ProductStock? own = mp.productByBarcode(code);
   if (own != null) {
-    nav.push(MaterialPageRoute<void>(
+    nav.push(AdaptiveLayout.route<void>(context, 
         builder: (_) => ProductDetailScreen(productId: own.productId)));
     return;
   }
 
   if (!mp.canAdd()) {
-    nav.push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
+    nav.push(AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()));
     return;
   }
 
@@ -54,8 +55,9 @@ Future<void> scanAndOpen(BuildContext context) async {
       ..showSnackBar(const SnackBar(
           content: Text('New barcode - enter the medicine details')));
   }
-  nav.push(MaterialPageRoute<void>(
-    builder: (_) =>
+  nav.push(AdaptiveLayout.route<void>(context, 
+    maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) =>
         AddEditMedicineScreen(initialBarcode: code, catalogMatch: match),
   ));
 }

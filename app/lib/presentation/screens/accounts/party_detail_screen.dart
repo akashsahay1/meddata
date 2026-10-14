@@ -16,7 +16,8 @@ import 'accounts_widgets.dart';
 import 'note_detail_screen.dart';
 import 'party_form_screen.dart';
 import 'payment_screen.dart';
-import 'purchase_detail_screen.dart';
+import 'purchase_detail_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 enum _Range { all, month, quarter, custom }
 
@@ -99,12 +100,16 @@ class _PartyDetailScreenState extends State<PartyDetailScreen> {
     ..showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _open(Widget screen) async {
-    final Object? changed = await Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: (_) => screen));
+    final Object? changed = await Navigator.of(context).push<Object?>(AdaptiveLayout.route<Object?>(context,
+      maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+      builder: (_) => screen,
+    ));
     if (mounted && changed != null) _load();
   }
 
   Future<void> _openAndReload(Widget screen) async {
-    await Navigator.of(context).push<Object?>(MaterialPageRoute<Object?>(builder: (_) => screen));
+    await Navigator.of(context).push<Object?>(AdaptiveLayout.route<Object?>(context, maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => screen));
     if (mounted) _load();
   }
 

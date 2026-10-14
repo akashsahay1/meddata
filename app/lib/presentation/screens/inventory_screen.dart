@@ -10,7 +10,8 @@ import '../widgets/status_chip.dart';
 import '../widgets/sync_badge.dart';
 import 'barcode_lookup.dart';
 import 'import/import_wizard_screen.dart';
-import 'product_detail_screen.dart';
+import 'product_detail_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
 /// medicines rendered as [MedicineTile]. Reads from the shared
@@ -41,7 +42,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   void _openProduct(ProductStock p) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(
+      AdaptiveLayout.route<void>(context, 
         builder: (_) => ProductDetailScreen(productId: p.productId),
       ),
     );
@@ -276,8 +277,9 @@ class _EmptyInventory extends StatelessWidget {
                 icon: Icons.upload_file_outlined,
                 expand: false,
                 onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                      builder: (_) => const ImportWizardScreen()),
+                  AdaptiveLayout.route<void>(context, 
+                      maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ImportWizardScreen()),
                 ),
               ),
             ],

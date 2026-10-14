@@ -25,6 +25,7 @@ import '../widgets/expiry_picker.dart';
 import '../widgets/ui_kit.dart';
 import 'accounts/party_picker.dart';
 import 'upgrade_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// Add stock from a supplier's purchase invoice: a photo (camera or gallery
 /// on phones) or a file (photo or PDF) is read on the server with AI, then
@@ -745,7 +746,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   void _openUpgrade() {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
+    ).push(AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()));
   }
 
   Future<bool> _confirmDuplicates(int count) async {

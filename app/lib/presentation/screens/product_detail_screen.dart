@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'add_edit_medicine_screen.dart';
 import 'medicine_detail_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 /// One medicine with all its batches: total stock, and each batch's number,
 /// expiry, stock and MRP. Tapping a batch opens it (stock +/−, history,
@@ -43,8 +44,9 @@ class ProductDetailScreen extends StatelessWidget {
       backgroundColor: AppColors.canvas,
       appBar: AppBar(title: Text(p.name, overflow: TextOverflow.ellipsis)),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => AddEditMedicineScreen(newBatchOf: p.first))),
+        onPressed: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+            maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => AddEditMedicineScreen(newBatchOf: p.first))),
         icon: const Icon(Icons.add),
         label: const Text('Add batch'),
       ),
@@ -123,7 +125,7 @@ class ProductDetailScreen extends StatelessWidget {
       status: medicineStatusPill(batchOnly, b.quantity),
       qtyLabel: '${b.quantity} ${b.unit}',
       expLabel: 'Exp ${Fmt.dateShort(b.expiryDate)}',
-      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+      onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
           builder: (_) => MedicineDetailScreen(medicineId: b.id))),
     );
   }

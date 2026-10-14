@@ -9,7 +9,8 @@ import '../../../services/auth_service.dart';
 import '../../../services/billing_api.dart';
 import '../../../theme/app_theme.dart';
 import 'accounts_widgets.dart';
-import 'party_form_screen.dart';
+import 'party_form_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 /// Choose a customer (or supplier) account, or add a new one. Resolves to
 /// null when closed without choosing. [name], [phone] and [gstin] fill a
@@ -90,8 +91,9 @@ class _PartyPickerState extends State<_PartyPicker> {
   Future<void> _addNew() async {
     final NavigatorState nav = Navigator.of(context);
     final String typed = _search.text.trim();
-    final Party? created = await nav.push<Party>(MaterialPageRoute<Party>(
-      builder: (_) => PartyFormScreen(
+    final Party? created = await nav.push<Party>(AdaptiveLayout.route<Party>(context, 
+      maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => PartyFormScreen(
         type: widget.suppliers ? PartyType.supplier : PartyType.customer,
         name: typed.isNotEmpty && !RegExp(r'^[0-9+\s-]+$').hasMatch(typed) ? typed : widget.name,
         phone: widget.phone,

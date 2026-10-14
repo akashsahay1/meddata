@@ -102,11 +102,13 @@ class _MainShellState extends State<MainShell> {
     if (!mp.canAdd()) {
       Navigator.of(
         context,
-      ).push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
+      ).push(AdaptiveLayout.route<void>(context, maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => const UpgradeScreen()));
       return;
     }
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AddEditMedicineScreen()),
+      AdaptiveLayout.route<void>(context, maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => const AddEditMedicineScreen()),
     );
   }
 

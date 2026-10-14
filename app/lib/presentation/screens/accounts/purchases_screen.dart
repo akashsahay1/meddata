@@ -14,6 +14,7 @@ import '../../widgets/ui_kit.dart';
 import '../invoice_scan_screen.dart';
 import 'accounts_widgets.dart';
 import 'purchase_detail_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 enum _Range { month, quarter, year, all }
 
@@ -98,7 +99,12 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   }
 
   Future<void> _open(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute<Object?>(builder: (_) => screen));
+    await Navigator.of(context).push(AdaptiveLayout.route<Object?>(context,
+      maxWidth: screen is InvoiceScanScreen
+          ? AdaptiveLayout.contentMaxWidth
+          : AdaptiveLayout.desktopPageMaxWidth,
+      builder: (_) => screen,
+    ));
     if (mounted) _load();
   }
 

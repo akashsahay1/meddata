@@ -20,6 +20,7 @@ import '../widgets/ui_kit.dart';
 import 'barcode_scan_screen.dart';
 import 'invoice_scan_screen.dart';
 import 'upgrade_screen.dart';
+import '../widgets/adaptive_layout.dart';
 
 class AddEditMedicineScreen extends StatefulWidget {
   final Medicine? existing;
@@ -300,7 +301,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
 
   Future<void> _scanBarcode() async {
     final String? code = await Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(builder: (_) => const BarcodeScanScreen()),
+      AdaptiveLayout.route<String>(context, builder: (_) => const BarcodeScanScreen()),
     );
     if (code != null && code.isNotEmpty) {
       setState(() => _barcode.text = code);
@@ -323,8 +324,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
     if (own != null) {
       final bool addBatch = await _confirmAddBatch(own) ?? false;
       if (!addBatch || !mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-        builder: (_) =>
+      Navigator.of(context).pushReplacement(AdaptiveLayout.route<void>(context, 
+        maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) =>
             AddEditMedicineScreen(newBatchOf: own.first, api: widget.api),
       ));
       return;
@@ -458,7 +460,7 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
         break;
       case AddResult.blockedByFreeLimit:
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()),
+          AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()),
         );
         break;
       case AddResult.duplicate:
@@ -854,8 +856,9 @@ class _AddEditMedicineScreenState extends State<AddEditMedicineScreen> {
 
   /// A whole supplier bill at once: read with AI, checked, then added.
   void _scanInvoice() {
-    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-      builder: (_) => const InvoiceScanScreen(),
+    Navigator.of(context).pushReplacement(AdaptiveLayout.route<void>(context, 
+      maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const InvoiceScanScreen(),
     ));
   }
 

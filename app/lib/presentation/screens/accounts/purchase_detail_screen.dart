@@ -15,7 +15,8 @@ import '../../widgets/ui_kit.dart';
 import '../billing/billing_widgets.dart';
 import 'accounts_widgets.dart';
 import 'payment_screen.dart';
-import 'return_screen.dart';
+import 'return_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 /// One supplier bill: its items (batches received), input GST and what is
 /// still to pay. Send goods back (debit note), pay it, or cancel it.
@@ -61,7 +62,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     ..showSnackBar(SnackBar(content: Text(m)));
 
   Future<void> _return() async {
-    await Navigator.of(context).push(MaterialPageRoute<Object?>(
+    await Navigator.of(context).push(AdaptiveLayout.route<Object?>(context, 
         builder: (_) => ReturnScreen.purchase(purchase: _purchase!, api: _api)));
     if (mounted) _load();
   }
@@ -77,8 +78,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       _toast(party.message ?? 'Could not load the supplier.');
       return;
     }
-    final bool? saved = await Navigator.of(context).push<bool>(MaterialPageRoute<bool>(
-      builder: (_) => PaymentScreen(
+    final bool? saved = await Navigator.of(context).push<bool>(AdaptiveLayout.route<bool>(context, 
+      maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => PaymentScreen(
         party: party.value!.party,
         received: false,
         openDocuments: party.value!.openDocuments,

@@ -12,7 +12,8 @@ import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import 'accounts_widgets.dart';
 import 'party_detail_screen.dart';
-import 'party_form_screen.dart';
+import 'party_form_screen.dart';
+import '../../widgets/adaptive_layout.dart';
 
 enum _Filter { all, customers, suppliers }
 
@@ -78,7 +79,12 @@ class _PartiesScreenState extends State<PartiesScreen> {
   }
 
   Future<void> _open(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute<Object?>(builder: (_) => screen));
+    await Navigator.of(context).push(AdaptiveLayout.route<Object?>(context,
+      maxWidth: screen is PartyFormScreen
+          ? AdaptiveLayout.desktopFormMaxWidth
+          : AdaptiveLayout.desktopPageMaxWidth,
+      builder: (_) => screen,
+    ));
     if (mounted) _load();
   }
 

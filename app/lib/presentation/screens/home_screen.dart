@@ -34,18 +34,24 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AddEditMedicineScreen()),
+      AdaptiveLayout.route<void>(context, maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => const AddEditMedicineScreen()),
     );
   }
 
   void _openUpgrade() {
     Navigator.of(
       context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const UpgradeScreen()));
+    ).push(AdaptiveLayout.route<void>(context, builder: (_) => const UpgradeScreen()));
   }
 
   void _open(Widget screen) {
-    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
+    Navigator.of(context).push(AdaptiveLayout.route<void>(context,
+      maxWidth: screen is NewBillScreen
+          ? AdaptiveLayout.contentMaxWidth
+          : AdaptiveLayout.desktopPageMaxWidth,
+      builder: (_) => screen,
+    ));
   }
 
   @override
@@ -340,8 +346,9 @@ class _DashboardBody extends StatelessWidget {
           lowStockCount: mp.lowStockCount,
           expiringCount: mp.expiringCount,
           onAlerts: onAlerts,
-          onStockValue: () => Navigator.of(context).push(MaterialPageRoute<void>(
-              builder: (_) => const ReportsScreen())),
+          onStockValue: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ReportsScreen())),
         ),
         if (!settings.isPremium && settings.isTrialActive) ...<Widget>[
           const SizedBox(height: 14),
@@ -367,7 +374,7 @@ class _DashboardBody extends StatelessWidget {
                 subtitle: _subtitle(p),
                 status: medicineStatusPill(row.$3, p.totalQty),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
+                  AdaptiveLayout.route<void>(context, 
                     builder: (_) => ProductDetailScreen(productId: p.productId),
                   ),
                 ),
