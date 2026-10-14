@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/models/stock_import.dart';
-import 'package:med_stock/services/import/import_columns.dart';
-import 'package:med_stock/services/import/import_values.dart';
-import 'package:med_stock/services/import/sheet_table.dart';
-import 'package:med_stock/services/import/spreadsheet_reader.dart';
-import 'package:med_stock/services/import/stock_import_planner.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/models/stock_import.dart';
+import 'package:medikabiz/services/import/import_columns.dart';
+import 'package:medikabiz/services/import/import_values.dart';
+import 'package:medikabiz/services/import/sheet_table.dart';
+import 'package:medikabiz/services/import/spreadsheet_reader.dart';
+import 'package:medikabiz/services/import/stock_import_planner.dart';
 
 final DateTime today = DateTime(2026, 10, 5);
 

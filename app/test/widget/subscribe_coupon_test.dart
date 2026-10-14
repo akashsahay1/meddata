@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/subscription_plan.dart';
-import 'package:med_stock/presentation/screens/subscribe_view.dart';
-import 'package:med_stock/services/settings_service.dart';
-import 'package:med_stock/services/subscription_service.dart';
+import 'package:medikabiz/data/models/subscription_plan.dart';
+import 'package:medikabiz/presentation/screens/subscribe_view.dart';
+import 'package:medikabiz/services/settings_service.dart';
+import 'package:medikabiz/services/subscription_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

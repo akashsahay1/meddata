@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/bill.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/billing_api.dart';
-import 'package:med_stock/services/invoice_share.dart';
+import 'package:medikabiz/data/models/bill.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/billing_api.dart';
+import 'package:medikabiz/services/invoice_share.dart';
 
 /// A server bill as POST /bills returns it.
 Map<String, dynamic> sampleBill({String status = 'final', String? phone = '98765 43210'}) => <String, dynamic>{

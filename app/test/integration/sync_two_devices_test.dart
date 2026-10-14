@@ -8,12 +8,12 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:med_stock/data/db/database_helper.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/models/stock_movement.dart';
-import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/sync/sync_engine.dart';
+import 'package:medikabiz/data/db/database_helper.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/models/stock_movement.dart';
+import 'package:medikabiz/data/repositories/medicine_repository.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/sync/sync_engine.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 

@@ -5,10 +5,10 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:med_stock/presentation/screens/reports_screen.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/auth_service.dart';
-import 'package:med_stock/services/reports_api.dart';
+import 'package:medikabiz/presentation/screens/reports_screen.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/auth_service.dart';
+import 'package:medikabiz/services/reports_api.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

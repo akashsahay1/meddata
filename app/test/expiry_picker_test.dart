@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/presentation/widgets/expiry_picker.dart';
+import 'package:medikabiz/presentation/widgets/expiry_picker.dart';
 
 void main() {
   test('expiry as printed: month and year, the last day of the month', () {

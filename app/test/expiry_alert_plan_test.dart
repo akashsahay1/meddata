@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/domain/expiry_alert_plan.dart';
-import 'package:med_stock/domain/medicine_status.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/domain/expiry_alert_plan.dart';
+import 'package:medikabiz/domain/medicine_status.dart';
 
 void main() {
   final DateTime today = DateTime(2026, 10, 3, 14, 30);

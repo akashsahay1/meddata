@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:med_stock/services/invoice_scan_service.dart';
+import 'package:medikabiz/services/invoice_scan_service.dart';
 
 void main() {
   const String base = 'https://api.test/api/v1';

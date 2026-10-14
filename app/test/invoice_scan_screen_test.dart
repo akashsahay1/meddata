@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/domain/product_stock.dart';
-import 'package:med_stock/presentation/screens/invoice_scan_screen.dart';
-import 'package:med_stock/services/invoice_scan_service.dart';
-import 'package:med_stock/state/medicine_provider.dart';
-import 'package:med_stock/sync/sync_engine.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/repositories/medicine_repository.dart';
+import 'package:medikabiz/domain/product_stock.dart';
+import 'package:medikabiz/presentation/screens/invoice_scan_screen.dart';
+import 'package:medikabiz/services/invoice_scan_service.dart';
+import 'package:medikabiz/state/medicine_provider.dart';
+import 'package:medikabiz/sync/sync_engine.dart';
 import 'package:provider/provider.dart';
 
 /// In-memory stand-in for the SQLite repository: a batch joins the product

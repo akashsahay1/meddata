@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/domain/pack_size.dart';
+import 'package:medikabiz/domain/pack_size.dart';
 
 void main() {
   group('PackSize', () {

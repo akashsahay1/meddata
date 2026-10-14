@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/accounting.dart';
-import 'package:med_stock/data/models/bill.dart';
-import 'package:med_stock/domain/fefo.dart';
-import 'package:med_stock/domain/gst.dart';
-import 'package:med_stock/services/billing_api.dart';
-import 'package:med_stock/state/bill_cart.dart';
+import 'package:medikabiz/data/models/accounting.dart';
+import 'package:medikabiz/data/models/bill.dart';
+import 'package:medikabiz/domain/fefo.dart';
+import 'package:medikabiz/domain/gst.dart';
+import 'package:medikabiz/services/billing_api.dart';
+import 'package:medikabiz/state/bill_cart.dart';
 
 void main() {
   final DateTime today = DateTime(2026, 10, 5);

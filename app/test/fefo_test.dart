@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/domain/fefo.dart';
+import 'package:medikabiz/domain/fefo.dart';
 
 void main() {
   final DateTime today = DateTime(2026, 10, 5, 15, 30);

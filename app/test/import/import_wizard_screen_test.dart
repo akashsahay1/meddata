@@ -3,12 +3,12 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/db/database_helper.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/presentation/screens/import/import_wizard_screen.dart';
-import 'package:med_stock/state/medicine_provider.dart';
-import 'package:med_stock/theme/app_theme.dart';
+import 'package:medikabiz/data/db/database_helper.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/repositories/medicine_repository.dart';
+import 'package:medikabiz/presentation/screens/import/import_wizard_screen.dart';
+import 'package:medikabiz/state/medicine_provider.dart';
+import 'package:medikabiz/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';

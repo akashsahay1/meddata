@@ -3,8 +3,8 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/services/import/sheet_table.dart';
-import 'package:med_stock/services/import/spreadsheet_reader.dart';
+import 'package:medikabiz/services/import/sheet_table.dart';
+import 'package:medikabiz/services/import/spreadsheet_reader.dart';
 
 const String _ns =
     'xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '

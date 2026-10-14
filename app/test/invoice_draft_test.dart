@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/domain/invoice_draft.dart';
-import 'package:med_stock/domain/medicine_name_key.dart';
-import 'package:med_stock/domain/product_stock.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/domain/invoice_draft.dart';
+import 'package:medikabiz/domain/medicine_name_key.dart';
+import 'package:medikabiz/domain/product_stock.dart';
 
 /// A shop medicine with one batch, as MedicineProvider.products has it.
 ProductStock product(

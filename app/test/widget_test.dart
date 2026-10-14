@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/main.dart';
+import 'package:medikabiz/main.dart';
 
 import 'support/test_app.dart';
 

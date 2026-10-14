@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/services/settings_service.dart';
+import 'package:medikabiz/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

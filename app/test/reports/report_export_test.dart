@@ -2,11 +2,11 @@ import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/domain/reports/expiry_loss.dart';
-import 'package:med_stock/domain/reports/profit_report.dart';
-import 'package:med_stock/domain/reports/stock_valuation.dart';
-import 'package:med_stock/services/invoice_pdf.dart';
-import 'package:med_stock/services/report_export.dart';
+import 'package:medikabiz/domain/reports/expiry_loss.dart';
+import 'package:medikabiz/domain/reports/profit_report.dart';
+import 'package:medikabiz/domain/reports/stock_valuation.dart';
+import 'package:medikabiz/services/invoice_pdf.dart';
+import 'package:medikabiz/services/report_export.dart';
 
 import '../support/reports_fixture.dart' show sampleProfit;
 import 'stock_valuation_test.dart' show row, today;

@@ -1,5 +1,5 @@
-name: med_stock
-description: "Medicine Stock & Expiry Tracker — offline-first pharmacy inventory."
+name: medikabiz
+description: "Medikabiz - A medicine Stock & Expiry Tracker — offline-first pharmacy inventory."
 publish_to: 'none'
 
 version: 1.0.0+1

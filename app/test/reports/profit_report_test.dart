@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:med_stock/domain/reports/profit_report.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/billing_api.dart';
-import 'package:med_stock/services/reports_api.dart';
+import 'package:medikabiz/domain/reports/profit_report.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/billing_api.dart';
+import 'package:medikabiz/services/reports_api.dart';
 
 import '../support/reports_fixture.dart';
 

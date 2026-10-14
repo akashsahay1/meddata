@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/domain/reports/expiry_loss.dart';
-import 'package:med_stock/domain/reports/stock_valuation.dart';
+import 'package:medikabiz/domain/reports/expiry_loss.dart';
+import 'package:medikabiz/domain/reports/stock_valuation.dart';
 
 final DateTime today = DateTime(2026, 10, 5);
 

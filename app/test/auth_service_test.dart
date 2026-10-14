@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/auth_service.dart';
-import 'package:med_stock/services/settings_service.dart';
-import 'package:med_stock/services/subscription_service.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/auth_service.dart';
+import 'package:medikabiz/services/settings_service.dart';
+import 'package:medikabiz/services/subscription_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// In-memory stand-in for the platform's secure store.

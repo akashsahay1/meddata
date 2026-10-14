@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/domain/gst.dart';
+import 'package:medikabiz/domain/gst.dart';
 
 /// Same vectors as backend/tests/Unit/GstMathTest.php: the bill screen's
 /// preview and the server's invoice must agree to the paisa.

@@ -4,7 +4,7 @@
         <x-filament::section>
             <x-slot name="heading">Overview</x-slot>
             <p>
-                This is the admin backend for <strong>Meddata — Medicine Stock &amp; Expiry Tracker</strong>,
+                This is the admin backend for <strong>Medikabiz — Medicine Stock &amp; Expiry Tracker</strong>,
                 an offline-first pharmacy inventory app. The app works fully offline; this backend is used
                 for <strong>subscription validation</strong>, <strong>optional cloud backup</strong>, and
                 <strong>shop data sync</strong> and <strong>viewing shops, the medicine catalog and plans</strong>.

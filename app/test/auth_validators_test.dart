@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/presentation/screens/auth/auth_widgets.dart';
+import 'package:medikabiz/presentation/screens/auth/auth_widgets.dart';
 
 void main() {
   test('passwords need 8 characters, like the server', () {

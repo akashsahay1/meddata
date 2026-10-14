@@ -1,7 +1,7 @@
 // Finders and small actions shared by the widget tests.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/presentation/widgets/ui_kit.dart';
+import 'package:medikabiz/presentation/widgets/ui_kit.dart';
 
 /// The nearest Column around the label text [label] (the add screen puts
 /// each label in a Column with its field).

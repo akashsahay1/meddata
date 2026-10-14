@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/presentation/screens/reports_screen.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/auth_service.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/presentation/screens/reports_screen.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/auth_service.dart';
 
 import '../support/reports_fixture.dart';
 import '../support/test_app.dart';

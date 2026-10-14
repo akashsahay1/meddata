@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/core/formatters.dart';
-import 'package:med_stock/presentation/screens/alerts_screen.dart';
-import 'package:med_stock/presentation/screens/home_screen.dart';
-import 'package:med_stock/presentation/screens/reports_screen.dart';
-import 'package:med_stock/presentation/screens/inventory_screen.dart';
-import 'package:med_stock/presentation/screens/product_detail_screen.dart';
-import 'package:med_stock/presentation/widgets/ui_kit.dart';
+import 'package:medikabiz/core/formatters.dart';
+import 'package:medikabiz/presentation/screens/alerts_screen.dart';
+import 'package:medikabiz/presentation/screens/home_screen.dart';
+import 'package:medikabiz/presentation/screens/reports_screen.dart';
+import 'package:medikabiz/presentation/screens/inventory_screen.dart';
+import 'package:medikabiz/presentation/screens/product_detail_screen.dart';
+import 'package:medikabiz/presentation/widgets/ui_kit.dart';
 
 import '../support/finders.dart';
 import '../support/test_app.dart';

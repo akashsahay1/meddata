@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/core/inr.dart';
+import 'package:medikabiz/core/inr.dart';
 
 void main() {
   test('Indian digit grouping', () {

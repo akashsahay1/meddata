@@ -4,15 +4,15 @@
 // that were never uploaded, nothing is deleted until the user decides.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/db/database_helper.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/presentation/screens/account_switch_dialog.dart';
-import 'package:med_stock/presentation/screens/auth/login_screen.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/auth_service.dart';
-import 'package:med_stock/services/settings_service.dart';
-import 'package:med_stock/sync/sync_engine.dart';
+import 'package:medikabiz/data/db/database_helper.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/repositories/medicine_repository.dart';
+import 'package:medikabiz/presentation/screens/account_switch_dialog.dart';
+import 'package:medikabiz/presentation/screens/auth/login_screen.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/auth_service.dart';
+import 'package:medikabiz/services/settings_service.dart';
+import 'package:medikabiz/sync/sync_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart' show Database, Sqflite;
 

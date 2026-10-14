@@ -3,22 +3,22 @@
 // against a fake accounting server.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/bill.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/repositories/billing_repository.dart';
-import 'package:med_stock/presentation/screens/billing/new_bill_screen.dart';
-import 'package:med_stock/services/billing_api.dart';
+import 'package:medikabiz/data/models/bill.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/repositories/billing_repository.dart';
+import 'package:medikabiz/presentation/screens/billing/new_bill_screen.dart';
+import 'package:medikabiz/services/billing_api.dart';
 import 'package:uuid/uuid.dart';
-import 'package:med_stock/presentation/screens/accounts/gst_reports_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/note_detail_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/parties_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/party_detail_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/party_form_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/purchase_detail_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/purchases_screen.dart';
-import 'package:med_stock/presentation/screens/accounts/return_screen.dart';
-import 'package:med_stock/presentation/screens/invoice_scan_screen.dart';
-import 'package:med_stock/services/invoice_scan_service.dart';
+import 'package:medikabiz/presentation/screens/accounts/gst_reports_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/note_detail_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/parties_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/party_detail_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/party_form_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/purchase_detail_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/purchases_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/return_screen.dart';
+import 'package:medikabiz/presentation/screens/invoice_scan_screen.dart';
+import 'package:medikabiz/services/invoice_scan_service.dart';
 
 import '../support/accounting_fake.dart';
 import '../support/test_app.dart' show loadAppFont, usePhoneScreen;

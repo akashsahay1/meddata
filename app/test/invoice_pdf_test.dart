@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/models/bill.dart';
-import 'package:med_stock/services/invoice_pdf.dart';
+import 'package:medikabiz/data/models/bill.dart';
+import 'package:medikabiz/services/invoice_pdf.dart';
 import 'package:pdf/pdf.dart';
 
 import 'billing_api_test.dart' show sampleBill;

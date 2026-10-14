@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/services/import/import_values.dart';
-import 'package:med_stock/services/import/sheet_table.dart';
+import 'package:medikabiz/services/import/import_values.dart';
+import 'package:medikabiz/services/import/sheet_table.dart';
 
 void main() {
   group('dates', () {

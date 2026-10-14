@@ -4,12 +4,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/presentation/screens/auth/forgot_password_screen.dart';
-import 'package:med_stock/presentation/screens/auth/login_screen.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/auth_service.dart';
-import 'package:med_stock/services/settings_service.dart';
-import 'package:med_stock/theme/app_theme.dart';
+import 'package:medikabiz/presentation/screens/auth/forgot_password_screen.dart';
+import 'package:medikabiz/presentation/screens/auth/login_screen.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/auth_service.dart';
+import 'package:medikabiz/services/settings_service.dart';
+import 'package:medikabiz/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

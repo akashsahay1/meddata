@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/core/formatters.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/domain/product_stock.dart';
-import 'package:med_stock/presentation/screens/add_edit_medicine_screen.dart';
+import 'package:medikabiz/core/formatters.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/domain/product_stock.dart';
+import 'package:medikabiz/presentation/screens/add_edit_medicine_screen.dart';
 
 import '../support/finders.dart';
 import '../support/test_app.dart';

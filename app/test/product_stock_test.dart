@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:med_stock/data/db/database_helper.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/data/repositories/medicine_repository.dart';
-import 'package:med_stock/domain/medicine_status.dart';
-import 'package:med_stock/domain/product_stock.dart';
-import 'package:med_stock/state/medicine_provider.dart';
+import 'package:medikabiz/data/db/database_helper.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/data/repositories/medicine_repository.dart';
+import 'package:medikabiz/domain/medicine_status.dart';
+import 'package:medikabiz/domain/product_stock.dart';
+import 'package:medikabiz/state/medicine_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 

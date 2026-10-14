@@ -3,17 +3,17 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:med_stock/data/models/accounting.dart';
-import 'package:med_stock/data/models/bill.dart';
-import 'package:med_stock/domain/accounting.dart';
-import 'package:med_stock/domain/gst.dart';
-import 'package:med_stock/domain/invoice_draft.dart';
-import 'package:med_stock/domain/product_stock.dart';
-import 'package:med_stock/data/models/medicine.dart';
-import 'package:med_stock/services/accounting_api.dart';
-import 'package:med_stock/services/accounting_pdf.dart';
-import 'package:med_stock/services/api_client.dart';
-import 'package:med_stock/services/invoice_pdf.dart';
+import 'package:medikabiz/data/models/accounting.dart';
+import 'package:medikabiz/data/models/bill.dart';
+import 'package:medikabiz/domain/accounting.dart';
+import 'package:medikabiz/domain/gst.dart';
+import 'package:medikabiz/domain/invoice_draft.dart';
+import 'package:medikabiz/domain/product_stock.dart';
+import 'package:medikabiz/data/models/medicine.dart';
+import 'package:medikabiz/services/accounting_api.dart';
+import 'package:medikabiz/services/accounting_pdf.dart';
+import 'package:medikabiz/services/api_client.dart';
+import 'package:medikabiz/services/invoice_pdf.dart';
 
 import 'support/accounting_fake.dart';
 
