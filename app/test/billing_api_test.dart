@@ -192,6 +192,9 @@ void main() {
     expect(text, contains('Invoice MED/26-27/000042'));
     expect(text, contains('Dolo 650 x 2 = ₹60.00'));
     expect(text, contains('*Total: ₹364.00* (UPI)'));
+    expect(text, contains('Invoice MED/26-27/000042\nCustomer: City Clinic (98765 43210)\n'));
+    expect(InvoiceShare.summary(Bill.fromJson(sampleBill(phone: null))), contains('Customer: City Clinic\n'));
+    expect(InvoiceShare.summary(Bill.fromJson(sampleBill()..['customer_name'] = null)), isNot(contains('Customer')));
     expect(InvoiceShare.whatsAppUri(Bill.fromJson(sampleBill(phone: null))), isNull);
   });
 }

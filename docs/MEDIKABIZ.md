@@ -408,6 +408,7 @@ cd app && flutter test test/integration/
 ### Bill follow-ups (16 Oct 2026)
 
 - [x] **Save PDF** on a bill (A4 or 80 mm): a PC asks where with the Save dialog and writes the file; Android opens the system Save dialog (Downloads, Drive, ...) through a small `medikabiz/files` channel in `MainActivity` (no storage permission). The snackbar says where it went
+- [x] The WhatsApp / share text names the customer after the invoice line ("Customer: Alok (9650645839)", phone when there is one); walk-in bills have no customer line
 
 ### Remaining from original task list
 

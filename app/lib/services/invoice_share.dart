@@ -121,7 +121,13 @@ class InvoiceShare {
   static String summary(Bill bill) {
     final StringBuffer b = StringBuffer()
       ..writeln('*${bill.seller.displayName}*')
-      ..writeln('Invoice ${bill.invoiceNo}')
+      ..writeln('Invoice ${bill.invoiceNo}');
+    // A walk-in bill (no customer name) has no customer line.
+    if (bill.customerName != null) {
+      b.writeln('Customer: ${bill.customerName}'
+          '${bill.customerPhone == null ? '' : ' (${bill.customerPhone})'}');
+    }
+    b
       ..writeln(DateFormat('dd MMM yyyy, hh:mm a').format(bill.createdAt ?? bill.billDate))
       ..writeln();
     const int shown = 15;
