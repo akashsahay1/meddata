@@ -59,8 +59,20 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      # Issues and failed tests are also posted as annotations on the run.
       - name: Analyze
-        run: flutter analyze
+        run: |
+          set +e
+          flutter analyze --format=machine > analyze.txt 2>&1
+          status=$?
+          cat analyze.txt
+          python3 ../.github/scripts/annotate_analyze.py analyze.txt
+          exit $status
 
       - name: Run the tests
-        run: flutter test
+        run: |
+          set +e
+          flutter test --reporter json > test-results.json
+          status=$?
+          python3 ../.github/scripts/annotate_tests.py test-results.json
+          exit $status
