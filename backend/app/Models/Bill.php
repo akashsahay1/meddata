@@ -3,14 +3,18 @@
 namespace App\Models;
 
 use App\Support\GstStates;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A GST sale invoice. Created only by BillingService (one transaction with
- * its number, items and stock movements); never edited afterwards except to
- * cancel it, which keeps its number used.
+ * its number, items and stock movements). Cancelling keeps its number used.
+ *
+ * payment_mode: cash/upi/card = paid in full at the counter; credit = on
+ * the customer's account, with whatever was taken at the counter recorded
+ * as an at_billing party payment against it.
  */
 class Bill extends Model
 {
@@ -19,6 +23,15 @@ class Bill extends Model
     public const STATUS_FINAL = 'final';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    /** Payments received against the bill (correlated to bills.id). */
+    public const PAID_SQL = "(SELECT COALESCE(SUM(pp.amount_paise), 0) FROM party_payments pp WHERE pp.bill_id = bills.id AND pp.direction = 'in' AND pp.status = 'active')";
+
+    /** Credit notes on the bill adjusted on the customer's account. */
+    public const RETURNED_SQL = "(SELECT COALESCE(SUM(sr.total_paise), 0) FROM sale_returns sr WHERE sr.bill_id = bills.id AND sr.refund_mode = 'credit')";
+
+    /** What is still to be paid on a credit bill (PartyLedger::billOutstanding in SQL). */
+    public const DUE_SQL = '(bills.total_paise - '.self::PAID_SQL.' - '.self::RETURNED_SQL.')';
 
     public $incrementing = false;
 
@@ -59,6 +72,52 @@ class Bill extends Model
     public function items(): HasMany
     {
         return $this->hasMany(BillItem::class)->orderBy('line_no');
+    }
+
+    /** Adds paid_in_paise and returned_credit_paise to each row (lists: no query per bill). */
+    public function scopeWithPaid(Builder $query): void
+    {
+        if ($query->getQuery()->columns === null) {
+            $query->select('bills.*');
+        }
+        $query->selectRaw(self::PAID_SQL.' AS paid_in_paise')
+            ->selectRaw(self::RETURNED_SQL.' AS returned_credit_paise');
+    }
+
+    /** Final credit bills with money still to be paid. */
+    public function scopeDue(Builder $query): void
+    {
+        $query->where('bills.status', self::STATUS_FINAL)->where('bills.payment_mode', 'credit')
+            ->whereRaw(self::DUE_SQL.' > 0');
+    }
+
+    private function paidIn(): int
+    {
+        if (! array_key_exists('paid_in_paise', $this->attributes)) {
+            $this->attributes['paid_in_paise'] = (int) PartyPayment::where('bill_id', $this->id)
+                ->where('direction', 'in')->where('status', PartyPayment::STATUS_ACTIVE)->sum('amount_paise');
+            $this->attributes['returned_credit_paise'] = (int) SaleReturn::where('bill_id', $this->id)
+                ->where('refund_mode', 'credit')->sum('total_paise');
+        }
+
+        return (int) $this->attributes['paid_in_paise'];
+    }
+
+    /** Money received for the bill: the total for a cash/UPI/card bill, else the payments against it. */
+    public function paidPaise(): int
+    {
+        return $this->payment_mode === 'credit' || $this->isCancelled() ? $this->paidIn() : (int) $this->total_paise;
+    }
+
+    /** Still to be paid: only a final credit bill can have a balance. */
+    public function balancePaise(): int
+    {
+        if ($this->payment_mode !== 'credit' || $this->isCancelled()) {
+            return 0;
+        }
+        $paid = $this->paidIn();
+
+        return max(0, (int) $this->total_paise - $paid - (int) $this->attributes['returned_credit_paise']);
     }
 
     /** The bill date as 'Y-m-d' (whatever the driver returns). */
@@ -127,9 +186,29 @@ class Bill extends Model
             'user_id' => $this->user_id,
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'cancel_reason' => $this->cancel_reason,
+            'paid_paise' => $this->paidPaise(),
+            'balance_paise' => $this->balancePaise(),
+            ...$this->receivedAtBilling(),
             'items' => $this->items->map(fn (BillItem $i) => $i->toApi())->all(),
             'tax_summary' => $this->taxSummary(),
         ];
+    }
+
+    /**
+     * What was taken at the counter: the total for a cash/UPI/card bill, the
+     * at-billing payment for a part-paid credit bill (mode null when none).
+     *
+     * @return array{received_paise: int, received_mode: ?string}
+     */
+    public function receivedAtBilling(): array
+    {
+        if ($this->payment_mode !== 'credit') {
+            return ['received_paise' => (int) $this->total_paise, 'received_mode' => $this->payment_mode];
+        }
+        $payment = PartyPayment::where('bill_id', $this->id)->where('at_billing', true)
+            ->where('status', PartyPayment::STATUS_ACTIVE)->first();
+
+        return ['received_paise' => (int) ($payment?->amount_paise ?? 0), 'received_mode' => $payment?->mode];
     }
 
     /** Short row for bill lists. */
@@ -146,6 +225,8 @@ class Bill extends Model
             'customer_name' => $this->customer_name,
             'customer_phone' => $this->customer_phone,
             'total_paise' => $this->total_paise,
+            'paid_paise' => $this->paidPaise(),
+            'balance_paise' => $this->balancePaise(),
             'items_count' => (int) ($this->items_count ?? $this->items()->count()),
         ];
     }

@@ -63,7 +63,10 @@ return new class extends Migration
             $table->bigInteger('round_off_paise'); // -49..+50, to a whole rupee
             $table->unsignedBigInteger('total_paise');
 
-            $table->string('payment_mode', 8); // cash|upi|card|credit
+            // cash|upi|card = paid in full at the counter; credit = on the
+            // customer's account (nothing or only part paid at the counter;
+            // that part is a party_payments row with at_billing = true).
+            $table->string('payment_mode', 8);
             $table->string('status', 12)->default('final'); // final|cancelled
             $table->timestamp('cancelled_at')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();

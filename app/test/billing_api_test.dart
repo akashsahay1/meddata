@@ -197,4 +197,45 @@ void main() {
     expect(InvoiceShare.summary(Bill.fromJson(sampleBill()..['customer_name'] = null)), isNot(contains('Customer')));
     expect(InvoiceShare.whatsAppUri(Bill.fromJson(sampleBill(phone: null))), isNull);
   });
+
+  test('paid and balance: parsed, labelled, and on the WhatsApp text', () {
+    final Bill paid = Bill.fromJson(sampleBill());
+    expect(<Object>[paid.paidPaise, paid.balancePaise, paid.hasBalance, paid.paymentLabel, paid.paymentStatus],
+        <Object>[36400, 0, false, 'UPI', 'Paid · UPI']);
+    expect(paid.balanceLines, isEmpty);
+
+    final Bill part = Bill.fromJson(sampleBill()
+      ..['payment_mode'] = 'credit'
+      ..['paid_paise'] = 10000
+      ..['balance_paise'] = 26400
+      ..['received_paise'] = 10000
+      ..['received_mode'] = 'cash');
+    expect(<Object?>[part.hasBalance, part.paymentLabel, part.paymentStatus, part.receivedPaise, part.receivedMode],
+        <Object?>[true, 'Part paid', 'Part paid · ₹264.00 due', 10000, PaymentMode.cash]);
+    expect(part.balanceLines, <(String, String)>[('Paid', '₹100.00'), ('Balance due', '₹264.00')]);
+    final String text = InvoiceShare.summary(part);
+    expect(text, contains('*Total: ₹364.00* (Part paid)\nPaid: ₹100.00\nBalance due: ₹264.00\n'));
+
+    final Bill credit = Bill.fromJson(sampleBill()
+      ..['payment_mode'] = 'credit'
+      ..['paid_paise'] = 0
+      ..['balance_paise'] = 36400);
+    expect(<Object>[credit.paymentLabel, credit.paymentStatus], <Object>['Credit', 'Credit - to be paid']);
+    final Bill settled = Bill.fromJson(sampleBill()
+      ..['payment_mode'] = 'credit'
+      ..['paid_paise'] = 36400
+      ..['balance_paise'] = 0);
+    expect(<Object>[settled.paymentLabel, settled.paymentStatus], <Object>['Paid', 'Paid']);
+
+    final BillPage page = BillPage.fromJson(<String, dynamic>{
+      'data': <Map<String, dynamic>>[
+        <String, dynamic>{'id': 'a', 'invoice_no': 'X', 'bill_date': '2026-10-05', 'status': 'final',
+          'payment_mode': 'credit', 'total_paise': 9000, 'paid_paise': 1000, 'balance_paise': 8000},
+      ],
+      'summary': <String, dynamic>{'due_count': 3, 'due_paise': 42000},
+    });
+    expect(<Object>[page.bills.single.paidPaise, page.bills.single.balancePaise, page.bills.single.hasBalance],
+        <Object>[1000, 8000, true]);
+    expect(<int>[page.dueCount, page.duePaise], <int>[3, 42000]);
+  });
 }

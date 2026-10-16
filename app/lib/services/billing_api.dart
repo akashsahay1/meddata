@@ -195,13 +195,14 @@ class BillingApi {
   }
 
   Future<ApiOutcome<BillPage>> list(String token,
-      {DateTime? from, DateTime? to, String? query, int page = 1, int perPage = 30}) async {
+      {DateTime? from, DateTime? to, String? query, bool due = false, int page = 1, int perPage = 30}) async {
     final ({int status, Map<String, dynamic>? body}) r = _checked(
         token,
         await _api.getResult('/bills', token: token, query: <String, String>{
           if (from != null) 'from': ymd(from),
           if (to != null) 'to': ymd(to),
           if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+          if (due) 'due': '1',
           'page': '$page',
           'per_page': '$perPage',
         }));

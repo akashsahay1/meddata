@@ -137,7 +137,10 @@ class InvoiceShare {
     if (bill.items.length > shown) b.writeln('+ ${bill.items.length - shown} more');
     b
       ..writeln()
-      ..writeln('*Total: ${Inr.format(bill.totalPaise)}* (${bill.paymentMode.label})');
+      ..writeln('*Total: ${Inr.format(bill.totalPaise)}* (${bill.paymentLabel})');
+    for (final (String k, String v) in bill.balanceLines) {
+      b.writeln('$k: $v');
+    }
     if (bill.isCancelled) b.writeln('This bill was cancelled.');
     b.write('Thank you!');
     return b.toString();

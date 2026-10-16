@@ -82,6 +82,16 @@ class FakeAccountsServer {
   };
   bool offline = false;
 
+  /// What GET /bills/{id} answers with (set by a test).
+  Map<String, Object?> billDetail = const <String, Object?>{};
+
+  /// What GET /bills answers with.
+  Map<String, Object?> billList = const <String, Object?>{
+    'data': <Object?>[],
+    'meta': <String, Object?>{'current_page': 1, 'last_page': 1},
+    'summary': <String, Object?>{},
+  };
+
   late final ApiClient client = ApiClient(MockClient(_handle));
   late final AccountingApi api = AccountingApi(client);
 
@@ -325,6 +335,10 @@ class FakeAccountsServer {
         });
       case ('POST', <String>['bills']):
         return _json(<String, Object?>{'bill': billAnswer, 'batches': <Object?>[], 'replayed': false}, 201);
+      case ('GET', <String>['bills']):
+        return _json(billList);
+      case ('GET', <String>['bills', _]):
+        return _json(<String, Object?>{'bill': billDetail});
       case ('GET', <String>['gst', 'gstr1']):
         return _json(gstr1);
       case ('GET', <String>['gst', 'gstr3b']):

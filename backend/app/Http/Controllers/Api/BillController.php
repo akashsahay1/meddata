@@ -29,8 +29,9 @@ class BillController extends Controller
     ) {}
 
     /**
-     * GET /bills?from=Y-m-d&to=Y-m-d&status=&q=&party_id=&page=&per_page=
-     * Newest first. `summary` covers final bills in the date range / search.
+     * GET /bills?from=Y-m-d&to=Y-m-d&status=&q=&party_id=&due=&page=&per_page=
+     * Newest first. `summary` covers final bills in the date range / search,
+     * and what is still due on them.
      */
     public function index(Request $request): JsonResponse
     {
@@ -40,6 +41,8 @@ class BillController extends Controller
             'status' => ['nullable', Rule::in([Bill::STATUS_FINAL, Bill::STATUS_CANCELLED])],
             'q' => ['nullable', 'string', 'max:100'],
             'party_id' => ['nullable', 'uuid'],
+            // Only bills with money still to be paid.
+            'due' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
@@ -61,8 +64,11 @@ class BillController extends Controller
         $final = (clone $base)->where('status', Bill::STATUS_FINAL)
             ->selectRaw('COUNT(*) AS bills, COALESCE(SUM(total_paise), 0) AS total')
             ->first();
+        $due = (clone $base)->due()->selectRaw('COUNT(*) AS bills, COALESCE(SUM('.Bill::DUE_SQL.'), 0) AS total')->first();
         $page = (clone $base)
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
+            ->when($data['due'] ?? false, fn ($q) => $q->due())
+            ->withPaid()
             ->withCount('items')
             ->orderByDesc('created_at')
             ->orderByDesc('seq')
@@ -80,18 +86,23 @@ class BillController extends Controller
                 'count' => (int) $final->bills,
                 'total_paise' => (int) $final->total,
                 'cancelled_count' => (clone $base)->where('status', Bill::STATUS_CANCELLED)->count(),
+                // Credit bills (in the range / search) with money still to be paid.
+                'due_count' => (int) $due->bills,
+                'due_paise' => (int) $due->total,
             ],
         ]);
     }
 
     /**
      * POST /bills
-     * {id, device_id?, payment_mode, party_id? (required for credit), customer_name?, customer_phone?,
+     * {id, device_id?, payment_mode, received_paise?, party_id? (required for credit or part paid),
+     *  customer_name?, customer_phone?,
      *  customer_gstin?, customer_state_code?, customer_address?,
      *  lines: [{batch_id, qty_units, mrp_paise, batch_version, discount_bp?}]}
      *
      * 201 {bill, batches} | 200 same, for a retry of a created bill
-     * 409 price_changed | 422 insufficient_stock / batch_unavailable / party_not_found / validation
+     * 409 price_changed | 422 insufficient_stock / batch_unavailable / party_not_found /
+     * received_exceeds_total / party_required / validation
      */
     public function store(Request $request): JsonResponse
     {
@@ -119,6 +130,10 @@ class BillController extends Controller
             'lines.*.mrp_paise' => ['required', 'integer', 'min:0'],
             'lines.*.batch_version' => ['required', 'integer', 'min:0'],
             'lines.*.discount_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            // Money taken at the counter; less than the total makes it a credit
+            // bill for the rest. Default: all of it (none for credit).
+            'received_paise' => ['nullable', 'integer', 'min:0', 'max:100000000000',
+                Rule::prohibitedIf(fn () => $request->input('payment_mode') === 'credit' && (int) $request->input('received_paise') > 0)],
         ]);
         $data['id'] = strtolower($data['id']);
 

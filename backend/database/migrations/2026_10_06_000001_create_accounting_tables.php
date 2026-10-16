@@ -132,6 +132,9 @@ return new class extends Migration
             $table->string('notes', 500)->nullable();
             $table->uuid('bill_id')->nullable();
             $table->uuid('purchase_id')->nullable();
+            // Money taken at the counter when a bill was part paid: made by
+            // BillingService with the bill, cancelled with it.
+            $table->boolean('at_billing')->default(false);
             $table->string('status', 12)->default('active'); // active|cancelled
             $table->timestamp('cancelled_at')->nullable();
             $table->string('cancel_reason')->nullable();

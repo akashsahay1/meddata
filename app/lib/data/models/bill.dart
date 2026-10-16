@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../../core/inr.dart';
 import '../../domain/gst.dart';
 import '../../domain/pack_size.dart';
 import 'accounting.dart' show NoteRef;
@@ -248,7 +249,14 @@ class Bill {
     required this.items,
     required this.taxSummary,
     this.returns = const <NoteRef>[],
-  });
+    int? paidPaise,
+    int? balancePaise,
+    int? receivedPaise,
+    this.receivedMode,
+  })  : paidPaise = paidPaise ?? (paymentMode == PaymentMode.credit ? 0 : totalPaise),
+        balancePaise = balancePaise ??
+            (paymentMode == PaymentMode.credit && status != 'cancelled' ? totalPaise : 0),
+        receivedPaise = receivedPaise ?? (paymentMode == PaymentMode.credit ? 0 : totalPaise);
 
   factory Bill.fromJson(Map<String, dynamic> j) => Bill(
         id: _str(j['id']) ?? '',
@@ -289,6 +297,10 @@ class Bill {
           for (final Object? r in (j['returns'] as List<dynamic>?) ?? <dynamic>[])
             NoteRef.fromJson(Map<String, dynamic>.from(r! as Map)),
         ],
+        paidPaise: (j['paid_paise'] as num?)?.toInt(),
+        balancePaise: (j['balance_paise'] as num?)?.toInt(),
+        receivedPaise: (j['received_paise'] as num?)?.toInt(),
+        receivedMode: j['received_mode'] == null ? null : PaymentMode.from(_str(j['received_mode'])),
       );
 
   final String id;
@@ -324,7 +336,37 @@ class Bill {
   /// Credit notes against this bill (when loaded on its own).
   final List<NoteRef> returns;
 
+  /// Money received for the bill so far (at the counter and later).
+  final int paidPaise;
+
+  /// Still to be paid (only a credit bill has one).
+  final int balancePaise;
+
+  /// Taken at the counter when the bill was made, and how ([receivedMode]
+  /// is null when nothing was).
+  final int receivedPaise;
+  final PaymentMode? receivedMode;
+
   bool get isCancelled => status == 'cancelled';
+  bool get hasBalance => !isCancelled && balancePaise > 0;
+
+  /// How it was paid, for the invoice: "UPI", "Part paid", "Credit" (nothing
+  /// paid yet) or "Paid" (a credit bill settled since).
+  String get paymentLabel {
+    if (paymentMode != PaymentMode.credit) return paymentMode.label;
+    if (isCancelled) return paymentMode.label;
+    if (!hasBalance) return 'Paid';
+    return paidPaise > 0 ? 'Part paid' : 'Credit';
+  }
+
+  /// "Paid" and "Balance due" lines for an invoice with money still due.
+  List<(String, String)> get balanceLines => hasBalance
+      ? <(String, String)>[('Paid', Inr.format(paidPaise)), ('Balance due', Inr.format(balancePaise))]
+      : const <(String, String)>[];
+
+  /// "Part paid · ₹124.00 due" / "Credit - to be paid" / "Paid · UPI".
+  String get paymentStatus => paymentStatusOf(
+      cancelled: isCancelled, mode: paymentMode, paid: paidPaise, balance: balancePaise);
 
   /// Some units can still be returned.
   bool get canReturn => !isCancelled && items.any((BillItem i) => i.returnableQty > 0);
@@ -349,6 +391,8 @@ class BillSummary {
     this.customerPhone,
     required this.totalPaise,
     required this.itemsCount,
+    this.paidPaise = 0,
+    this.balancePaise = 0,
   });
 
   factory BillSummary.fromJson(Map<String, dynamic> j) => BillSummary(
@@ -362,6 +406,8 @@ class BillSummary {
         customerPhone: _str(j['customer_phone']),
         totalPaise: _int(j['total_paise']),
         itemsCount: _int(j['items_count']),
+        paidPaise: _int(j['paid_paise']),
+        balancePaise: _int(j['balance_paise']),
       );
 
   final String id;
@@ -374,9 +420,23 @@ class BillSummary {
   final String? customerPhone;
   final int totalPaise;
   final int itemsCount;
+  final int paidPaise;
+  final int balancePaise;
 
   bool get isCancelled => status == 'cancelled';
+  bool get hasBalance => !isCancelled && balancePaise > 0;
 }
+
+/// How a bill stands: cancelled, paid, part paid or all on credit.
+String paymentStatusOf(
+    {required bool cancelled, required PaymentMode mode, required int paid, required int balance}) {
+  if (cancelled) return 'Cancelled';
+  if (balance > 0) return paid > 0 ? 'Part paid · ${_rupees(balance)} due' : 'Credit - to be paid';
+  if (mode == PaymentMode.credit) return 'Paid';
+  return 'Paid · ${mode.label}';
+}
+
+String _rupees(int paise) => Inr.format(paise);
 
 /// A page of bills plus totals for the whole date range.
 class BillPage {
@@ -388,6 +448,8 @@ class BillPage {
     required this.finalCount,
     required this.finalTotalPaise,
     required this.cancelledCount,
+    this.dueCount = 0,
+    this.duePaise = 0,
   });
 
   factory BillPage.fromJson(Map<String, dynamic> j) {
@@ -406,6 +468,8 @@ class BillPage {
       finalCount: _int(sum['count']),
       finalTotalPaise: _int(sum['total_paise']),
       cancelledCount: _int(sum['cancelled_count']),
+      dueCount: _int(sum['due_count']),
+      duePaise: _int(sum['due_paise']),
     );
   }
 
@@ -418,6 +482,10 @@ class BillPage {
   final int finalCount;
   final int finalTotalPaise;
   final int cancelledCount;
+
+  /// Credit bills in the range with money still to be paid, and how much.
+  final int dueCount;
+  final int duePaise;
 
   bool get hasMore => currentPage < lastPage;
 }

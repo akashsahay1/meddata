@@ -30,6 +30,7 @@ class PartyPayment extends Model
     {
         return [
             'amount_paise' => 'integer',
+            'at_billing' => 'boolean',
             'cancelled_at' => 'datetime',
         ];
     }
@@ -57,6 +58,7 @@ class PartyPayment extends Model
             'notes' => $this->notes,
             'bill_id' => $this->bill_id,
             'purchase_id' => $this->purchase_id,
+            'at_billing' => (bool) $this->at_billing,
             'status' => $this->status,
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'cancel_reason' => $this->cancel_reason,

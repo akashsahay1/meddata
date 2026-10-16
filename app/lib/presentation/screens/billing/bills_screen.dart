@@ -17,7 +17,8 @@ import 'new_bill_screen.dart';
 import '../../widgets/adaptive_layout.dart';
 import '../../widgets/desktop_kit.dart';
 
-enum _Range { today, yesterday, week, month, custom }
+/// [pending]: every bill with money still to be paid, whatever its date.
+enum _Range { today, yesterday, week, month, custom, pending }
 
 /// The Bills tab: bills of a day or date range from the server (newest
 /// first) with their total, a search, and "New bill". Opening a bill gives
@@ -79,7 +80,7 @@ class _BillsScreenState extends State<BillsScreen> {
           start: today.subtract(const Duration(days: 1)), end: today.subtract(const Duration(days: 1))),
       _Range.week => DateTimeRange(start: today.subtract(const Duration(days: 6)), end: today),
       _Range.month => DateTimeRange(start: DateTime(today.year, today.month), end: today),
-      _Range.custom => _custom ?? DateTimeRange(start: today, end: today),
+      _Range.custom || _Range.pending => _custom ?? DateTimeRange(start: today, end: today),
     };
   }
 
@@ -94,8 +95,13 @@ class _BillsScreenState extends State<BillsScreen> {
       if (page == 1) _failure = null;
     });
     final DateTimeRange d = _dates();
-    final ApiOutcome<BillPage> r =
-        await _api.list(token, from: d.start, to: d.end, query: _search.text, page: page);
+    final bool pending = _range == _Range.pending;
+    final ApiOutcome<BillPage> r = await _api.list(token,
+        from: pending ? null : d.start,
+        to: pending ? null : d.end,
+        due: pending,
+        query: _search.text,
+        page: page);
     if (!mounted || request != _request) return;
     setState(() {
       _loading = false;
@@ -158,6 +164,7 @@ class _BillsScreenState extends State<BillsScreen> {
   }
 
   String _rangeLabel() {
+    if (_range == _Range.pending) return 'All bills with money due';
     final DateTimeRange d = _dates();
     final DateFormat f = DateFormat('dd MMM');
     return d.start == d.end ? DateFormat('dd MMM yyyy').format(d.start) : '${f.format(d.start)} - ${f.format(d.end)}';
@@ -201,6 +208,13 @@ class _BillsScreenState extends State<BillsScreen> {
             icon: Icons.date_range,
             selected: _range == _Range.custom,
             onTap: _pickDates,
+          ),
+          const SizedBox(width: 8),
+          PillChoice(
+            label: 'Pending',
+            icon: Icons.hourglass_bottom,
+            selected: _range == _Range.pending,
+            onTap: () => _setRange(_Range.pending),
           ),
         ],
       );
@@ -260,7 +274,7 @@ class _BillsScreenState extends State<BillsScreen> {
                     child: StatCard(
                       label: 'Sales',
                       value: p == null ? '-' : Inr.format(p.finalTotalPaise),
-                      sub: _rangeLabel(),
+                      sub: _range == _Range.pending ? 'all dates' : _rangeLabel(),
                       subColor: AppColors.statusGreen,
                     ),
                   ),
@@ -277,6 +291,15 @@ class _BillsScreenState extends State<BillsScreen> {
                     child: StatCard(
                       label: 'Cancelled',
                       value: p == null ? '-' : '${p.cancelledCount}',
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatCard(
+                      label: 'Balance due',
+                      value: p == null ? '-' : Inr.format(p.duePaise),
+                      sub: p == null ? null : _dueSub(p),
+                      subColor: p != null && p.dueCount > 0 ? AppColors.statusRed : AppColors.muted,
                     ),
                   ),
                 ],
@@ -394,6 +417,14 @@ class _BillsScreenState extends State<BillsScreen> {
 
   Widget _summary() {
     final BillPage? p = _page;
+    if (_range == _Range.pending) {
+      return StatCard(
+        label: 'Balance due',
+        value: p == null ? '-' : Inr.format(p.duePaise),
+        sub: p == null ? null : _dueSub(p),
+        subColor: AppColors.statusRed,
+      );
+    }
     return Row(
       children: <Widget>[
         Expanded(
@@ -407,9 +438,22 @@ class _BillsScreenState extends State<BillsScreen> {
             subColor: AppColors.statusGreen,
           ),
         ),
+        if (p != null && p.dueCount > 0) ...<Widget>[
+          const SizedBox(width: 10),
+          Expanded(
+            child: StatCard(
+              label: 'Balance due',
+              value: Inr.format(p.duePaise),
+              sub: _dueSub(p),
+              subColor: AppColors.statusRed,
+            ),
+          ),
+        ],
       ],
     );
   }
+
+  String _dueSub(BillPage p) => '${p.dueCount} ${p.dueCount == 1 ? 'bill' : 'bills'} to be paid';
 
   Widget _empty() {
     return const Padding(
@@ -443,7 +487,8 @@ class _BillTile extends StatelessWidget {
 
   static Widget _payment(BillSummary bill) {
     if (bill.isCancelled) return StatusPill.danger('Cancelled');
-    if (bill.paymentMode == PaymentMode.credit) return StatusPill.low('Credit');
+    if (bill.hasBalance) return StatusPill.low('Due ${Inr.format(bill.balancePaise)}');
+    if (bill.paymentMode == PaymentMode.credit) return StatusPill.inStock('Paid');
     return Text(bill.paymentMode.label,
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.muted));
   }

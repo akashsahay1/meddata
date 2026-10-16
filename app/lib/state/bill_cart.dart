@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../core/inr.dart';
 import '../data/models/accounting.dart';
 import '../data/models/bill.dart';
 import '../domain/fefo.dart';
@@ -90,6 +91,20 @@ class BillCart extends ChangeNotifier {
   /// Place of supply chosen for the customer (null = from GSTIN / shop).
   String? customerStateCode;
   PaymentMode paymentMode = PaymentMode.cash;
+
+  /// Money taken at the counter as typed; null = the whole total. Less
+  /// than the total puts the rest on the customer's account.
+  int? receivedPaise;
+
+  /// What is taken now: nothing for Credit, else [receivedPaise] or all.
+  int get received =>
+      paymentMode == PaymentMode.credit ? 0 : (receivedPaise ?? totals.totalPaise);
+
+  /// What goes on the customer's account.
+  int get balance {
+    final int left = totals.totalPaise - received;
+    return left < 0 ? 0 : left;
+  }
 
   DateTime get today => _clock();
   bool get isEmpty => items.isEmpty;
@@ -254,8 +269,14 @@ class BillCart extends ChangeNotifier {
     if (phone.isNotEmpty && !RegExp(r'^[0-9+\-\s()]{6,20}$').hasMatch(phone)) {
       return "The customer's phone number is not valid.";
     }
+    if (received > totals.totalPaise) {
+      return 'The amount received is more than the bill total.';
+    }
     if (paymentMode == PaymentMode.credit && party == null) {
       return "Choose the customer's account for a credit bill.";
+    }
+    if (balance > 0 && party == null) {
+      return "Choose the customer's account for the ${Inr.format(balance)} still to pay.";
     }
     return null;
   }
@@ -267,6 +288,7 @@ class BillCart extends ChangeNotifier {
       'id': _billId,
       'device_id': deviceId,
       'payment_mode': paymentMode.name,
+      if (paymentMode != PaymentMode.credit) 'received_paise': received,
       'party_id': party?.id,
       'customer_name': opt(customerName),
       'customer_phone': opt(customerPhone),
@@ -345,6 +367,7 @@ class BillCart extends ChangeNotifier {
     party = null;
     customerStateCode = null;
     paymentMode = PaymentMode.cash;
+    receivedPaise = null;
     _billId = _uuid.v4();
     notifyListeners();
   }

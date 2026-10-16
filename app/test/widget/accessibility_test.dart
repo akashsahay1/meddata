@@ -164,12 +164,23 @@ FakeBackend _billingServer() {
           'items_count': 12,
           'total_paise': 1234567,
         },
+        <String, Object?>{
+          ...bill,
+          'id': 'b3',
+          'invoice_no': 'MED/26-27/000040',
+          'payment_mode': 'credit',
+          'items_count': 1,
+          'paid_paise': 10000,
+          'balance_paise': 26400,
+        },
       ],
       'meta': <String, Object?>{'current_page': 1, 'last_page': 1, 'total': 2},
       'summary': <String, Object?>{
         'count': 1,
         'total_paise': 36400,
         'cancelled_count': 1,
+        'due_count': 1,
+        'due_paise': 26400,
       },
     },
     '/bills/${bill['id']}': <String, Object?>{'bill': bill},
@@ -279,6 +290,15 @@ final List<_Screen> _newScreens = <_Screen>[
   _Screen('Bill detail',
       (TestApp app) => BillDetailScreen(
           bill: Bill.fromJson(sampleBill()), justCreated: true, api: _billing(app)),
+      signedIn: true),
+  _Screen('Bill detail part paid',
+      (TestApp app) => BillDetailScreen(
+          bill: Bill.fromJson(sampleBill()
+            ..['payment_mode'] = 'credit'
+            ..['party_id'] = 'p-1'
+            ..['paid_paise'] = 10000
+            ..['balance_paise'] = 26400),
+          api: _billing(app)),
       signedIn: true),
   _Screen('Bill detail cancelled',
       (TestApp app) => BillDetailScreen(

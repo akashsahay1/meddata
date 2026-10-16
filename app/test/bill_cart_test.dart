@@ -165,6 +165,34 @@ void main() {
     expect(c.requestBody()['party_id'], isNull);
   });
 
+  test('amount received: all by default, part paid puts the rest on the account', () async {
+    final BillCart c = cart();
+    await c.addProduct('dolo', qty: 2); // 6000
+    expect((c.received, c.balance), (6000, 0));
+    expect(c.requestBody()['received_paise'], 6000);
+
+    c.update(() => c.receivedPaise = 2500);
+    expect((c.received, c.balance), (2500, 3500));
+    expect(c.problem(), "Choose the customer's account for the ₹35.00 still to pay.");
+    c.setParty(const Party(id: 'p-1', type: PartyType.customer, name: 'Alok'));
+    expect(c.problem(), isNull);
+    expect(c.requestBody(), allOf(containsPair('payment_mode', 'cash'), containsPair('received_paise', 2500)));
+
+    c.update(() => c.receivedPaise = 6001);
+    expect(c.problem(), 'The amount received is more than the bill total.');
+
+    // Credit: nothing taken now, no amount sent.
+    c.update(() {
+      c.receivedPaise = 2500;
+      c.paymentMode = PaymentMode.credit;
+    });
+    expect((c.received, c.balance), (0, 6000));
+    expect(c.requestBody().containsKey('received_paise'), isFalse);
+
+    c.reset();
+    expect(c.receivedPaise, isNull);
+  });
+
   test('server answers: new prices, less stock, unsellable batches', () async {
     final BillCart c = cart();
     await c.addProduct('dolo', qty: 5);

@@ -179,8 +179,8 @@ Every device in a shop shares inventory through the server. The sync engine (60s
 | POST | `/payment/verify` | Verify Razorpay payment |
 | POST | `/backup` | Upload backup |
 | GET | `/backup/latest` | Download latest backup |
-| GET | `/bills` | Bills by date range/search/status, paginated, with range total |
-| POST | `/bills` | Create bill (201; 200 + `replayed` on retry; 409 price changed; 422 stock/batch) |
+| GET | `/bills` | Bills by date range/search/status (`due=1`: money still due), paginated, with range total and balance due |
+| POST | `/bills` | Create bill (201; 200 + `replayed` on retry; 409 price changed; 422 stock/batch, `received_exceeds_total`, `party_required`) |
 | GET | `/bills/{id}` | Bill with items + GST summary (other shop → 404) |
 | POST | `/bills/{id}/cancel` | Cancel bill: stock back, number stays used |
 | GET/POST | `/parties` | List (type, search, balances) / create (retry-safe uuid; 422 bad/duplicate GSTIN) |
@@ -413,6 +413,9 @@ cd app && flutter test test/integration/
 - [x] **Save PDF** on a bill (A4 or 80 mm): a PC asks where with the Save dialog and writes the file; Android opens the system Save dialog (Downloads, Drive, ...) through a small `medikabiz/files` channel in `MainActivity` (no storage permission). The snackbar says where it went
 - [x] The WhatsApp / share text names the customer after the invoice line ("Customer: Alok (9650645839)", phone when there is one); walk-in bills have no customer line
 - [x] Shop & invoice details gain optional **Email**, **FSSAI licence no.** (14 digits) and the **registered pharmacist** (name, qualification, registration no., registration date picked from a calendar, shown dd MMM yyyy). Server: `shops` columns + `ShopDetails` rules (email validated, date `Y-m-d` not in the future), copied into each bill's `seller` snapshot; Filament shop view and "Edit invoice details" have them. The A4 invoice and 80 mm receipt print each one under the D.L. No. only when filled
+- [x] **Part payment at billing**: New bill has "Amount received" (empty = paid in full). Less than the total makes it a credit bill for the rest: it needs the customer's account, and the part taken is recorded with the bill (same transaction) as a payment in against it (`party_payments.at_billing`), so the existing ledger does the rest. `POST /bills` takes `received_paise` (422 `received_exceeds_total`, `party_required`; Credit = nothing received). Bills carry `paid_paise` / `balance_paise` (list via correlated sub-queries, no query per bill) and `received_paise` / `received_mode`; `GET /bills?due=1` lists bills with money due; the summary has `due_count` / `due_paise`
+- [x] Bills list: "Due ₹X" pill, a "Balance due" card and a **Pending** chip (all bills with money due, any date). Bill detail: "Part paid · ₹X due" / "Credit - to be paid" / "Paid", Paid and Balance due under the total, and **Mark as paid** (button and ⋮ menu) opening the payment screen for that bill with the balance filled in (can be changed for a part payment). The invoice PDF and WhatsApp text show Paid / Balance due instead of "Paid by: Credit"
+- [x] Cancelling a part-paid bill also cancels the payment taken at the counter; it is still refused while a later collection against it is active (`has_payments`)
 
 ### Remaining from original task list
 
@@ -453,6 +456,7 @@ cd app && flutter test test/integration/
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
 | Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
 | Unit change with stock | Ask, then convert every batch ×/÷ pack size (owner's decision, 9 Oct); refused when not whole strips. Prices are per strip either way, so they stay |
+| Part payment at billing | A bill not paid in full is stored as `payment_mode = credit` (on the customer's account); `cash`/`upi`/`card` always mean paid in full at the counter. The money taken at the counter is a `party_payments` row against the bill (`at_billing = true`, mode = how it was paid, reference = invoice no.), so balances, open documents, ledgers and "Mark as paid" all use the one existing ledger — no second balance is stored. Cancelling the bill cancels that row with it; later collections must be cancelled first |
 | Saving files on Android | System Save dialog (`ACTION_CREATE_DOCUMENT`, Storage Access Framework) via the app's own `medikabiz/files` channel: works on every Android version without storage permissions and needs no extra package |
 | Orange buttons | White text on `AppColors.orangeButton` (#D84000, 4.5:1, same hue as the brand orange); hover/press darken it. Brand #FF6B2C only where it is not behind text (owner's decision, 16 Oct) |
 | Mouse cursor | The hand on everything clickable, the arrow when disabled (owner, 16 Oct). Flutter now defaults buttons/ink to the arrow on desktop, so the theme sets the cursor for buttons, FAB, menus, tabs, switches; each `InkWell` / dropdown passes `WidgetStateMouseCursor.clickable`; `TapTarget` and bare `GestureDetector`s add a `MouseRegion` |

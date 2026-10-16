@@ -217,7 +217,7 @@ class InvoicePdf {
             pw.SizedBox(height: 6),
             kv('Invoice No.', bill.invoiceNo),
             kv('Date', _when(bill)),
-            kv('Payment', bill.paymentMode.label),
+            kv('Payment', bill.paymentLabel),
           ],
         ),
       ],
@@ -469,6 +469,7 @@ class InvoicePdf {
               border: pw.Border(top: pw.BorderSide(color: _ink, width: 0.8))),
           child: line('Total', Inr.format(bill.totalPaise), strong: true, fs: totalSize),
         ),
+        for (final (String k, String v) in bill.balanceLines) line(k, v, strong: k == 'Balance due'),
       ],
     );
   }
@@ -582,7 +583,7 @@ class InvoicePdf {
           rule(),
           pw.Text(Inr.words(bill.totalPaise), style: bold),
           pw.SizedBox(height: 2),
-          pw.Text('Paid by: ${bill.paymentMode.label}'),
+          if (!bill.hasBalance) pw.Text('Paid by: ${bill.paymentLabel}'),
           pw.SizedBox(height: 6),
           centered('Thank you. Get well soon!', style: small),
         ],

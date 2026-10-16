@@ -84,12 +84,21 @@ class BillingService
                     'error' => 'has_returns',
                 ]);
             }
-            if (PartyPayment::where('bill_id', $bill->id)->where('status', PartyPayment::STATUS_ACTIVE)->exists()) {
+            // Money collected later must be cancelled (or refunded) first; what
+            // was taken at the counter goes with the bill.
+            $payments = PartyPayment::where('bill_id', $bill->id)->where('status', PartyPayment::STATUS_ACTIVE);
+            if ((clone $payments)->where('at_billing', false)->exists()) {
                 throw new BillRefused(422, [
                     'message' => 'Cancel the payments received against this bill first.',
                     'error' => 'has_payments',
                 ]);
             }
+            $payments->update([
+                'status' => PartyPayment::STATUS_CANCELLED,
+                'cancelled_at' => now(),
+                'cancel_reason' => 'Bill cancelled',
+                'updated_at' => now(),
+            ]);
 
             foreach ($bill->items as $item) {
                 $this->move($shop, $user, $deviceId, $item->batch_id, $item->product_id,
@@ -187,6 +196,7 @@ class BillingService
             $calcs[] = $calc;
         }
         $totals = GstMath::totals($calcs);
+        [$mode, $received] = $this->payment($data, (int) $totals['total_paise'], $party);
 
         $now = now(self::TIMEZONE);
         $fy = GstMath::financialYear($now);
@@ -211,7 +221,7 @@ class BillingService
             'place_of_supply' => $placeOfSupply,
             'is_inter_state' => $interState,
             'seller' => $shop->invoiceDetails(),
-            'payment_mode' => $data['payment_mode'],
+            'payment_mode' => $mode,
             'status' => Bill::STATUS_FINAL,
         ] + $totals)->save();
 
@@ -220,9 +230,64 @@ class BillingService
             $this->move($shop, $user, $data['device_id'] ?? null, $item['batch_id'], $item['product_id'],
                 -$item['qty_units'], 'sale', $bill->id);
         }
+        if ($mode === 'credit' && $received > 0) {
+            $this->recordCounterPayment($bill, $user, $data['payment_mode'], $received, $data['device_id'] ?? null);
+        }
         $stock = $this->refreshBatches($shop, $batches->keys());
 
         return [$bill->load('items'), true, $stock];
+    }
+
+    /**
+     * The bill's stored payment mode and the money taken at the counter.
+     * Less than the total (or Credit) makes it a credit bill on the
+     * customer's account; the part received is an at-billing payment.
+     *
+     * @return array{0: string, 1: int}
+     */
+    private function payment(array $data, int $total, ?Party $party): array
+    {
+        $asked = $data['payment_mode'];
+        $received = $asked === 'credit' ? 0 : (int) ($data['received_paise'] ?? $total);
+        if ($received > $total) {
+            throw new BillRefused(422, [
+                'message' => 'The amount received is more than the bill total ('.number_format($total / 100, 2).').',
+                'error' => 'received_exceeds_total',
+                'total_paise' => $total,
+            ]);
+        }
+        if ($received === $total && $asked !== 'credit') {
+            return [$asked, $received];
+        }
+        if ($party === null) {
+            throw new BillRefused(422, [
+                'message' => 'Choose the customer’s account for the amount still to be paid.',
+                'error' => 'party_required',
+            ]);
+        }
+
+        return ['credit', $received];
+    }
+
+    private function recordCounterPayment(Bill $bill, User $user, string $mode, int $amount, ?string $deviceId): void
+    {
+        $payment = new PartyPayment;
+        $payment->id = (string) Str::uuid();
+        $payment->forceFill([
+            'shop_id' => $bill->shop_id,
+            'party_id' => $bill->party_id,
+            'user_id' => $user->id,
+            'device_id' => $deviceId,
+            'direction' => 'in',
+            'amount_paise' => $amount,
+            'mode' => $mode,
+            'reference' => $bill->invoice_no,
+            'payment_date' => $bill->billDate(),
+            'notes' => 'Paid at billing',
+            'bill_id' => $bill->id,
+            'at_billing' => true,
+            'status' => PartyPayment::STATUS_ACTIVE,
+        ])->save();
     }
 
     /** The bill's customer account: the shop's, not deleted, a customer. */

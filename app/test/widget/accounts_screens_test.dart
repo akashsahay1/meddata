@@ -323,6 +323,55 @@ void main() {
         <Object?>['credit', 'p-ramesh', 'Ramesh Kumar', '9876543210']);
   });
 
+  testWidgets('new bill: part paid sends the amount received; the balance needs an account',
+      (WidgetTester tester) async {
+    final AccountsApp app = await start(tester, height: 2000);
+    final DateTime now = DateTime.now();
+    await app.medicines.add(Medicine(
+      id: const Uuid().v4(),
+      name: 'Dolo 650',
+      unit: 'Strips',
+      batchNo: 'B1',
+      quantity: 10,
+      sellingPrice: 30,
+      expiryDate: DateTime(now.year + 2),
+      createdAt: now,
+      updatedAt: now,
+    ));
+    await app.open(
+        tester,
+        NewBillScreen(
+          api: BillingApi(app.server.client),
+          repository: BillingRepository(app.db),
+          accountingApi: app.server.api,
+        ));
+    await tester.enterText(find.byType(TextField).first, 'dolo');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dolo 650'));
+    await tester.pumpAndSettle();
+
+    final Finder received = find.widgetWithText(TextField, 'Amount received (₹)');
+    expect(find.text('Leave empty when paid in full'), findsOneWidget);
+    await tester.enterText(received, '10');
+    await tester.pumpAndSettle();
+    expect(find.text('₹20.00 goes on the customer’s account'), findsOneWidget);
+    await tester.tap(find.text('Create bill'));
+    await tester.pumpAndSettle();
+    expect(find.text("Choose the customer's account for the ₹20.00 still to pay."), findsOneWidget);
+    expect(app.server.paths, isNot(contains('POST /bills')));
+
+    await tester.tap(find.text('Choose customer account (needed for the balance)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ramesh Kumar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('UPI'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create bill'));
+    await tester.pumpAndSettle();
+    final Map<String, dynamic> sent = app.server.bodyOf('POST /bills')!;
+    expect(<Object?>[sent['payment_mode'], sent['received_paise'], sent['party_id']], <Object?>['upi', 1000, 'p-ramesh']);
+  });
+
   group('a supplier bill typed by hand', () {
     Future<void> fill(WidgetTester tester, String label, String text) async {
       final Finder f = find.descendant(

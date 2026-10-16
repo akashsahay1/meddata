@@ -22,6 +22,7 @@ import '../../../state/bill_cart.dart';
 import '../../../state/medicine_provider.dart';
 import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
+import '../accounts/accounts_widgets.dart' show parseRupees, rupeeInput;
 import '../accounts/party_picker.dart';
 import '../barcode_lookup.dart';
 import 'bill_detail_screen.dart';
@@ -61,6 +62,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _gstin = TextEditingController();
   final TextEditingController _address = TextEditingController();
+  final TextEditingController _received = TextEditingController();
 
   _Gate _gate = _Gate.checking;
   String? _gateMessage;
@@ -84,7 +86,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
       ..removeListener(_onCart)
       ..dispose();
     for (final TextEditingController c in <TextEditingController>[
-      _search, _name, _phone, _gstin, _address,
+      _search, _name, _phone, _gstin, _address, _received,
     ]) {
       c.dispose();
     }
@@ -100,7 +102,7 @@ class _NewBillScreenState extends State<NewBillScreen> {
   void _clearBill() {
     _cart.reset();
     for (final TextEditingController c in <TextEditingController>[
-      _search, _name, _phone, _gstin, _address,
+      _search, _name, _phone, _gstin, _address, _received,
     ]) {
       c.clear();
     }
@@ -241,6 +243,10 @@ class _NewBillScreenState extends State<NewBillScreen> {
   // ---- making the bill ----------------------------------------------------------
 
   Future<void> _submit() async {
+    if (_received.text.trim().isNotEmpty && parseRupees(_received.text) == null) {
+      _toast('Enter the amount received, or leave it empty if paid in full.');
+      return;
+    }
     final String? problem = _cart.problem();
     if (problem != null) {
       _toast(problem);
@@ -924,7 +930,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
   /// choose one; flagged when a credit bill still needs one.
   Widget _partyRow() {
     final Party? p = _cart.party;
-    final bool needed = _cart.paymentMode == PaymentMode.credit && p == null;
+    final bool needed = _cart.balance > 0 && p == null;
     if (p == null) {
       return Align(
         alignment: Alignment.centerLeft,
@@ -932,7 +938,11 @@ builder: (_) => ShopSettingsScreen(api: _api)));
           onPressed: _chooseParty,
           style: TextButton.styleFrom(foregroundColor: needed ? AppColors.statusRed : null),
           icon: const Icon(Icons.badge_outlined, size: 18),
-          label: Text(needed ? 'Choose customer account (needed for credit)' : 'Choose customer account'),
+          label: Text(!needed
+              ? 'Choose customer account'
+              : _cart.paymentMode == PaymentMode.credit
+                  ? 'Choose customer account (needed for credit)'
+                  : 'Choose customer account (needed for the balance)'),
         ),
       );
     }
@@ -973,6 +983,28 @@ builder: (_) => ShopSettingsScreen(api: _api)));
               ),
           ],
         ),
+        if (_cart.paymentMode != PaymentMode.credit) ...<Widget>[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _received,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: rupeeInput,
+            decoration: InputDecoration(
+              labelText: 'Amount received (₹)',
+              hintText: Inr.format(_cart.totals.totalPaise, symbol: false),
+              helperText: _cart.balance > 0
+                  ? '${Inr.format(_cart.balance)} goes on the customer’s account'
+                  : 'Leave empty when paid in full',
+              helperStyle: _cart.balance > 0
+                  ? const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.ink)
+                  : null,
+            ),
+            onChanged: (String v) {
+              _cart.update(() => _cart.receivedPaise = v.trim().isEmpty ? null : parseRupees(v));
+              if (_cart.balance > 0) setState(() => _showCustomer = true);
+            },
+          ),
+        ],
       ],
     );
   }

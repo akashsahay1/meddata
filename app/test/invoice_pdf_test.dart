@@ -114,6 +114,18 @@ void main() {
     }
   });
 
+  test('a part-paid bill prints Paid and Balance due on both layouts', () async {
+    final Bill part = Bill.fromJson(sampleBill()
+      ..['payment_mode'] = 'credit'
+      ..['paid_paise'] = 10000
+      ..['balance_paise'] = 26400);
+    for (final InvoiceLayout layout in InvoiceLayout.values) {
+      final int plain = (await InvoicePdf.build(Bill.fromJson(sampleBill()), layout: layout, fonts: fonts, compress: false)).length;
+      final int due = (await InvoicePdf.build(part, layout: layout, fonts: fonts, compress: false)).length;
+      expect(due, greaterThan(plain), reason: '$layout has the extra lines');
+    }
+  });
+
   test('Save PDF: a PC writes the invoice where the user picked', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);

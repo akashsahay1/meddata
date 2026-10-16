@@ -476,7 +476,7 @@ class BillingApiTest extends TestCase
 
         $today = $this->withToken($alice)->getJson('/api/v1/bills?from=2026-10-05&to=2026-10-05')->assertOk();
         $this->assertSame(['INV/26-27/000003', 'INV/26-27/000002'], array_column($today->json('data'), 'invoice_no'));
-        $this->assertSame(['count' => 1, 'total_paise' => 6000, 'cancelled_count' => 1], $today->json('summary'));
+        $this->assertSame(['count' => 1, 'total_paise' => 6000, 'cancelled_count' => 1, 'due_count' => 0, 'due_paise' => 0], $today->json('summary'));
         $this->assertSame(1, $today->json('data.1.items_count'));
 
         $all = $this->withToken($alice)->getJson('/api/v1/bills?per_page=2')->assertOk();

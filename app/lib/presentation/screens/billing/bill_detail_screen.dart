@@ -9,6 +9,7 @@ import '../../../data/models/accounting.dart' show NoteRef;
 import '../../../data/models/bill.dart';
 import '../../../domain/pack_size.dart';
 import '../../../data/repositories/billing_repository.dart';
+import '../../../services/accounting_api.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/billing_api.dart';
 import '../../../services/invoice_pdf.dart';
@@ -18,6 +19,7 @@ import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import '../accounts/note_detail_screen.dart';
+import '../accounts/payment_screen.dart';
 import '../accounts/return_screen.dart';
 import 'billing_widgets.dart';
 import '../../widgets/adaptive_layout.dart';
@@ -33,6 +35,7 @@ class BillDetailScreen extends StatefulWidget {
     this.justCreated = false,
     this.alreadySaved = false,
     this.api,
+    this.accountingApi,
   }) : assert(bill != null || billId != null);
 
   final Bill? bill;
@@ -44,6 +47,7 @@ class BillDetailScreen extends StatefulWidget {
   /// The server had already made this bill (a retried request).
   final bool alreadySaved;
   final BillingApi? api;
+  final AccountingApi? accountingApi;
 
   /// Popped by "New bill" after a bill was made: the counter screen stays.
   static const String newBill = 'new-bill';
@@ -166,6 +170,34 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     if (!ok && mounted) _toast('Could not open WhatsApp.');
   }
 
+  /// "Mark as paid": the payment screen for this bill, the amount still due
+  /// filled in (it can be changed for a part payment). Reloads the bill after.
+  Future<void> _markPaid() async {
+    final String? token = context.read<AuthService>().token;
+    final String? partyId = _bill!.partyId;
+    if (token == null || partyId == null) return;
+    final AccountingApi accounts = (widget.accountingApi ?? AccountingApi())
+      ..onUnauthorized = context.read<AuthService>().sessionRejected;
+    setState(() => _busy = true);
+    final ApiOutcome<PartyDetail> r = await accounts.party(token, partyId);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!r.isOk) {
+      _toast(r.isOffline ? 'No internet - try again when online.' : (r.message ?? 'Could not open the customer.'));
+      return;
+    }
+    final bool? saved = await Navigator.of(context).push<bool>(AdaptiveLayout.route<bool>(context,
+        builder: (_) => PaymentScreen(
+              party: r.value!.party,
+              openDocuments: r.value!.openDocuments,
+              documentId: _bill!.id,
+              api: accounts,
+            )));
+    if (!mounted) return;
+    if (saved == true) _toast('Payment recorded.');
+    await _load();
+  }
+
   /// A sale return (credit note) against this bill; reloads it after.
   Future<void> _returnItems() async {
     await Navigator.of(context)
@@ -242,10 +274,13 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
             PopupMenuButton<String>(
               tooltip: 'More actions',
               onSelected: (String v) {
+                if (v == 'paid') _markPaid();
                 if (v == 'cancel') _cancel();
               },
-              itemBuilder: (_) => const <PopupMenuEntry<String>>[
-                PopupMenuItem<String>(value: 'cancel', child: Text('Cancel bill')),
+              itemBuilder: (_) => <PopupMenuEntry<String>>[
+                if (bill.hasBalance && bill.partyId != null)
+                  const PopupMenuItem<String>(value: 'paid', child: Text('Mark as paid')),
+                const PopupMenuItem<String>(value: 'cancel', child: Text('Cancel bill')),
               ],
             ),
         ],
@@ -386,10 +421,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   children: <Widget>[
                     if (bill.isCancelled)
                       StatusPill.danger('Cancelled')
-                    else if (bill.paymentMode == PaymentMode.credit)
-                      StatusPill.low('Credit - to be paid')
+                    else if (bill.hasBalance)
+                      StatusPill.low(bill.paymentStatus)
                     else
-                      StatusPill.inStock('Paid · ${bill.paymentMode.label}'),
+                      StatusPill.inStock(bill.paymentStatus),
                     if (bill.isInterState) StatusPill.low('IGST'),
                   ],
                 ),
@@ -427,6 +462,8 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         _ActionButton(icon: Icons.download_outlined, label: 'Save PDF', onPressed: _busy ? null : _save),
         if (hasPhone)
           _ActionButton(icon: Icons.chat_outlined, label: 'WhatsApp customer', onPressed: _busy ? null : _whatsApp),
+        if (bill.hasBalance && bill.partyId != null)
+          _ActionButton(icon: Icons.payments_outlined, label: 'Mark as paid', onPressed: _busy ? null : _markPaid),
         if (bill.canReturn)
           _ActionButton(icon: Icons.assignment_return_outlined, label: 'Return items', onPressed: _busy ? null : _returnItems),
       ],
@@ -514,6 +551,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           if (bill.roundOffPaise != 0) AmountRow('Round off', signedInr(bill.roundOffPaise)),
           const Divider(height: 18),
           AmountRow('Total', Inr.format(bill.totalPaise), strong: true, big: true),
+          if (bill.paymentMode == PaymentMode.credit && !bill.isCancelled) ...<Widget>[
+            AmountRow('Paid', Inr.format(bill.paidPaise)),
+            AmountRow('Balance due', Inr.format(bill.balancePaise), strong: bill.balancePaise > 0),
+          ],
           const SizedBox(height: 6),
           Text(Inr.words(bill.totalPaise),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted)),
