@@ -1,6 +1,8 @@
 // On a PC window the main tabs use desktop layouts (full width, tables,
 // columns), not the phone's single column of cards; phones keep the cards.
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikabiz/presentation/screens/accounts/gst_reports_screen.dart';
 import 'package:medikabiz/presentation/screens/accounts/parties_screen.dart';
@@ -12,6 +14,7 @@ import 'package:medikabiz/presentation/screens/product_detail_screen.dart';
 import 'package:medikabiz/presentation/screens/reports_screen.dart';
 import 'package:medikabiz/presentation/widgets/desktop_kit.dart';
 import 'package:medikabiz/presentation/widgets/ui_kit.dart';
+import 'package:medikabiz/theme/app_theme.dart';
 import 'package:medikabiz/services/billing_api.dart';
 
 import '../billing_api_test.dart' show sampleBill;
@@ -64,6 +67,29 @@ void main() {
   double contentWidth(WidgetTester tester, Finder f) => tester.getRect(f.first).width;
 
   group('desktop window', () {
+    testWidgets('the rail shows the hand over its tabs; Add medicine is white on orange',
+        (WidgetTester tester) async {
+      await open(tester, fullHd);
+      final TestGesture mouse =
+          await tester.createGesture(kind: PointerDeviceKind.mouse, pointer: 1);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(
+          location: tester.getCenter(find
+              .descendant(of: find.byType(NavigationRail), matching: find.text('Bills'))));
+      await tester.pump();
+      expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1),
+          SystemMouseCursors.click);
+
+      final Finder add = find.widgetWithText(ElevatedButton, 'Add medicine');
+      final ButtonStyle style = tester.widget<ElevatedButton>(add).style ??
+          const ButtonStyle();
+      final ButtonStyle theme = Theme.of(tester.element(add)).elevatedButtonTheme.style!;
+      final Color? fg = (style.foregroundColor ?? theme.foregroundColor)!.resolve(<WidgetState>{});
+      final Color? bg = (style.backgroundColor ?? theme.backgroundColor)!.resolve(<WidgetState>{});
+      expect(fg, Colors.white);
+      expect(bg, AppColors.orangeButton);
+    });
+
     // Parties, Purchases, Reports and GST returns were only inside
     // Profile -> Accounts, where owners could not find them.
     for (final Size size in <Size>[fullHd, const Size(1000, 600)]) {
@@ -75,7 +101,7 @@ void main() {
         expect(
           <String>[
             for (final NavigationRailDestination d in rail.destinations)
-              (d.label as Text).data!,
+              ((d.label as MouseRegion).child! as Text).data!,
           ],
           <String>['Home', 'Inventory', 'Bills', 'Parties', 'Purchases',
               'Reports', 'GST returns', 'Alerts', 'Profile'],

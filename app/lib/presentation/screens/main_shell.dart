@@ -148,6 +148,15 @@ builder: (_) => const AddEditMedicineScreen()),
     );
   }
 
+  /// A rail tab with the hand cursor. NavigationRail has no cursor setting
+  /// and its tap area shows the arrow on desktop, so the icon and label carry
+  /// the cursor themselves.
+  static NavigationRailDestination _railItem(Widget icon, String label) =>
+      NavigationRailDestination(
+        icon: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
+        label: MouseRegion(cursor: SystemMouseCursors.click, child: Text(label)),
+      );
+
   @override
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.watch<MedicineProvider>();
@@ -207,10 +216,6 @@ builder: (_) => const AddEditMedicineScreen()),
                               icon: const Icon(Icons.add_rounded),
                               label: const Text('Add medicine'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.orange,
-                                // Ink, not white, on orange: 5.0:1 contrast
-                                // (white is 2.8).
-                                foregroundColor: AppColors.ink,
                                 minimumSize: const Size.fromHeight(46),
                               ),
                             ),
@@ -224,46 +229,22 @@ builder: (_) => const AddEditMedicineScreen()),
                       ),
               ),
               destinations: <NavigationRailDestination>[
-                const NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  label: Text('Home'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.grid_view_outlined),
-                  label: Text('Inventory'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.receipt_long_outlined),
-                  label: Text('Bills'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.people_outline),
-                  label: Text('Parties'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.local_shipping_outlined),
-                  label: Text('Purchases'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.insights_outlined),
-                  label: Text('Reports'),
-                ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.account_balance_outlined),
-                  label: Text('GST returns'),
-                ),
-                NavigationRailDestination(
-                  icon: Badge(
+                _railItem(const Icon(Icons.home_outlined), 'Home'),
+                _railItem(const Icon(Icons.grid_view_outlined), 'Inventory'),
+                _railItem(const Icon(Icons.receipt_long_outlined), 'Bills'),
+                _railItem(const Icon(Icons.people_outline), 'Parties'),
+                _railItem(const Icon(Icons.local_shipping_outlined), 'Purchases'),
+                _railItem(const Icon(Icons.insights_outlined), 'Reports'),
+                _railItem(const Icon(Icons.account_balance_outlined), 'GST returns'),
+                _railItem(
+                  Badge(
                     isLabelVisible: alertTotal > 0,
                     label: Text('$alertTotal'),
                     child: const Icon(Icons.notifications_none),
                   ),
-                  label: const Text('Alerts'),
+                  'Alerts',
                 ),
-                const NavigationRailDestination(
-                  icon: Icon(Icons.person_outline),
-                  label: Text('Profile'),
-                ),
+                _railItem(const Icon(Icons.person_outline), 'Profile'),
               ],
             ),
             const VerticalDivider(width: 1),
@@ -401,6 +382,8 @@ class _NavItem extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
+          child: MouseRegion(
+          cursor: SystemMouseCursors.click,
           child: ExcludeSemantics(
             // Fills the bar's height, so the whole slot is the touch area
             // (icon + label alone is under 48dp).
@@ -461,6 +444,7 @@ class _NavItem extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -485,11 +469,13 @@ class _CenterAddButton extends StatelessWidget {
               excludeFromSemantics: true,
               child: GestureDetector(
                 onTap: onTap,
+                child: MouseRegion(
+                cursor: SystemMouseCursors.click,
                 child: Container(
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: AppColors.orange,
+                    color: AppColors.orangeButton,
                     borderRadius: BorderRadius.circular(AppRadii.fab),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
@@ -506,6 +492,7 @@ class _CenterAddButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

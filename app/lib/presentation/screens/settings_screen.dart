@@ -429,6 +429,8 @@ builder: (_) => const ImportWizardScreen()),
       label: 'Change profile photo',
       child: GestureDetector(
         onTap: _avatarBusy ? null : () => _changeAvatar(avatarUrl != null),
+        child: MouseRegion(
+        cursor: _avatarBusy ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: SizedBox(
           width: 70,
           height: 70,
@@ -471,7 +473,7 @@ builder: (_) => const ImportWizardScreen()),
                   width: 26,
                   height: 26,
                   decoration: BoxDecoration(
-                    color: AppColors.orange,
+                    color: AppColors.orangeButton,
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.green, width: 2),
                   ),
@@ -482,6 +484,7 @@ builder: (_) => const ImportWizardScreen()),
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -779,6 +782,7 @@ builder: (_) => const ImportWizardScreen()),
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1151,6 +1155,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                   selected: i <= _rating,
                   label: '$i star${i == 1 ? '' : 's'}',
                   child: InkResponse(
+                    mouseCursor: WidgetStateMouseCursor.clickable,
                     radius: 24,
                     onTap: () => setState(() => _rating = i),
                     child: Padding(

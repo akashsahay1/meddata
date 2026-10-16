@@ -206,6 +206,7 @@ class _Header extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
+                    mouseCursor: WidgetStateMouseCursor.clickable,
                     onTap: onSearch,
                     borderRadius: BorderRadius.circular(14),
                     child: const Padding(
@@ -237,9 +238,10 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Material(
-                color: AppColors.orange,
+                color: AppColors.orangeButton,
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
                   onTap: onNewBill,
                   borderRadius: BorderRadius.circular(14),
                   child: const Padding(
@@ -247,11 +249,10 @@ class _Header extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        // Ink, not white, on orange: 5.0:1 contrast (white is 2.8).
                         Icon(
                           Icons.receipt_long,
                           size: 18,
-                          color: AppColors.ink,
+                          color: Colors.white,
                         ),
                         SizedBox(width: 8),
                         Text(
@@ -259,7 +260,7 @@ class _Header extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.ink,
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -294,6 +295,7 @@ class _AvatarButton extends StatelessWidget {
         color: AppColors.greenMid,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
           child: const SizedBox(
@@ -605,6 +607,7 @@ class _TrialBanner extends StatelessWidget {
       color: AppColors.statusAmberBg,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onUpgrade,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Container(
@@ -831,6 +834,7 @@ class _DesktopSearch extends StatelessWidget {
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.input),
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.input),
         child: Ink(
@@ -876,6 +880,7 @@ class _BusinessSection extends StatelessWidget {
             color: AppColors.card,
             borderRadius: BorderRadius.circular(AppRadii.card),
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => onOpen(screen),
               borderRadius: BorderRadius.circular(AppRadii.card),
               child: Container(
