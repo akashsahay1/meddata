@@ -39,6 +39,19 @@ class ShopInfolist
                         TextEntry::make('drug_license_no')
                             ->label('Drug licence no.')
                             ->placeholder('-'),
+                        TextEntry::make('pharmacist_name')
+                            ->label('Pharmacist')
+                            ->formatStateUsing(fn (string $state, $record): string => $state
+                                .($record->pharmacist_qualification ? ' ('.$record->pharmacist_qualification.')' : ''))
+                            ->placeholder('-'),
+                        TextEntry::make('pharmacist_reg_no')
+                            ->label('Pharmacist registration')
+                            ->formatStateUsing(fn (string $state, $record): string => $state
+                                .($record->pharmacist_reg_date ? ' dated '.$record->pharmacist_reg_date->format('d M Y') : ''))
+                            ->placeholder('-'),
+                        TextEntry::make('fssai_license_no')
+                            ->label('FSSAI licence no.')
+                            ->placeholder('-'),
                         TextEntry::make('invoice_prefix')
                             ->label('Invoice prefix')
                             ->placeholder('INV (default)'),

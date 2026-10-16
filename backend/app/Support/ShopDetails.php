@@ -21,6 +21,11 @@ final class ShopDetails
             'gstin' => ['sometimes', 'nullable', 'string', new Gstin],
             'state_code' => ['sometimes', 'nullable', 'string', Rule::in(GstStates::codes())],
             'drug_license_no' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'pharmacist_name' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'pharmacist_reg_no' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'pharmacist_reg_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'pharmacist_qualification' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'fssai_license_no' => ['sometimes', 'nullable', 'string', 'regex:/^\d{14}$/'],
             'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             // Letters/digits only, at most 3: "ABC/26-27/000042" is the
@@ -30,15 +35,36 @@ final class ShopDetails
         ];
     }
 
+    /** Messages for the rules above that need plain wording. */
+    public static function messages(): array
+    {
+        return [
+            'fssai_license_no.regex' => 'The FSSAI licence number has 14 digits.',
+            'pharmacist_reg_date.date_format' => 'Enter the registration date as a date.',
+            'pharmacist_reg_date.before_or_equal' => 'The registration date can\'t be in the future.',
+        ];
+    }
+
     /**
      * Upper-case codes before validation; blanks become null; a state code
-     * given as a number (7) becomes the two-character code ("07").
+     * given as a number (7) becomes the two-character code ("07"); spaces in
+     * the FSSAI number are dropped.
      */
     public static function prepare(array $input): array
     {
         foreach (['gstin', 'invoice_prefix'] as $key) {
             if (array_key_exists($key, $input) && is_string($input[$key])) {
                 $value = strtoupper(trim($input[$key]));
+                $input[$key] = $value === '' ? null : $value;
+            }
+        }
+        if (array_key_exists('fssai_license_no', $input) && is_string($input['fssai_license_no'])) {
+            $value = preg_replace('/[\s-]+/', '', $input['fssai_license_no']) ?? '';
+            $input['fssai_license_no'] = $value === '' ? null : $value;
+        }
+        foreach (['pharmacist_name', 'pharmacist_reg_no', 'pharmacist_reg_date', 'pharmacist_qualification'] as $key) {
+            if (array_key_exists($key, $input) && is_string($input[$key])) {
+                $value = trim($input[$key]);
                 $input[$key] = $value === '' ? null : $value;
             }
         }

@@ -500,4 +500,43 @@ class BillingApiTest extends TestCase
             ->assertJsonPath('shop.state_code', '29')
             ->assertJsonPath('shop.invoice_prefix', null);
     }
+
+    public function test_pharmacist_and_fssai_details_are_saved_and_printed_on_new_bills(): void
+    {
+        $token = $this->token();
+        $this->shop($token);
+        $patch = fn (array $data) => $this->withToken($token)->patchJson('/api/v1/shops/current', $data);
+
+        $patch(['fssai_license_no' => '1234', 'pharmacist_reg_date' => '2026-10-06'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['fssai_license_no', 'pharmacist_reg_date'])
+            ->assertJsonPath('errors.fssai_license_no.0', 'The FSSAI licence number has 14 digits.');
+
+        $patch([
+            'pharmacist_name' => ' Ravi Kumar ',
+            'pharmacist_reg_no' => 'JH/PH/1234',
+            'pharmacist_reg_date' => '2019-04-15',
+            'pharmacist_qualification' => 'B.Pharm',
+            'fssai_license_no' => '1012 3456 7890 12',
+        ])->assertOk()
+            ->assertJsonPath('shop.pharmacist_name', 'Ravi Kumar')
+            ->assertJsonPath('shop.pharmacist_reg_date', '2019-04-15')
+            ->assertJsonPath('shop.fssai_license_no', '10123456789012');
+
+        $dolo = $this->stock($token);
+        $seller = $this->bill($token, [$this->line($dolo)])->assertCreated()->json('bill.seller');
+        $this->assertSame(
+            ['Ravi Kumar', 'JH/PH/1234', '2019-04-15', 'B.Pharm', '10123456789012'],
+            [$seller['pharmacist_name'], $seller['pharmacist_reg_no'], $seller['pharmacist_reg_date'],
+                $seller['pharmacist_qualification'], $seller['fssai_license_no']],
+        );
+
+        // All optional: clearing them prints nothing.
+        $patch(['pharmacist_name' => '', 'pharmacist_reg_no' => null, 'pharmacist_reg_date' => '',
+            'pharmacist_qualification' => '', 'fssai_license_no' => ''])
+            ->assertOk()
+            ->assertJsonPath('shop.pharmacist_name', null)
+            ->assertJsonPath('shop.pharmacist_reg_date', null)
+            ->assertJsonPath('shop.fssai_license_no', null);
+    }
 }

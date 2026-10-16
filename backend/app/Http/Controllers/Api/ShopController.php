@@ -28,13 +28,13 @@ class ShopController extends Controller
 
     /**
      * PATCH /shops/current — the details printed on invoices (legal name,
-     * GSTIN, state, address, phone, drug licence no., invoice prefix) and
-     * the GST rate for products that have none.
+     * GSTIN, state, address, phone, drug licence no., pharmacist and FSSAI
+     * licence, invoice prefix) and the GST rate for products that have none.
      */
     public function update(Request $request): JsonResponse
     {
         $request->replace(ShopDetails::prepare($request->all()));
-        $data = $request->validate(ShopDetails::rules());
+        $data = $request->validate(ShopDetails::rules(), ShopDetails::messages());
         $shop = $this->shops->forUser($request->user());
         $shop->fill(ShopDetails::merge($shop->only(array_keys(ShopDetails::rules())), $data))->save();
 

@@ -8,11 +8,13 @@ use App\Rules\Gstin;
 use App\Support\GstStates;
 use App\Support\ShopDetails;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ViewShop extends ViewRecord
@@ -22,7 +24,8 @@ class ViewShop extends ViewRecord
     /** Fields printed on the shop's invoices (same rules as PATCH /shops/current). */
     private const INVOICE_FIELDS = [
         'name', 'legal_name', 'gstin', 'state_code', 'address', 'phone',
-        'drug_license_no', 'invoice_prefix', 'default_gst_rate_bp',
+        'drug_license_no', 'pharmacist_name', 'pharmacist_reg_no', 'pharmacist_reg_date',
+        'pharmacist_qualification', 'fssai_license_no', 'invoice_prefix', 'default_gst_rate_bp',
     ];
 
     protected function getHeaderActions(): array
@@ -62,6 +65,23 @@ class ViewShop extends ViewRecord
                     TextInput::make('drug_license_no')
                         ->label('Drug licence no.')
                         ->maxLength(255),
+                    TextInput::make('pharmacist_name')
+                        ->label('Pharmacist name')
+                        ->maxLength(100),
+                    TextInput::make('pharmacist_reg_no')
+                        ->label('Pharmacist registration no.')
+                        ->maxLength(50),
+                    DatePicker::make('pharmacist_reg_date')
+                        ->label('Registration date')
+                        ->maxDate(now()),
+                    TextInput::make('pharmacist_qualification')
+                        ->label('Qualification')
+                        ->placeholder('e.g. B.Pharm, D.Pharm')
+                        ->maxLength(100),
+                    TextInput::make('fssai_license_no')
+                        ->label('FSSAI licence no.')
+                        ->rules(['nullable', 'regex:/^[\d\s-]{14,20}$/'])
+                        ->helperText('14 digits.'),
                     TextInput::make('invoice_prefix')
                         ->label('Invoice prefix')
                         ->helperText('Up to 3 letters/digits, e.g. MED -> MED/26-27/000001. Blank = INV.')
@@ -76,6 +96,7 @@ class ViewShop extends ViewRecord
                 ->action(function (array $data, Shop $record, Action $action): void {
                     $data = ShopDetails::prepare($data);
                     try {
+                        Validator::make($data, ShopDetails::rules(), ShopDetails::messages())->validate();
                         $changes = ShopDetails::merge($record->only(self::INVOICE_FIELDS), $data);
                     } catch (ValidationException $e) {
                         Notification::make()->danger()->title(collect($e->errors())->flatten()->first())->send();

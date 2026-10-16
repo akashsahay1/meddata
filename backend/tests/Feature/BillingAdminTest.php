@@ -97,6 +97,9 @@ class BillingAdminTest extends TestCase
                 'gstin' => '27AAPFU0939F1ZV',
                 'invoice_prefix' => 'MED',
                 'drug_license_no' => 'MH-20B-1',
+                'pharmacist_name' => 'Ravi Kumar',
+                'pharmacist_reg_date' => '2019-04-15',
+                'fssai_license_no' => '10123456789012',
                 'default_gst_rate_bp' => 1200,
             ])
             ->assertHasNoActionErrors();
@@ -104,6 +107,15 @@ class BillingAdminTest extends TestCase
         $shop->refresh();
         $this->assertSame(['Sahay Medicals Pvt Ltd', '27AAPFU0939F1ZV', '27', 'MED', 'MH-20B-1', 1200],
             [$shop->legal_name, $shop->gstin, $shop->state_code, $shop->invoice_prefix, $shop->drug_license_no, $shop->default_gst_rate_bp]);
+        $this->assertSame(['Ravi Kumar', '2019-04-15', '10123456789012'],
+            [$shop->pharmacist_name, $shop->pharmacist_reg_date->format('Y-m-d'), $shop->fssai_license_no]);
+        $this->assertSame('Ravi Kumar', $shop->invoiceDetails()['pharmacist_name']);
+
+        // The same rules as the app: an FSSAI number has 14 digits.
+        Livewire::test(ViewShop::class, ['record' => $shop->getRouteKey()])
+            ->callAction('editInvoiceDetails', data: ['fssai_license_no' => '1234 5678 9012 3456'])
+            ->assertNotified('The FSSAI licence number has 14 digits.');
+        $this->assertSame('10123456789012', $shop->refresh()->fssai_license_no);
 
         $this->get("/shops/{$shop->id}")
             ->assertOk()

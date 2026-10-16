@@ -23,6 +23,13 @@ return new class extends Migration
             $table->string('gstin', 15)->nullable();
             $table->string('state_code', 2)->nullable();
             $table->string('drug_license_no')->nullable();
+            // Optional, printed on invoices when set: the registered
+            // pharmacist and the FSSAI licence (14 digits).
+            $table->string('pharmacist_name', 100)->nullable();
+            $table->string('pharmacist_reg_no', 50)->nullable();
+            $table->date('pharmacist_reg_date')->nullable();
+            $table->string('pharmacist_qualification', 100)->nullable();
+            $table->string('fssai_license_no', 14)->nullable();
             $table->text('address')->nullable();
             $table->string('phone', 32)->nullable();
             // Up to 3 characters so PREFIX/26-27/000042 stays within the

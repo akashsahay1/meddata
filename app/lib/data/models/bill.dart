@@ -22,6 +22,9 @@ String? _str(Object? v) {
   return (s == null || s.isEmpty) ? null : s;
 }
 
+String _ymd(DateTime d) => '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 DateTime? _date(Object? v) {
   final String? s = _str(v);
   if (s == null) return null;
@@ -41,6 +44,11 @@ class SellerDetails {
     this.gstin,
     this.stateCode,
     this.drugLicenseNo,
+    this.pharmacistName,
+    this.pharmacistRegNo,
+    this.pharmacistRegDate,
+    this.pharmacistQualification,
+    this.fssaiLicenseNo,
   });
 
   factory SellerDetails.fromJson(Map<String, dynamic> j) => SellerDetails(
@@ -51,6 +59,11 @@ class SellerDetails {
         gstin: _str(j['gstin']),
         stateCode: _str(j['state_code']),
         drugLicenseNo: _str(j['drug_license_no']),
+        pharmacistName: _str(j['pharmacist_name']),
+        pharmacistRegNo: _str(j['pharmacist_reg_no']),
+        pharmacistRegDate: _date(j['pharmacist_reg_date']),
+        pharmacistQualification: _str(j['pharmacist_qualification']),
+        fssaiLicenseNo: _str(j['fssai_license_no']),
       );
 
   final String name;
@@ -61,8 +74,35 @@ class SellerDetails {
   final String? stateCode;
   final String? drugLicenseNo;
 
+  /// The registered pharmacist and the FSSAI licence: optional, printed on
+  /// the invoice when set.
+  final String? pharmacistName;
+  final String? pharmacistRegNo;
+  final DateTime? pharmacistRegDate;
+  final String? pharmacistQualification;
+  final String? fssaiLicenseNo;
+
   /// Name for the invoice header: the legal name when set.
   String get displayName => legalName ?? name;
+
+  /// The pharmacist's lines for the invoice, e.g. "Pharmacist: Ravi Kumar
+  /// (B.Pharm)" and "Reg. No.: JH/PH/1234 dated 15-04-2019"; empty when
+  /// none is set.
+  List<String> get pharmacistLines {
+    final String? name = pharmacistName;
+    final String? reg = pharmacistRegNo;
+    final DateTime? on = pharmacistRegDate;
+    final String? qualification = pharmacistQualification;
+    final String dated = on == null
+        ? ''
+        : '${on.day.toString().padLeft(2, '0')}-${on.month.toString().padLeft(2, '0')}-${on.year}';
+    return <String>[
+      if (name != null || qualification != null)
+        'Pharmacist: ${<String>[if (name != null) name, if (qualification != null) '($qualification)'].join(' ')}',
+      if (reg != null) 'Reg. No.: $reg${dated.isEmpty ? '' : ' dated $dated'}'
+      else if (dated.isNotEmpty) 'Registered on $dated',
+    ];
+  }
 }
 
 class BillItem {
@@ -390,6 +430,11 @@ class ShopProfile {
     this.gstin,
     this.stateCode,
     this.drugLicenseNo,
+    this.pharmacistName,
+    this.pharmacistRegNo,
+    this.pharmacistRegDate,
+    this.pharmacistQualification,
+    this.fssaiLicenseNo,
     this.address,
     this.phone,
     this.invoicePrefix,
@@ -402,6 +447,11 @@ class ShopProfile {
         gstin: _str(j['gstin']),
         stateCode: _str(j['state_code']),
         drugLicenseNo: _str(j['drug_license_no']),
+        pharmacistName: _str(j['pharmacist_name']),
+        pharmacistRegNo: _str(j['pharmacist_reg_no']),
+        pharmacistRegDate: _date(j['pharmacist_reg_date']),
+        pharmacistQualification: _str(j['pharmacist_qualification']),
+        fssaiLicenseNo: _str(j['fssai_license_no']),
         address: _str(j['address']),
         phone: _str(j['phone']),
         invoicePrefix: _str(j['invoice_prefix']),
@@ -413,6 +463,11 @@ class ShopProfile {
   final String? gstin;
   final String? stateCode;
   final String? drugLicenseNo;
+  final String? pharmacistName;
+  final String? pharmacistRegNo;
+  final DateTime? pharmacistRegDate;
+  final String? pharmacistQualification;
+  final String? fssaiLicenseNo;
   final String? address;
   final String? phone;
   final String? invoicePrefix;
@@ -430,6 +485,11 @@ class ShopProfile {
         'gstin': gstin,
         'state_code': stateCode,
         'drug_license_no': drugLicenseNo,
+        'pharmacist_name': pharmacistName,
+        'pharmacist_reg_no': pharmacistRegNo,
+        'pharmacist_reg_date': pharmacistRegDate == null ? null : _ymd(pharmacistRegDate!),
+        'pharmacist_qualification': pharmacistQualification,
+        'fssai_license_no': fssaiLicenseNo,
         'address': address,
         'phone': phone,
         'invoice_prefix': invoicePrefix,
