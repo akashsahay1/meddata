@@ -5,21 +5,27 @@ import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/adaptive_layout.dart';
+import '../widgets/desktop_kit.dart';
 import '../widgets/ui_kit.dart';
 import 'account_switch_dialog.dart';
+import 'accounts/gst_reports_screen.dart';
+import 'accounts/parties_screen.dart';
+import 'accounts/purchases_screen.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'billing/bills_screen.dart';
 import 'home_screen.dart';
 import 'inventory_screen.dart';
+import 'reports_screen.dart';
 import 'settings_screen.dart';
 import 'upgrade_screen.dart';
 
 /// Root tab shell: Home, Inventory, a center orange '+' that opens Add
 /// Medicine, Bills, Alerts (with a count badge) and Profile. Tab state is
 /// preserved with an [IndexedStack]. Phones have room for four tabs around
-/// the '+', so Profile is reached from the avatar on Home there; the desktop
-/// rail shows all five.
+/// the '+', so Profile is reached from the avatar on Home there (and Parties,
+/// Purchases, Reports and GST returns from Home's Business tiles); the
+/// desktop rail shows every tab.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -87,12 +93,42 @@ class _MainShellState extends State<MainShell> {
     if (choice != null) await sync.resolveLocalData(choice);
   }
 
+  // Tab indices, in rail order. The phone bar shows Home, Inventory, Bills
+  // and Alerts only.
   static const int _billsTab = 2;
+  static const int _alertsTab = 7;
+
+  /// Built only while showing, so each opens fresh (as it did as a page) and
+  /// none of them calls the server until the owner opens it.
+  Widget _accountsTab(int index, Widget screen) {
+    if (_index != index) return const SizedBox.shrink();
+    // Their app bar (no back arrow: nothing to go back to) styled like the
+    // other tabs' page header.
+    final ThemeData theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        appBarTheme: theme.appBarTheme.copyWith(
+          backgroundColor: AppColors.canvas,
+          toolbarHeight: 76,
+          titleSpacing: kDeskGutter,
+          titleTextStyle: theme.appBarTheme.titleTextStyle?.copyWith(
+            fontSize: 26,
+            letterSpacing: -0.4,
+          ),
+        ),
+      ),
+      child: screen,
+    );
+  }
 
   List<Widget> get _tabs => <Widget>[
     const HomeScreen(),
     const InventoryScreen(),
     BillsScreen(active: _index == _billsTab),
+    _accountsTab(3, const PartiesScreen()),
+    _accountsTab(4, const PurchasesScreen()),
+    _accountsTab(5, const ReportsScreen()),
+    _accountsTab(6, const GstReportsScreen()),
     const AlertsScreen(),
     const SettingsScreen(),
   ];
@@ -134,6 +170,8 @@ builder: (_) => const AddEditMedicineScreen()),
               labelType: extendedRail
                   ? NavigationRailLabelType.none
                   : NavigationRailLabelType.all,
+              // Nine tabs: scroll them on a short window.
+              scrollable: true,
               selectedIndex: _index,
               onDestinationSelected: (int i) => setState(() => _index = i),
               leading: Padding(
@@ -197,6 +235,22 @@ builder: (_) => const AddEditMedicineScreen()),
                 const NavigationRailDestination(
                   icon: Icon(Icons.receipt_long_outlined),
                   label: Text('Bills'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.people_outline),
+                  label: Text('Parties'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.local_shipping_outlined),
+                  label: Text('Purchases'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.insights_outlined),
+                  label: Text('Reports'),
+                ),
+                const NavigationRailDestination(
+                  icon: Icon(Icons.account_balance_outlined),
+                  label: Text('GST returns'),
                 ),
                 NavigationRailDestination(
                   icon: Badge(
@@ -309,9 +363,9 @@ class _BottomBar extends StatelessWidget {
             _NavItem(
               icon: Icons.notifications_none,
               label: 'Alerts',
-              selected: index == 3,
+              selected: index == _MainShellState._alertsTab,
               badgeCount: alertCount,
-              onTap: () => onSelect(3),
+              onTap: () => onSelect(_MainShellState._alertsTab),
             ),
           ],
         ),

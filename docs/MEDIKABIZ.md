@@ -406,6 +406,7 @@ cd app && flutter test test/integration/
 - [x] Invoice scan on Windows: a photo chosen as a file is shrunk in the app (longest side 2576 px, JPEG q90, `services/image_downscale.dart`) before upload, as the phone picker already did; a failed scan always shows the server's reason (the offline notice replaced it whenever sync thought it was offline, so the screen just went back to "Choose a photo or PDF")
 - [x] Profile photo on Windows: the picker there ignores the 512 px / quality hints and allows BMP/GIF/TIFF, so the full original went up and the server refused it. `AuthService.uploadAvatar` now always shrinks the picture to 512 px and re-encodes it as JPEG (q85) before uploading
 - [x] Desktop accessibility: the rail's "Add medicine" uses ink on orange (white was 2.8:1); the version line on Profile is a 48 px target; the five tabs are checked for targets, labels and contrast at 1440 px and for overflow at 1000×640 with 1.3× text
+- [x] Parties, Purchases, Reports and GST returns were only under Profile → Accounts, where owners could not find them. The desktop rail now has them as tabs (Home, Inventory, Bills, Parties, Purchases, Reports, GST returns, Alerts, Profile; the rail scrolls on short windows), with no back arrow and a page-sized title; each loads fresh when opened. Phones keep the 4-tab bar and get a "Business" section on Home with four tiles opening the same screens. Still to do: drop Profile → Accounts on desktop now the rail has them
 
 ### Bill follow-ups (16 Oct 2026)
 

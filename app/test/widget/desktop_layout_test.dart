@@ -2,9 +2,14 @@
 // columns), not the phone's single column of cards; phones keep the cards.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:medikabiz/presentation/screens/accounts/gst_reports_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/parties_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/purchases_screen.dart';
+import 'package:medikabiz/presentation/screens/alerts_screen.dart';
 import 'package:medikabiz/presentation/screens/billing/bills_screen.dart';
 import 'package:medikabiz/presentation/screens/main_shell.dart';
 import 'package:medikabiz/presentation/screens/product_detail_screen.dart';
+import 'package:medikabiz/presentation/screens/reports_screen.dart';
 import 'package:medikabiz/presentation/widgets/desktop_kit.dart';
 import 'package:medikabiz/presentation/widgets/ui_kit.dart';
 import 'package:medikabiz/services/billing_api.dart';
@@ -59,6 +64,48 @@ void main() {
   double contentWidth(WidgetTester tester, Finder f) => tester.getRect(f.first).width;
 
   group('desktop window', () {
+    // Parties, Purchases, Reports and GST returns were only inside
+    // Profile -> Accounts, where owners could not find them.
+    for (final Size size in <Size>[fullHd, const Size(1000, 600)]) {
+      testWidgets('the rail opens every main screen as a tab at $size',
+          (WidgetTester tester) async {
+        await open(tester, size);
+        final NavigationRail rail =
+            tester.widget<NavigationRail>(find.byType(NavigationRail));
+        expect(
+          <String>[
+            for (final NavigationRailDestination d in rail.destinations)
+              (d.label as Text).data!,
+          ],
+          <String>['Home', 'Inventory', 'Bills', 'Parties', 'Purchases',
+              'Reports', 'GST returns', 'Alerts', 'Profile'],
+        );
+        for (final (String name, Type screen) in <(String, Type)>[
+          ('Parties', PartiesScreen),
+          ('Purchases', PurchasesScreen),
+          ('Reports', ReportsScreen),
+          ('GST returns', GstReportsScreen),
+        ]) {
+          final Finder item = find
+              .descendant(of: find.byType(NavigationRail), matching: find.text(name));
+          await tester.ensureVisible(item);
+          await tester.pumpAndSettle();
+          await tester.tap(item);
+          await tester.pumpAndSettle();
+          expect(find.byType(screen), findsOneWidget, reason: name);
+          expect(find.byType(BackButton), findsNothing, reason: '$name is a tab');
+          expect(find.byType(CloseButton), findsNothing, reason: '$name is a tab');
+        }
+        await tester.tap(find.descendant(
+            of: find.byType(NavigationRail), matching: find.text('Alerts')));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertsScreen), findsOneWidget,
+            reason: 'Alerts is still reachable after the new tabs');
+        expect(tester.widget<NavigationRail>(find.byType(NavigationRail)).selectedIndex, 7);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets('Home is a dashboard: numbers, a "Needs attention" table and quick actions',
         (WidgetTester tester) async {
       await open(tester, fullHd);

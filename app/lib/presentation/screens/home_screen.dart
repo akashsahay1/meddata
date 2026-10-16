@@ -12,6 +12,7 @@ import '../widgets/status_chip.dart'; // exports the shared ui_kit + medicineSta
 import '../widgets/sync_badge.dart';
 import '../widgets/adaptive_layout.dart';
 import '../widgets/desktop_kit.dart';
+import 'accounts/gst_reports_screen.dart';
 import 'accounts/parties_screen.dart';
 import 'accounts/purchases_screen.dart';
 import 'add_edit_medicine_screen.dart';
@@ -113,6 +114,7 @@ builder: (_) => const AddEditMedicineScreen()),
                       onAlerts: () => _open(const AlertsScreen()),
                       onOpenMedicine: (Medicine m) =>
                           _open(MedicineDetailScreen(medicineId: m.id)),
+                      onOpen: _open,
                     ),
                   ),
                 ),
@@ -314,8 +316,10 @@ class _DashboardBody extends StatelessWidget {
   final VoidCallback onUpgrade;
   final VoidCallback onAlerts;
   final ValueChanged<Medicine> onOpenMedicine;
+  final ValueChanged<Widget> onOpen;
 
   const _DashboardBody({
+    required this.onOpen,
     required this.mp,
     required this.settings,
     required this.currency,
@@ -375,6 +379,9 @@ builder: (_) => const ReportsScreen())),
           const SizedBox(height: 14),
           _TrialBanner(daysLeft: settings.trialDaysLeft, onUpgrade: onUpgrade),
         ],
+        // Phones only (this body is the phone Home): the desktop rail has
+        // these as tabs.
+        _BusinessSection(onOpen: onOpen),
         // The header is 48dp tall ("See all" touch area); these gaps keep the
         // title and the list where the design's 22 + 12 put them.
         const SizedBox(height: 8),
@@ -853,6 +860,77 @@ class _DesktopSearch extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Phone Home: the accounts screens, which have no bottom-bar tab.
+class _BusinessSection extends StatelessWidget {
+  final ValueChanged<Widget> onOpen;
+  const _BusinessSection({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget tile(IconData icon, String label, Widget screen) => Expanded(
+          child: Material(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            child: InkWell(
+              onTap: () => onOpen(screen),
+              borderRadius: BorderRadius.circular(AppRadii.card),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 56),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.statusGreenBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, size: 20, color: AppColors.green),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.ink,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SizedBox(height: 22),
+        const SectionHeader(title: 'Business'),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            tile(Icons.people_outline, 'Parties', const PartiesScreen()),
+            const SizedBox(width: 10),
+            tile(Icons.local_shipping_outlined, 'Purchases', const PurchasesScreen()),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: <Widget>[
+            tile(Icons.insights_outlined, 'Reports', const ReportsScreen()),
+            const SizedBox(width: 10),
+            tile(Icons.account_balance_outlined, 'GST returns', const GstReportsScreen()),
+          ],
+        ),
+      ],
     );
   }
 }

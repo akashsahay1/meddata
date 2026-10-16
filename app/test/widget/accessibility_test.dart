@@ -659,7 +659,10 @@ void main() {
 
   group('desktop window layouts', () {
     // Each main tab of the shell on a PC window: tables, columns and panels.
-    for (final String tab in <String>['Home', 'Inventory', 'Bills', 'Alerts', 'Profile']) {
+    for (final String tab in <String>[
+      'Home', 'Inventory', 'Bills', 'Parties', 'Purchases', 'Reports',
+      'GST returns', 'Alerts', 'Profile',
+    ]) {
       Future<TestApp> desktop(WidgetTester tester, Size size) async {
         tester.view.devicePixelRatio = 1;
         tester.view.physicalSize = size;

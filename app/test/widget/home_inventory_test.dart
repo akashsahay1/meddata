@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikabiz/core/formatters.dart';
+import 'package:medikabiz/presentation/screens/accounts/gst_reports_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/parties_screen.dart';
+import 'package:medikabiz/presentation/screens/accounts/purchases_screen.dart';
 import 'package:medikabiz/presentation/screens/alerts_screen.dart';
 import 'package:medikabiz/presentation/screens/home_screen.dart';
 import 'package:medikabiz/presentation/screens/reports_screen.dart';
@@ -99,6 +102,38 @@ void main() {
         expect(find.byType(AlertsScreen), findsNothing);
       });
     }
+
+    testWidgets('phone Home has Business tiles that open each accounts screen',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester, seeded: false);
+      await tester.pumpWidget(app.wrap(const HomeScreen()));
+      await tester.pumpAndSettle();
+      expect(find.text('Business'), findsOneWidget);
+      for (final (String name, Type screen) in <(String, Type)>[
+        ('Parties', PartiesScreen),
+        ('Purchases', PurchasesScreen),
+        ('Reports', ReportsScreen),
+        ('GST returns', GstReportsScreen),
+      ]) {
+        await tester.tap(find.text(name));
+        await tester.pumpAndSettle();
+        expect(find.byType(screen), findsOneWidget, reason: name);
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+        expect(find.byType(screen), findsNothing, reason: name);
+      }
+    });
+
+    testWidgets('desktop Home has no Business tiles (the rail has them)',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester, seeded: false);
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1280, 800);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(app.wrap(const HomeScreen()));
+      await tester.pumpAndSettle();
+      expect(find.text('Business'), findsNothing);
+    });
 
     testWidgets('Alerts as a main tab has no Back button',
         (WidgetTester tester) async {
