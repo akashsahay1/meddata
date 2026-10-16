@@ -17,6 +17,7 @@ import '../../domain/product_stock.dart';
 import '../../services/accounting_api.dart';
 import '../../services/auth_service.dart';
 import '../../services/billing_api.dart' show ApiOutcome;
+import '../../services/image_downscale.dart';
 import '../../services/invoice_scan_service.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
@@ -110,6 +111,10 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   // The server's limits; checked here too so a big file fails fast.
   static const int _maxImageBytes = 7 * 1024 * 1024;
   static const int _maxPdfBytes = 10 * 1024 * 1024;
+
+  /// The AI's own image limit (long edge): sharp enough for small print,
+  /// quick to upload.
+  static const int _maxImageSide = 2576;
   static const Set<String> _extensions = <String>{
     'jpg',
     'jpeg',
@@ -197,12 +202,11 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     await _upload(file, source);
   }
 
-  /// Downscaled to the AI's own image limit (long edge 2576 px): sharp
-  /// enough for small print, quick to upload.
+  /// Downscaled to [_maxImageSide].
   Future<XFile?> _pickImage(ImageSource source) => ImagePicker().pickImage(
     source: source,
-    maxWidth: 2576,
-    maxHeight: 2576,
+    maxWidth: _maxImageSide.toDouble(),
+    maxHeight: _maxImageSide.toDouble(),
     imageQuality: 90,
   );
 
@@ -218,17 +222,6 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       setState(() => _error = 'Choose a JPG, PNG or WebP photo, or a PDF.');
       return;
     }
-    final int size = await file.length();
-    if (!mounted) return;
-    final bool pdf = ext == 'pdf';
-    if (size > (pdf ? _maxPdfBytes : _maxImageBytes)) {
-      setState(
-        () => _error = pdf
-            ? 'This PDF is too large (10 MB at most).'
-            : 'This photo is too large (7 MB at most).',
-      );
-      return;
-    }
     final String? token = context.read<AuthService>().token;
     if (token == null) {
       setState(() => _error = 'Please log in again to scan invoices.');
@@ -240,7 +233,38 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       _error = null;
       _offline = false;
     });
-    final List<int> bytes = await file.readAsBytes();
+    final bool pdf = ext == 'pdf';
+    Uint8List bytes = await file.readAsBytes();
+    // A photo chosen as a file (the desktop) is the camera original, often
+    // several MB: shrink it like the phone picker does before uploading.
+    if (!pdf && source == _Source.file) {
+      final Uint8List? small = await downscaleToJpeg(
+        bytes,
+        maxSide: _maxImageSide,
+        quality: 90,
+      );
+      if (!mounted) return;
+      if (small == null) {
+        setState(() {
+          _stage = _Stage.pick;
+          _error = 'Could not open this photo. Choose a JPG, PNG or WebP '
+              'photo, or a PDF.';
+        });
+        return;
+      }
+      bytes = small;
+      name = '${name.substring(0, name.lastIndexOf('.'))}.jpg';
+    }
+    if (!mounted) return;
+    if (bytes.length > (pdf ? _maxPdfBytes : _maxImageBytes)) {
+      setState(() {
+        _stage = _Stage.pick;
+        _error = pdf
+            ? 'This PDF is too large (10 MB at most).'
+            : 'This photo is too large (7 MB at most).';
+      });
+      return;
+    }
     final InvoiceScanResponse r = await _service.upload(
       token: token,
       bytes: bytes,
@@ -899,7 +923,11 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             ),
           ),
           const SizedBox(height: 14),
-        ] else if (_error != null) ...<Widget>[
+        ],
+        // The server's reason a scan failed, even while sync is offline;
+        // only a scan call that never reached the server shows just the
+        // offline notice above.
+        if (_error != null && !_offline) ...<Widget>[
           _Notice(
             icon: Icons.error_outline,
             color: AppColors.statusRed,

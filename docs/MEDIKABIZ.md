@@ -403,6 +403,7 @@ cd app && flutter test test/integration/
 
 - [x] On a PC window the main tabs no longer show the phone's single column of cards in a centred 1200 px strip. They use the window: Home is a dashboard (four numbers in a row, "Needs attention" as a table beside Quick actions); Inventory and Bills are tables with column headings (search and filters on one line, a row opens the medicine / bill); Alerts shows Expired, Expiring soon and Low on stock side by side; Profile puts its settings in two columns. Phones are unchanged. Shared pieces in `widgets/desktop_kit.dart`
 - [x] Alerts opened from Home has a Back button (header shown in the "All good" state too)
+- [x] Invoice scan on Windows: a photo chosen as a file is shrunk in the app (longest side 2576 px, JPEG q90, `services/image_downscale.dart`) before upload, as the phone picker already did; a failed scan always shows the server's reason (the offline notice replaced it whenever sync thought it was offline, so the screen just went back to "Choose a photo or PDF")
 - [x] Desktop accessibility: the rail's "Add medicine" uses ink on orange (white was 2.8:1); the version line on Profile is a 48 px target; the five tabs are checked for targets, labels and contrast at 1440 px and for overflow at 1000×640 with 1.3× text
 
 ### Bill follow-ups (16 Oct 2026)

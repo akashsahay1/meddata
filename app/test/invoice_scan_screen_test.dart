@@ -73,6 +73,38 @@ void main() {
       await _reviewFixAndAdd(tester, size);
     });
   }
+
+  testWidgets('a failed scan shows the server reason even while sync is '
+      'offline', (WidgetTester tester) async {
+    final SyncEngine sync = SyncEngine(
+      tokenProvider: () => null,
+      userKeyProvider: () => null,
+    )..status = SyncStatus.offline;
+    const InvoiceScan scan = InvoiceScan(
+      id: 2,
+      status: 'failed',
+      errorCode: 'not_configured',
+      error: 'AI invoice reading is not set up on the server yet.',
+    );
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: <ChangeNotifierProvider<ChangeNotifier>>[
+          ChangeNotifierProvider<MedicineProvider>.value(
+            value: MedicineProvider(_MemoryRepo()),
+          ),
+          ChangeNotifierProvider<SyncEngine>.value(value: sync),
+        ],
+        child: const MaterialApp(home: InvoiceScanScreen(initialScan: scan)),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn't read the invoice"), findsOneWidget);
+    expect(
+      find.text('AI invoice reading is not set up on the server yet.'),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
