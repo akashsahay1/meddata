@@ -467,7 +467,7 @@ class _SubscribeViewState extends State<SubscribeView> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.orange,
+                  color: AppColors.orangeButton,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

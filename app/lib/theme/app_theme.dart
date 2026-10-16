@@ -16,6 +16,10 @@ class AppColors {
   static const Color orange = Color(0xFFFF6B2C); // primary CTAs, FAB, brand
   static const Color orangeHover = Color(0xFFF2551E);
   static const Color orangeLight = Color(0xFFFF8A5C);
+  // Background of filled orange actions (buttons, FAB, badges) that carry
+  // white text or icons. Same hue as [orange], darkened just enough for
+  // white to reach WCAG AA: 4.5:1 (white on [orange] is only 2.8:1).
+  static const Color orangeButton = Color(0xFFD84000);
 
   // Surfaces
   static const Color canvas = Color(0xFFEEF2F1); // app background
@@ -160,9 +164,12 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.orange,
-          // Ink, not white, on orange: 5.0:1 contrast (white is 2.8:1).
-          foregroundColor: AppColors.ink,
+          backgroundColor: AppColors.orangeButton,
+          // White on the deeper button orange: 4.5:1 (owner's decision).
+          foregroundColor: Colors.white,
+          // Hover/press darken the orange (a white overlay would lower the
+          // contrast of the white label).
+          overlayColor: Colors.black,
           elevation: 0,
           minimumSize: const Size.fromHeight(54),
           shape: RoundedRectangleBorder(
@@ -197,8 +204,12 @@ class AppTheme {
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.orange,
+        backgroundColor: AppColors.orangeButton,
         foregroundColor: Colors.white,
+        // Darken on hover/focus/press, as the elevated buttons do.
+        hoverColor: Color(0x14000000),
+        focusColor: Color(0x1F000000),
+        splashColor: Color(0x1F000000),
         elevation: 0,
         highlightElevation: 0,
       ),

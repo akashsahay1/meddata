@@ -16,7 +16,8 @@ import '../../../sync/sync_engine.dart';
 import '../../../theme/app_theme.dart';
 import '../billing/billing_widgets.dart';
 import 'accounts_widgets.dart';
-import 'note_detail_screen.dart';
+import 'note_detail_screen.dart';
+
 import '../../widgets/adaptive_layout.dart';
 
 /// Goods coming back: a customer returning items of a bill (credit note,
@@ -215,7 +216,6 @@ class _ReturnScreenState extends State<ReturnScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              style: inkOnOrange,
               onPressed: _saving || _draft.isEmpty ? null : _submit,
               child: Text(_saving ? 'Saving…' : 'Make ${noun.toLowerCase()}'),
             ),

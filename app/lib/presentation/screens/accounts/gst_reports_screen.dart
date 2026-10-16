@@ -178,7 +178,7 @@ class _GstReportsScreenState extends State<GstReportsScreen> {
               runSpacing: 10,
               children: <Widget>[
                 ElevatedButton.icon(
-                  style: inkOnOrange.merge(ElevatedButton.styleFrom(minimumSize: const Size(0, 48))),
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(0, 48)),
                   onPressed: () => _export(true),
                   icon: const Icon(Icons.table_view_outlined, size: 20),
                   label: const Text('Share CSV'),

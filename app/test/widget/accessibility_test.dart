@@ -606,6 +606,30 @@ void main() {
           greaterThanOrEqualTo(4.5));
     });
 
+    test('orange buttons carry white text on the deeper button orange', () {
+      expect(_contrast(Colors.white, AppColors.orangeButton),
+          greaterThanOrEqualTo(4.5));
+      for (final ThemeData theme in <ThemeData>[AppTheme.light, AppTheme.dark]) {
+        final ButtonStyle button = theme.elevatedButtonTheme.style!;
+        const Set<WidgetState> idle = <WidgetState>{};
+        expect(button.backgroundColor!.resolve(idle), AppColors.orangeButton);
+        expect(button.foregroundColor!.resolve(idle), Colors.white);
+        // Hover/press darken (a light overlay would cut the label's contrast).
+        for (final WidgetState s in <WidgetState>[WidgetState.hovered, WidgetState.pressed]) {
+          final Color overlay = button.overlayColor!.resolve(<WidgetState>{s})!;
+          final Color shown = Color.alphaBlend(overlay, AppColors.orangeButton);
+          expect(_contrast(Colors.white, shown),
+              greaterThan(_contrast(Colors.white, AppColors.orangeButton)));
+        }
+        final FloatingActionButtonThemeData fab = theme.floatingActionButtonTheme;
+        expect(fab.backgroundColor, AppColors.orangeButton);
+        expect(fab.foregroundColor, Colors.white);
+        expect(_contrast(Colors.white,
+                Color.alphaBlend(fab.hoverColor!, AppColors.orangeButton)),
+            greaterThanOrEqualTo(4.5));
+      }
+    });
+
     testWidgets('home search hint on its translucent pill',
         (WidgetTester tester) async {
       final TestApp app = await start(tester);

@@ -12,7 +12,8 @@ import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import 'accounts_widgets.dart';
 import 'party_detail_screen.dart';
-import 'party_form_screen.dart';
+import 'party_form_screen.dart';
+
 import '../../widgets/adaptive_layout.dart';
 
 enum _Filter { all, customers, suppliers }
@@ -100,7 +101,6 @@ class _PartiesScreenState extends State<PartiesScreen> {
           api: _api,
           type: _filter == _Filter.suppliers ? PartyType.supplier : PartyType.customer,
         )),
-        foregroundColor: AppColors.ink,
         icon: const Icon(Icons.person_add_alt_1_outlined),
         label: const Text('Add party'),
       ),

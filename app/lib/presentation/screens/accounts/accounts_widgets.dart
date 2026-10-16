@@ -6,10 +6,6 @@ import '../../../core/inr.dart';
 import '../../../domain/accounting.dart';
 import '../../../theme/app_theme.dart';
 
-/// Orange buttons carry ink text: white on the brand orange is below the
-/// 4.5:1 contrast needed for normal text.
-final ButtonStyle inkOnOrange = ElevatedButton.styleFrom(foregroundColor: AppColors.ink);
-
 /// Shown instead of an accounts screen when the server can't be reached
 /// (accounts are kept on the server, like bills; inventory works offline).
 class AccountsOfflineNotice extends StatelessWidget {
@@ -49,7 +45,6 @@ class AccountsOfflineNotice extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  style: inkOnOrange,
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh, size: 20),
                   label: const Text('Try again'),

@@ -145,7 +145,6 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       appBar: AppBar(title: const Text('Purchases')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addBill,
-        foregroundColor: AppColors.ink,
         icon: const Icon(Icons.add),
         label: const Text('Add supplier bill'),
       ),

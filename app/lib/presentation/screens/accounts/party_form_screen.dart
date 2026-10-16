@@ -348,7 +348,6 @@ class _PartyFormScreenState extends State<PartyFormScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                style: inkOnOrange,
                 onPressed: _saving ? null : _save,
                 child: Text(_saving ? 'Saving…' : 'Save'),
               ),

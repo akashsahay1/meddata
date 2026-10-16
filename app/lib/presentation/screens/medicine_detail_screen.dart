@@ -400,7 +400,7 @@ class _QuantityCard extends StatelessWidget {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: filled ? AppColors.orange : AppColors.canvas,
+            color: filled ? AppColors.orangeButton : AppColors.canvas,
             border: filled ? null : Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(AppRadii.input),
           ),

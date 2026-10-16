@@ -252,7 +252,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              style: inkOnOrange,
               onPressed: _saving ? null : _save,
               child: Text(_saving ? 'Saving…' : 'Save payment'),
             ),
