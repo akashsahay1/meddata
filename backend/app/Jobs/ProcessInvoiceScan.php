@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\InvoiceScan;
-use App\Services\ClaudeInvoiceReader;
+use App\Services\GroqInvoiceReader;
 use App\Services\InvoiceProductMatcher;
 use App\Services\InvoiceReadException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,7 +26,7 @@ class ProcessInvoiceScan implements ShouldQueue
 
     public int $tries = 3;
 
-    /** Seconds; above the API call timeout (services.anthropic.timeout). */
+    /** Seconds; above the API call timeout (services.groq.timeout) plus PDF conversion. */
     public int $timeout = 300;
 
     /** A file that timed out once would only time out again. */
@@ -42,7 +42,7 @@ class ProcessInvoiceScan implements ShouldQueue
         return [30, 120];
     }
 
-    public function handle(ClaudeInvoiceReader $reader, InvoiceProductMatcher $matcher): void
+    public function handle(GroqInvoiceReader $reader, InvoiceProductMatcher $matcher): void
     {
         $scan = $this->scan->refresh();
         if ($scan->isFinished()) {

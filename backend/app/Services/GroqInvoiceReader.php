@@ -11,25 +11,26 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Reads a purchase invoice (photo or PDF) with the Claude Messages API and
- * returns the normalised lines. Structured outputs (a JSON schema) keep the
- * reply machine-readable; the result is still validated and normalised,
- * because a refusal or a cut-off reply can break the schema.
+ * Reads a purchase invoice (photo or PDF) with a Groq vision model through
+ * its OpenAI-compatible chat completions API and returns the normalised
+ * lines. The model takes images only, so a PDF is turned into one JPEG per
+ * page first (PdfToImages, at most 3 pages). Strict structured outputs (a
+ * JSON schema) keep the reply machine-readable; the result is still
+ * validated and normalised, because a cut-off reply can break the schema.
  *
- * Config: services.anthropic (ANTHROPIC_API_KEY, ANTHROPIC_MODEL, ...).
+ * Config: services.groq (GROQ_API_KEY, GROQ_MODEL, ...).
  */
-class ClaudeInvoiceReader
+class GroqInvoiceReader
 {
-    public const API_VERSION = '2023-06-01';
+    /** HTTP statuses worth retrying: timeouts, rate limits, flex capacity, server errors. */
+    private const TRANSIENT = [408, 429, 498, 500, 502, 503, 504];
 
-    /** Beta header for `fallbacks: "default"` (server-side refusal fallback). */
-    public const FALLBACK_BETA = 'server-side-fallback-2026-07-01';
-
-    /** Models that accept `fallbacks: "default"`. */
-    private const FALLBACK_MODELS = ['claude-opus-5-5', 'claude-opus-5', 'claude-fable-5-1', 'claude-sonnet-5-5'];
-
-    /** HTTP statuses worth retrying: timeouts, rate limits, overload, server errors. */
-    private const TRANSIENT = [408, 409, 429, 500, 502, 503, 504, 529];
+    /**
+     * Largest image file sent as is. Groq has capped base64 images at 4 MB;
+     * base64 adds a third, so 3 MB of file stays under it. Bigger photos are
+     * scaled down (the app already sends ~2576 px JPEGs, so this is rare).
+     */
+    public const MAX_IMAGE_BYTES = 3_000_000;
 
     private const SYSTEM = 'You transcribe purchase invoices (supplier bills) of Indian pharmacies into '
         .'structured data for the shop\'s inventory software. The shop owner reviews every line '
@@ -43,7 +44,7 @@ class ClaudeInvoiceReader
         - supplier_name, supplier_gstin: the seller (distributor/wholesaler), not the pharmacy the bill is addressed to.
         - invoice_no, invoice_date (YYYY-MM-DD).
 
-        items: one entry per product line, in printed order, across all pages. Leave out rows that are not products (totals, taxes, discounts, round-off, freight, outstanding balance, credit notes).
+        items: one entry per product line, in printed order, across all pages (one image per page, in order). Leave out rows that are not products (totals, taxes, discounts, round-off, freight, outstanding balance, credit notes).
         - product_name: as printed, with strength and form (e.g. "DOLO 650 TAB") but without the pack size.
         - manufacturer: the company if the line shows it (often a short code like "MICRO"), else "".
         - pack: as printed, e.g. "15's", "1x10", "100ML".
@@ -59,11 +60,14 @@ class ClaudeInvoiceReader
         notes: one or two sentences on anything the reviewer should double-check (unreadable or cut-off parts, a missing page, totals that don't add up), or "" if none.
         TXT;
 
-    public function __construct(private readonly InvoiceNormalizer $normalizer) {}
+    public function __construct(
+        private readonly InvoiceNormalizer $normalizer,
+        private readonly PdfToImages $pdf,
+    ) {}
 
     public function isConfigured(): bool
     {
-        return filled(config('services.anthropic.key'));
+        return filled(config('services.groq.key'));
     }
 
     /**
@@ -77,10 +81,12 @@ class ClaudeInvoiceReader
             throw new InvoiceReadException('not_configured', 'AI invoice reading is not set up on the server yet.');
         }
 
+        $payload = $this->payload($bytes, $mime);
+
         try {
-            $response = $this->client()->post('/v1/messages', $this->payload($bytes, $mime));
+            $response = $this->client()->post('/chat/completions', $payload);
         } catch (ConnectionException $e) {
-            Log::warning('Invoice scan: Claude API unreachable: '.$e->getMessage());
+            Log::warning('Invoice scan: Groq API unreachable: '.$e->getMessage());
             throw new InvoiceReadException('network', 'Could not reach the AI service.', retryable: true, previous: $e);
         }
 
@@ -91,40 +97,39 @@ class ClaudeInvoiceReader
         return $this->parse((array) $response->json());
     }
 
-    /** The Messages API request body. */
+    /**
+     * The chat completions request body.
+     *
+     * @throws InvoiceReadException when a PDF can't be turned into images
+     */
     public function payload(string $bytes, string $mime): array
     {
-        $source = ['type' => 'base64', 'media_type' => $mime, 'data' => base64_encode($bytes)];
-        $file = $mime === 'application/pdf'
-            ? ['type' => 'document', 'source' => $source]
-            : ['type' => 'image', 'source' => $source];
+        $images = $mime === 'application/pdf' ? $this->pdf->convert($bytes) : [$bytes];
 
-        $outputConfig = ['format' => ['type' => 'json_schema', 'schema' => self::schema()]];
-        if (filled($effort = config('services.anthropic.effort'))) {
-            $outputConfig['effort'] = $effort;
-        }
+        // The images go before the instructions (works best for vision).
+        $content = array_map(fn (string $image) => [
+            'type' => 'image_url',
+            'image_url' => ['url' => $this->dataUrl($image)],
+        ], $images);
+        $content[] = ['type' => 'text', 'text' => self::INSTRUCTIONS];
 
-        $payload = [
-            'model' => $this->model(),
-            'max_tokens' => (int) config('services.anthropic.max_tokens', 16000),
-            'system' => self::SYSTEM,
-            // The file goes before the instructions (works best for vision).
-            'messages' => [[
-                'role' => 'user',
-                'content' => [$file, ['type' => 'text', 'text' => self::INSTRUCTIONS]],
-            ]],
-            'output_config' => $outputConfig,
+        return [
+            'model' => (string) config('services.groq.model', 'qwen/qwen3.8-27b'),
+            'max_completion_tokens' => (int) config('services.groq.max_tokens', 8192),
+            'messages' => [
+                ['role' => 'system', 'content' => self::SYSTEM],
+                ['role' => 'user', 'content' => $content],
+            ],
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => ['name' => 'purchase_invoice', 'strict' => true, 'schema' => self::schema()],
+            ],
         ];
-        if ($this->usesFallbacks()) {
-            $payload['fallbacks'] = 'default';
-        }
-
-        return $payload;
     }
 
     /**
-     * Every field is required (blank = "" / null) so the schema stays within
-     * the structured-output limits on optional and nullable parameters.
+     * Strict structured outputs need every field in `required` and no extra
+     * properties, so a blank is "" for text and null for numbers.
      */
     public static function schema(): array
     {
@@ -169,35 +174,47 @@ class ClaudeInvoiceReader
         return $schema;
     }
 
-    private function model(): string
+    /**
+     * A JPEG or PNG within MAX_IMAGE_BYTES goes as is; anything else (WebP,
+     * an oversized photo) is re-encoded as a JPEG, scaled down until it fits.
+     */
+    private function dataUrl(string $bytes): string
     {
-        return (string) config('services.anthropic.model', 'claude-opus-5-5');
-    }
+        $mime = getimagesizefromstring($bytes)['mime'] ?? null;
+        if (in_array($mime, ['image/jpeg', 'image/png'], true) && strlen($bytes) <= self::MAX_IMAGE_BYTES) {
+            return "data:{$mime};base64,".base64_encode($bytes);
+        }
 
-    private function usesFallbacks(): bool
-    {
-        return config('services.anthropic.fallbacks') === 'default'
-            && in_array($this->model(), self::FALLBACK_MODELS, true);
+        $src = @imagecreatefromstring($bytes);
+        if ($src === false) {
+            throw new InvoiceReadException('bad_request',
+                'The AI service could not read this file. Try a clear JPG/PNG photo or a PDF.');
+        }
+        [$w, $h] = [imagesx($src), imagesy($src)];
+        $scale = min(1.0, sqrt(self::MAX_IMAGE_BYTES / max(1, strlen($bytes))));
+        do {
+            $dst = imagecreatetruecolor(max(1, (int) ($w * $scale)), max(1, (int) ($h * $scale)));
+            imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));   // transparency → white
+            imagecopyresampled($dst, $src, 0, 0, 0, 0, imagesx($dst), imagesy($dst), $w, $h);
+            ob_start();
+            imagejpeg($dst, null, 85);
+            $jpeg = (string) ob_get_clean();
+            $scale *= 0.8;
+        } while (strlen($jpeg) > self::MAX_IMAGE_BYTES);
+
+        return 'data:image/jpeg;base64,'.base64_encode($jpeg);
     }
 
     private function client(): PendingRequest
     {
-        $headers = [
-            'x-api-key' => (string) config('services.anthropic.key'),
-            'anthropic-version' => self::API_VERSION,
-        ];
-        if ($this->usesFallbacks()) {
-            $headers['anthropic-beta'] = self::FALLBACK_BETA;
-        }
-
         // Quick in-request retries for rate limits / overload; longer outages
         // are retried by the queue (ProcessInvoiceScan::backoff).
-        return Http::baseUrl(rtrim((string) config('services.anthropic.base_url'), '/'))
-            ->withHeaders($headers)
+        return Http::baseUrl(rtrim((string) config('services.groq.base_url'), '/'))
+            ->withToken((string) config('services.groq.key'))
             ->acceptJson()
             ->asJson()
             ->connectTimeout(15)
-            ->timeout((int) config('services.anthropic.timeout', 240))
+            ->timeout((int) config('services.groq.timeout', 120))
             ->retry(3, fn (int $attempt, mixed $e) => $this->retryDelay($attempt, $e),
                 fn (Throwable $e) => $this->isTransient($e), throw: false);
     }
@@ -207,7 +224,7 @@ class ClaudeInvoiceReader
         return $e instanceof RequestException && in_array($e->response->status(), self::TRANSIENT, true);
     }
 
-    /** Milliseconds before the next try: the server's retry-after (capped), else 2 s, 6 s. */
+    /** Milliseconds before the next try: the server's retry-after in seconds (capped), else 2 s, 6 s. */
     private function retryDelay(int $attempt, mixed $e): int
     {
         $after = $e instanceof RequestException ? (int) $e->response->header('retry-after') : 0;
@@ -218,7 +235,7 @@ class ClaudeInvoiceReader
     private function httpError(Response $response): InvoiceReadException
     {
         $status = $response->status();
-        Log::warning('Invoice scan: Claude API error', [
+        Log::warning('Invoice scan: Groq API error', [
             'status' => $status,
             'type' => $response->json('error.type'),
             'message' => $response->json('error.message'),
@@ -239,19 +256,17 @@ class ClaudeInvoiceReader
     /** @return array{data: array, model: ?string, input_tokens: ?int, output_tokens: ?int} */
     private function parse(array $body): array
     {
-        // Read blocks by type: thinking (and fallback markers) may come first.
-        $text = collect($body['content'] ?? [])
-            ->filter(fn ($block) => is_array($block) && ($block['type'] ?? null) === 'text')
-            ->pluck('text')
-            ->implode('');
+        $choice = $body['choices'][0] ?? [];
+        $text = is_string($choice['message']['content'] ?? null) ? $choice['message']['content'] : '';
         $raw = $text !== '' ? $text : null;
 
-        $stop = $body['stop_reason'] ?? null;
-        if ($stop === 'refusal') {
+        $refusal = $choice['message']['refusal'] ?? null;
+        if (filled($refusal) || ($choice['finish_reason'] ?? null) === 'content_filter') {
             throw new InvoiceReadException('refused',
-                'The AI declined to read this file. Try a clear photo of the invoice.', raw: $raw);
+                'The AI declined to read this file. Try a clear photo of the invoice.',
+                raw: is_string($refusal) ? $refusal : $raw);
         }
-        if ($stop === 'max_tokens') {
+        if (($choice['finish_reason'] ?? null) === 'length') {
             throw new InvoiceReadException('too_long',
                 'This invoice is too long to read in one go. Scan fewer pages at a time.', raw: $raw);
         }
@@ -271,8 +286,8 @@ class ClaudeInvoiceReader
         return [
             'data' => $data,
             'model' => isset($body['model']) ? (string) $body['model'] : null,
-            'input_tokens' => isset($body['usage']['input_tokens']) ? (int) $body['usage']['input_tokens'] : null,
-            'output_tokens' => isset($body['usage']['output_tokens']) ? (int) $body['usage']['output_tokens'] : null,
+            'input_tokens' => isset($body['usage']['prompt_tokens']) ? (int) $body['usage']['prompt_tokens'] : null,
+            'output_tokens' => isset($body['usage']['completion_tokens']) ? (int) $body['usage']['completion_tokens'] : null,
         ];
     }
 

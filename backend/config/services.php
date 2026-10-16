@@ -46,21 +46,17 @@ return [
         'key_secret' => env('RAZORPAY_KEY_SECRET'),
     ],
 
-    // Claude API, used by the queued AI purchase-invoice reader. Without a
-    // key, scans fail with a clear "not configured" status.
-    'anthropic' => [
-        'key' => env('ANTHROPIC_API_KEY'),
-        'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
-        // low|medium|high|xhigh|max; empty = leave out (models without effort).
-        'effort' => env('ANTHROPIC_EFFORT', 'medium'),
-        // Thinking counts towards this, so keep room for a long invoice.
-        'max_tokens' => (int) env('ANTHROPIC_MAX_TOKENS', 16000),
-        // Seconds for one API call; the job's own timeout is a bit longer.
-        'timeout' => (int) env('ANTHROPIC_TIMEOUT', 240),
-        // 'default' = server-side refusal fallback to the model Anthropic
-        // recommends (sent only for models that support it); 'off' disables.
-        'fallbacks' => env('ANTHROPIC_FALLBACKS', 'default'),
-        'base_url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com'),
+    // Groq (OpenAI-compatible API), used by the queued AI purchase-invoice
+    // reader. Without a key, scans fail with a clear "not configured" status.
+    'groq' => [
+        'key' => env('GROQ_API_KEY'),
+        // A vision model with strict JSON-schema output (at most 3 images).
+        'model' => env('GROQ_MODEL', 'qwen/qwen3.8-27b'),
+        // Room for a long invoice; the model allows up to 16384.
+        'max_tokens' => (int) env('GROQ_MAX_TOKENS', 8192),
+        // Seconds for one API call; the job's own timeout is longer.
+        'timeout' => (int) env('GROQ_TIMEOUT', 120),
+        'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
     ],
 
 ];

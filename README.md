@@ -59,7 +59,7 @@ For a phone on USB, run `adb reverse tcp:8000 tcp:8000` and use `API_BASE_URL=ht
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Filament admin created or updated by `db:seed`. If no password is set, the seeder prints a generated one |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay checkout. Leave empty in development (dev fallback, no real charges) |
 | `APP_DEBUG` | Set `false` in production, then run `php artisan config:cache` |
-| `ANTHROPIC_API_KEY` | *Upcoming (P2):* server-side AI invoice reading |
+| `GROQ_API_KEY` | Server-side AI invoice reading (Groq, `GROQ_MODEL=qwen/qwen3.8-27b`). PDFs also need php-imagick + Ghostscript |
 | `QUEUE_CONNECTION` | `database`. *Upcoming:* invoice reading runs as queued jobs, so production needs `php artisan queue:work` kept running (e.g. under supervisor) |
 
 The app has one build-time setting: `API_BASE_URL` (`--dart-define`), which defaults to the live server.

@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * AI purchase-invoice reading. A device uploads a photo/PDF of a supplier
-     * bill, a queued job sends it to Claude and stores the extracted lines;
+     * bill, a queued job sends it to the AI (Groq) and stores the extracted lines;
      * the device polls, the user reviews and adds the lines itself (so they
      * sync like any manual add). Files live on the private `local` disk.
      */

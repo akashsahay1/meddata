@@ -23,8 +23,9 @@ class InvoiceScanController extends Controller
     private const MAX_FILE_KB = 10240;
 
     /**
-     * The AI service takes at most 10 MB of base64 per image (~7.5 MB of
-     * file); the app downsizes photos well below this.
+     * Upload cap for photos. The app downsizes photos well below this, and
+     * the server scales down anything above the AI service's image limit
+     * (GroqInvoiceReader::MAX_IMAGE_BYTES) before sending it.
      */
     private const MAX_IMAGE_KB = 7168;
 

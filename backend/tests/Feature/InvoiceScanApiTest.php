@@ -7,9 +7,10 @@ use App\Models\InvoiceScan;
 use App\Models\MedicineMaster;
 use App\Models\Product;
 use App\Models\User;
-use App\Services\ClaudeInvoiceReader;
 use App\Services\EntitlementService;
+use App\Services\GroqInvoiceReader;
 use App\Services\InvoiceProductMatcher;
+use App\Services\PdfToImages;
 use App\Services\ShopService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
@@ -19,13 +20,14 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Tests\TestCase;
 
 class InvoiceScanApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const CLAUDE = 'https://api.anthropic.com/v1/messages';
+    private const GROQ = 'https://api.groq.com/openai/v1/chat/completions';
 
     protected function setUp(): void
     {
@@ -35,10 +37,9 @@ class InvoiceScanApiTest extends TestCase
         Sleep::fake();
         Storage::fake(InvoiceScan::DISK);
         config([
-            'services.anthropic.key' => 'test-key',
-            'services.anthropic.model' => 'claude-opus-5-5',
-            'services.anthropic.base_url' => 'https://api.anthropic.com',
-            'services.anthropic.fallbacks' => 'default',
+            'services.groq.key' => 'test-key',
+            'services.groq.model' => 'qwen/qwen3.8-27b',
+            'services.groq.base_url' => 'https://api.groq.com/openai/v1',
         ]);
     }
 
@@ -91,26 +92,57 @@ class InvoiceScanApiTest extends TestCase
         ];
     }
 
-    /** A Messages API reply: a (hidden) thinking block, then the JSON text. */
-    private function reply(array|string $json, string $stop = 'end_turn'): array
+    /** A chat completions reply carrying the JSON text. */
+    private function reply(array|string $json, string $finish = 'stop', ?string $refusal = null): array
     {
         return [
-            'id' => 'msg_test',
-            'type' => 'message',
-            'role' => 'assistant',
-            'model' => 'claude-opus-5-5',
-            'content' => [
-                ['type' => 'thinking', 'thinking' => '', 'signature' => 'sig'],
-                ['type' => 'text', 'text' => is_string($json) ? $json : json_encode($json)],
-            ],
-            'stop_reason' => $stop,
-            'stop_details' => null,
-            'usage' => ['input_tokens' => 2100, 'output_tokens' => 900],
+            'id' => 'chatcmpl-test',
+            'object' => 'chat.completion',
+            'model' => 'qwen/qwen3.8-27b',
+            'choices' => [[
+                'index' => 0,
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => is_string($json) ? $json : json_encode($json),
+                ] + ($refusal !== null ? ['refusal' => $refusal] : []),
+                'finish_reason' => $finish,
+            ]],
+            'usage' => ['prompt_tokens' => 2100, 'completion_tokens' => 900, 'total_tokens' => 3000],
         ];
     }
 
-    private function scanFor(User $user, string $content = 'jpeg-bytes', string $mime = 'image/jpeg'): InvoiceScan
+    /** A real (tiny) JPEG: photos are checked before they are sent. */
+    private function jpeg(): string
     {
+        ob_start();
+        imagejpeg(imagecreatetruecolor(40, 60));
+
+        return (string) ob_get_clean();
+    }
+
+    /** Swaps the PDF converter for one that needs no Imagick/Ghostscript. */
+    private function fakePdf(int $pages, bool $broken = false): void
+    {
+        $jpeg = $this->jpeg();
+        $this->app->instance(PdfToImages::class, new class($pages, $broken, $jpeg) extends PdfToImages
+        {
+            public function __construct(private int $pages, private bool $broken, private string $jpeg) {}
+
+            protected function pageCount(string $pdf): int
+            {
+                return $this->broken ? throw new RuntimeException('no PDF delegate (gs)') : $this->pages;
+            }
+
+            protected function render(string $pdf): array
+            {
+                return array_fill(0, $this->pages, $this->jpeg);
+            }
+        });
+    }
+
+    private function scanFor(User $user, ?string $content = null, string $mime = 'image/jpeg'): InvoiceScan
+    {
+        $content ??= $this->jpeg();
         $shop = app(ShopService::class)->forUser($user);
         $path = 'invoice-scans/'.$shop->id.'/'.Str::uuid().'.jpg';
         Storage::disk(InvoiceScan::DISK)->put($path, $content);
@@ -125,7 +157,7 @@ class InvoiceScanApiTest extends TestCase
     {
         $job = (new ProcessInvoiceScan($scan))->withFakeQueueInteractions();
         $job->job->attempts = $attempt;
-        $job->handle(app(ClaudeInvoiceReader::class), app(InvoiceProductMatcher::class));
+        $job->handle(app(GroqInvoiceReader::class), app(InvoiceProductMatcher::class));
 
         return $job;
     }
@@ -205,7 +237,7 @@ class InvoiceScanApiTest extends TestCase
 
     public function test_photo_is_read_and_lines_are_normalised(): void
     {
-        Http::fake([self::CLAUDE => Http::response($this->reply($this->invoice()))]);
+        Http::fake([self::GROQ => Http::response($this->reply($this->invoice()))]);
         $user = $this->user();
 
         // The test queue runs jobs inline, so the scan is read by now.
@@ -240,46 +272,111 @@ class InvoiceScanApiTest extends TestCase
 
         $scan = InvoiceScan::findOrFail($id);
         $this->assertSame([2100, 900], [$scan->input_tokens, $scan->output_tokens]);
-        $this->assertSame('claude-opus-5-5', $scan->model);
+        $this->assertSame('qwen/qwen3.8-27b', $scan->model);
 
         Http::assertSentCount(1);
         Http::assertSent(function (HttpRequest $r) {
-            $image = $r['messages'][0]['content'][0];
+            [$system, $user] = $r['messages'];
+            $format = $r['response_format'];
+            $schema = $format['json_schema']['schema'];
 
-            return $r->url() === self::CLAUDE
-                && $r->hasHeader('x-api-key', 'test-key')
-                && $r->hasHeader('anthropic-version', '2023-06-01')
-                && $r->hasHeader('anthropic-beta', 'server-side-fallback-2026-07-01')
-                && $r['model'] === 'claude-opus-5-5'
-                && $r['fallbacks'] === 'default'
-                && $r['output_config']['effort'] === 'medium'
-                && $r['output_config']['format']['type'] === 'json_schema'
-                && $r['output_config']['format']['schema']['additionalProperties'] === false
-                && $image['type'] === 'image'
-                && $image['source']['type'] === 'base64'
-                && $image['source']['media_type'] === 'image/jpeg'
-                && base64_decode($image['source']['data'], true) !== false
-                && $r['messages'][0]['content'][1]['type'] === 'text';
+            return $r->url() === self::GROQ
+                && $r->hasHeader('Authorization', 'Bearer test-key')
+                && $r['model'] === 'qwen/qwen3.8-27b'
+                && $r['max_completion_tokens'] === 8192
+                && $system['role'] === 'system'
+                && $user['role'] === 'user'
+                && count($user['content']) === 2
+                && $user['content'][0]['type'] === 'image_url'
+                && str_starts_with($user['content'][0]['image_url']['url'], 'data:image/jpeg;base64,')
+                && $user['content'][1]['type'] === 'text'
+                && $format['type'] === 'json_schema'
+                && $format['json_schema']['strict'] === true
+                && $schema['additionalProperties'] === false
+                && $schema['required'] === array_keys($schema['properties'])
+                && $schema['properties']['items']['items']['additionalProperties'] === false;
         });
     }
 
-    public function test_pdf_is_sent_as_a_document_block(): void
+    public function test_an_oversized_photo_is_scaled_down_to_a_jpeg_before_sending(): void
     {
-        Http::fake([self::CLAUDE => Http::response($this->reply($this->invoice()))]);
-        $pdf = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF";
+        Http::fake([self::GROQ => Http::response($this->reply($this->invoice()))]);
+        // Noise doesn't compress: a PNG well over the AI service's image limit.
+        $img = imagecreatetruecolor(1200, 1200);
+        for ($y = 0; $y < 1200; $y++) {
+            for ($x = 0; $x < 1200; $x++) {
+                imagesetpixel($img, $x, $y, mt_rand(0, 0xFFFFFF));
+            }
+        }
+        ob_start();
+        imagepng($img, null, 0);
+        $png = (string) ob_get_clean();
+        $this->assertGreaterThan(GroqInvoiceReader::MAX_IMAGE_BYTES, strlen($png));
 
-        $this->upload($this->user(), UploadedFile::fake()->createWithContent('bill.pdf', $pdf))
+        $scan = $this->scanFor($this->user(), $png, 'image/png');
+        $this->runJob($scan);
+
+        $this->assertSame('done', $scan->refresh()->status);
+        Http::assertSent(function (HttpRequest $r) {
+            $url = $r['messages'][1]['content'][0]['image_url']['url'];
+            $jpeg = base64_decode(substr($url, strlen('data:image/jpeg;base64,')), true);
+
+            return str_starts_with($url, 'data:image/jpeg;base64,')
+                && $jpeg !== false
+                && strlen($jpeg) <= GroqInvoiceReader::MAX_IMAGE_BYTES
+                && getimagesizefromstring($jpeg)['mime'] === 'image/jpeg';
+        });
+    }
+
+    public function test_pdf_pages_are_sent_as_images(): void
+    {
+        Http::fake([self::GROQ => Http::response($this->reply($this->invoice()))]);
+        $this->fakePdf(pages: 3);
+
+        $this->upload($this->user(), UploadedFile::fake()->createWithContent('bill.pdf', "%PDF-1.4\n%%EOF"))
             ->assertStatus(202)
             ->assertJsonPath('scan.status', 'done');
 
-        Http::assertSent(fn (HttpRequest $r) => $r['messages'][0]['content'][0]['type'] === 'document'
-            && $r['messages'][0]['content'][0]['source']['media_type'] === 'application/pdf'
-            && base64_decode($r['messages'][0]['content'][0]['source']['data']) === $pdf);
+        Http::assertSent(function (HttpRequest $r) {
+            $content = $r['messages'][1]['content'];
+            $images = array_filter($content, fn ($part) => $part['type'] === 'image_url'
+                && str_starts_with($part['image_url']['url'], 'data:image/jpeg;base64,'));
+
+            return count($content) === 4 && count($images) === 3 && end($content)['type'] === 'text';
+        });
+    }
+
+    public function test_pdf_with_more_than_three_pages_is_refused_without_calling_the_api(): void
+    {
+        Http::fake();
+        $this->fakePdf(pages: 4);
+
+        $scan = $this->scanFor($this->user(), '%PDF-1.4', 'application/pdf');
+        $this->runJob($scan)->assertNotReleased();
+
+        $scan->refresh();
+        $this->assertSame(['failed', 'too_many_pages'], [$scan->status, $scan->error_code]);
+        $this->assertSame('This PDF has 4 pages. Scan up to 3 pages at a time.', $scan->error);
+        Http::assertNothingSent();
+    }
+
+    public function test_pdf_fails_clearly_when_the_server_cannot_convert_it(): void
+    {
+        Http::fake();
+        $this->fakePdf(pages: 1, broken: true);
+
+        $scan = $this->scanFor($this->user(), '%PDF-1.4', 'application/pdf');
+        $this->runJob($scan)->assertNotReleased();
+
+        $scan->refresh();
+        $this->assertSame(['failed', 'pdf_unsupported'], [$scan->status, $scan->error_code]);
+        $this->assertStringContainsString('send a photo', $scan->error);
+        Http::assertNothingSent();
     }
 
     public function test_lines_are_matched_to_the_shops_products_and_the_catalog(): void
     {
-        Http::fake([self::CLAUDE => Http::response($this->reply($this->invoice()))]);
+        Http::fake([self::GROQ => Http::response($this->reply($this->invoice()))]);
         $user = $this->user();
         $shop = app(ShopService::class)->forUser($user);
         $otherShop = app(ShopService::class)->forUser($this->user());
@@ -308,7 +405,7 @@ class InvoiceScanApiTest extends TestCase
     public function test_malformed_model_output_fails_and_keeps_the_raw_text(): void
     {
         $garbage = 'Sorry, the photo is too blurry to read.';
-        Http::fake([self::CLAUDE => Http::sequence()
+        Http::fake([self::GROQ => Http::sequence()
             ->push($this->reply($garbage))
             ->push($this->reply('{"supplier_name": "ABC", "items": [{"product_name": "DOL'))]);
         $user = $this->user();
@@ -327,7 +424,7 @@ class InvoiceScanApiTest extends TestCase
     public function test_reply_without_any_medicine_line_fails_clearly(): void
     {
         $empty = ['supplier_name' => 'X', 'supplier_gstin' => '', 'invoice_no' => '', 'invoice_date' => '', 'items' => [], 'notes' => 'Not an invoice.'];
-        Http::fake([self::CLAUDE => Http::response($this->reply($empty))]);
+        Http::fake([self::GROQ => Http::response($this->reply($empty))]);
 
         $scan = $this->scanFor($this->user());
         $this->runJob($scan);
@@ -340,7 +437,7 @@ class InvoiceScanApiTest extends TestCase
     public function test_missing_api_key_fails_with_a_clear_status_without_calling_the_api(): void
     {
         Http::fake();
-        config(['services.anthropic.key' => null]);
+        config(['services.groq.key' => null]);
         $user = $this->user();
 
         $id = $this->upload($user)->assertStatus(202)->json('scan.id');
@@ -354,9 +451,9 @@ class InvoiceScanApiTest extends TestCase
 
     public function test_refusal_and_cut_off_replies_fail_cleanly(): void
     {
-        Http::fake([self::CLAUDE => Http::sequence()
-            ->push($this->reply('', 'refusal'))
-            ->push($this->reply('{"supplier_name": "ABC", "items": [', 'max_tokens'))]);
+        Http::fake([self::GROQ => Http::sequence()
+            ->push($this->reply('', refusal: 'I can\'t help with that.'))
+            ->push($this->reply('{"supplier_name": "ABC", "items": [', 'length'))]);
         $user = $this->user();
 
         $refused = $this->scanFor($user);
@@ -371,8 +468,8 @@ class InvoiceScanApiTest extends TestCase
 
     public function test_busy_api_is_retried_within_the_request(): void
     {
-        Http::fake([self::CLAUDE => Http::sequence()
-            ->push(['type' => 'error', 'error' => ['type' => 'overloaded_error', 'message' => 'Overloaded']], 529)
+        Http::fake([self::GROQ => Http::sequence()
+            ->push(['error' => ['type' => 'rate_limit_exceeded', 'message' => 'Rate limit reached']], 429, ['retry-after' => '2'])
             ->push($this->reply($this->invoice()))]);
 
         $scan = $this->scanFor($this->user());
@@ -384,7 +481,7 @@ class InvoiceScanApiTest extends TestCase
 
     public function test_long_outage_releases_the_job_then_fails_on_the_last_attempt(): void
     {
-        Http::fake([self::CLAUDE => Http::response(['type' => 'error', 'error' => ['type' => 'overloaded_error']], 529)]);
+        Http::fake([self::GROQ => Http::response(['error' => ['type' => 'internal_server_error', 'message' => 'Service unavailable']], 503)]);
         $scan = $this->scanFor($this->user());
 
         $this->runJob($scan, attempt: 1)->assertReleased(30);
@@ -398,7 +495,7 @@ class InvoiceScanApiTest extends TestCase
 
     public function test_bad_api_key_fails_without_retrying(): void
     {
-        Http::fake([self::CLAUDE => Http::response(['type' => 'error', 'error' => ['type' => 'authentication_error']], 401)]);
+        Http::fake([self::GROQ => Http::response(['error' => ['type' => 'invalid_request_error', 'message' => 'Invalid API Key']], 401)]);
         $scan = $this->scanFor($this->user());
 
         $this->runJob($scan)->assertNotReleased();
