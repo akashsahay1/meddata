@@ -16,6 +16,8 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # Local, git-ignored plugin copies (not used by pubspec).
+    - vendor/**
 include: package:flutter_lints/flutter.yaml
 
 linter:
