@@ -23,6 +23,12 @@ final class ShopDetails
             'drug_license_no' => ['sometimes', 'nullable', 'string', 'max:255'],
             'address' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'email' => ['sometimes', 'nullable', 'string', 'email', 'max:255'],
+            'pharmacist_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'pharmacist_reg_no' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'pharmacist_reg_date' => ['sometimes', 'nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'pharmacist_qualification' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'fssai_no' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9]{14}$/'],
             // Letters/digits only, at most 3: "ABC/26-27/000042" is the
             // longest number that fits the 16-character GST limit.
             'invoice_prefix' => ['sometimes', 'nullable', 'string', 'regex:/^[A-Za-z0-9]{1,3}$/'],
@@ -36,11 +42,22 @@ final class ShopDetails
      */
     public static function prepare(array $input): array
     {
-        foreach (['gstin', 'invoice_prefix'] as $key) {
+        foreach (['gstin', 'invoice_prefix', 'pharmacist_reg_no'] as $key) {
             if (array_key_exists($key, $input) && is_string($input[$key])) {
                 $value = strtoupper(trim($input[$key]));
                 $input[$key] = $value === '' ? null : $value;
             }
+        }
+        foreach (['email', 'pharmacist_name', 'pharmacist_qualification', 'pharmacist_reg_date'] as $key) {
+            if (array_key_exists($key, $input) && is_string($input[$key])) {
+                $value = trim($input[$key]);
+                $input[$key] = $value === '' ? null : $value;
+            }
+        }
+        // FSSAI licence numbers are 14 digits; people type them with spaces.
+        if (is_string($input['fssai_no'] ?? null)) {
+            $value = preg_replace('/\s+/', '', $input['fssai_no']);
+            $input['fssai_no'] = $value === '' ? null : $value;
         }
         if (is_int($input['state_code'] ?? null) || ctype_digit((string) ($input['state_code'] ?? 'x'))) {
             $input['state_code'] = str_pad((string) $input['state_code'], 2, '0', STR_PAD_LEFT);

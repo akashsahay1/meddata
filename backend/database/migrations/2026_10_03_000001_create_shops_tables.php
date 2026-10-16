@@ -25,6 +25,15 @@ return new class extends Migration
             $table->string('drug_license_no')->nullable();
             $table->text('address')->nullable();
             $table->string('phone', 32)->nullable();
+            // Optional extras printed on invoices only when filled: the
+            // registered pharmacist (State Pharmacy Council no., date and
+            // qualification) and the FSSAI licence for food/nutrition items.
+            $table->string('email')->nullable();
+            $table->string('pharmacist_name')->nullable();
+            $table->string('pharmacist_reg_no', 64)->nullable();
+            $table->date('pharmacist_reg_date')->nullable();
+            $table->string('pharmacist_qualification', 100)->nullable();
+            $table->string('fssai_no', 32)->nullable();
             // Up to 3 characters so PREFIX/26-27/000042 stays within the
             // 16-character limit GST rules set for invoice numbers.
             $table->string('invoice_prefix', 12)->nullable();

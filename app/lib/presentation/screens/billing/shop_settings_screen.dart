@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../data/models/bill.dart';
@@ -10,8 +11,9 @@ import '../../../theme/app_theme.dart';
 import 'billing_widgets.dart';
 
 /// The shop's details printed on its invoices: names, GSTIN and state,
-/// address, phone, drug licence no., invoice prefix, and the GST rate for
-/// medicines that have none set. Saved on the server (all devices share it).
+/// address, phone, email, drug licence no., FSSAI licence no., the
+/// registered pharmacist, invoice prefix, and the GST rate for medicines that
+/// have none set. Optional fields print only when filled. Saved on the server (all devices share it).
 class ShopSettingsScreen extends StatefulWidget {
   const ShopSettingsScreen({super.key, this.api});
 
@@ -34,6 +36,12 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _license = TextEditingController();
   final TextEditingController _prefix = TextEditingController();
+  final TextEditingController _email = TextEditingController();
+  final TextEditingController _fssai = TextEditingController();
+  final TextEditingController _pharmacist = TextEditingController();
+  final TextEditingController _regNo = TextEditingController();
+  final TextEditingController _qualification = TextEditingController();
+  DateTime? _regDate;
   String? _state;
   int _defaultGst = 500;
 
@@ -53,6 +61,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
   void dispose() {
     for (final TextEditingController c in <TextEditingController>[
       _name, _legalName, _gstin, _address, _phone, _license, _prefix,
+      _email, _fssai, _pharmacist, _regNo, _qualification,
     ]) {
       c.dispose();
     }
@@ -80,6 +89,12 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     _phone.text = s.phone ?? '';
     _license.text = s.drugLicenseNo ?? '';
     _prefix.text = s.invoicePrefix ?? '';
+    _email.text = s.email ?? '';
+    _fssai.text = s.fssaiNo ?? '';
+    _pharmacist.text = s.pharmacistName ?? '';
+    _regNo.text = s.pharmacistRegNo ?? '';
+    _qualification.text = s.pharmacistQualification ?? '';
+    _regDate = s.pharmacistRegDate;
     _state = s.stateCode;
     _defaultGst = s.defaultGstRateBp;
   }
@@ -100,6 +115,12 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
       'drug_license_no': opt(_license),
       'invoice_prefix': opt(_prefix),
       'default_gst_rate_bp': _defaultGst,
+      'email': opt(_email),
+      'fssai_no': opt(_fssai),
+      'pharmacist_name': opt(_pharmacist),
+      'pharmacist_reg_no': opt(_regNo),
+      'pharmacist_reg_date': _regDate == null ? null : DateFormat('yyyy-MM-dd').format(_regDate!),
+      'pharmacist_qualification': opt(_qualification),
     });
     if (!mounted) return;
     setState(() => _saving = false);
@@ -113,6 +134,18 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
     }
     messenger.showSnackBar(const SnackBar(content: Text('Invoice details saved')));
     Navigator.of(context).maybePop();
+  }
+
+  Future<void> _pickRegDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime? d = await showDatePicker(
+      context: context,
+      initialDate: _regDate ?? now,
+      firstDate: DateTime(1950),
+      lastDate: now,
+      helpText: 'Registration date',
+    );
+    if (d != null) setState(() => _regDate = d);
   }
 
   void _onGstin(String v) {
@@ -179,8 +212,68 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (String? v) {
+                  final String e = (v ?? '').trim();
+                  return e.isEmpty || RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(e)
+                      ? null
+                      : 'Not a valid email - check it';
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
                 controller: _license,
                 decoration: const InputDecoration(labelText: 'Drug licence no.'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _fssai,
+                keyboardType: TextInputType.number,
+                maxLength: 14,
+                inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                    labelText: 'FSSAI licence no.', helperText: '14 digits, if you sell food items', counterText: ''),
+                validator: (String? v) {
+                  final String f = (v ?? '').trim();
+                  return f.isEmpty || f.length == 14 ? null : 'Must be 14 digits';
+                },
+              ),
+              const BillingSectionLabel('Pharmacist'),
+              TextFormField(
+                controller: _pharmacist,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(labelText: 'Pharmacist name'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _qualification,
+                decoration: const InputDecoration(labelText: 'Qualification', hintText: 'e.g. D.Pharm'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _regNo,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(labelText: 'Registration no.'),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: _pickRegDate,
+                borderRadius: BorderRadius.circular(AppRadii.input),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Registration date',
+                    suffixIcon: _regDate == null
+                        ? const Icon(Icons.calendar_today_outlined)
+                        : IconButton(
+                            tooltip: 'Clear registration date',
+                            icon: const Icon(Icons.close),
+                            onPressed: () => setState(() => _regDate = null),
+                          ),
+                  ),
+                  child: Text(_regDate == null ? 'Not set' : DateFormat('dd MMM yyyy').format(_regDate!)),
+                ),
               ),
               const BillingSectionLabel('GST'),
               TextFormField(

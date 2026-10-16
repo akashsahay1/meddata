@@ -8,6 +8,7 @@ use App\Rules\Gstin;
 use App\Support\GstStates;
 use App\Support\ShopDetails;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -23,6 +24,8 @@ class ViewShop extends ViewRecord
     private const INVOICE_FIELDS = [
         'name', 'legal_name', 'gstin', 'state_code', 'address', 'phone',
         'drug_license_no', 'invoice_prefix', 'default_gst_rate_bp',
+        'email', 'pharmacist_name', 'pharmacist_reg_no', 'pharmacist_reg_date',
+        'pharmacist_qualification', 'fssai_no',
     ];
 
     protected function getHeaderActions(): array
@@ -62,6 +65,26 @@ class ViewShop extends ViewRecord
                     TextInput::make('drug_license_no')
                         ->label('Drug licence no.')
                         ->maxLength(255),
+                    TextInput::make('email')
+                        ->email()
+                        ->maxLength(255),
+                    TextInput::make('fssai_no')
+                        ->label('FSSAI licence no.')
+                        ->helperText('14 digits.')
+                        ->rules(['nullable', 'regex:/^[0-9]{14}$/']),
+                    TextInput::make('pharmacist_name')
+                        ->label('Pharmacist name')
+                        ->maxLength(255),
+                    TextInput::make('pharmacist_reg_no')
+                        ->label('Registration no.')
+                        ->maxLength(64),
+                    DatePicker::make('pharmacist_reg_date')
+                        ->label('Registration date')
+                        ->maxDate(now()),
+                    TextInput::make('pharmacist_qualification')
+                        ->label('Qualification')
+                        ->placeholder('e.g. D.Pharm')
+                        ->maxLength(100),
                     TextInput::make('invoice_prefix')
                         ->label('Invoice prefix')
                         ->helperText('Up to 3 letters/digits, e.g. MED -> MED/26-27/000001. Blank = INV.')

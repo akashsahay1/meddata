@@ -145,6 +145,9 @@ FakeBackend _billingServer() {
         'drug_license_no': 'MH-20B-12345',
         'invoice_prefix': 'MED',
         'default_gst_rate_bp': 500,
+        // The registration date shows its clear button.
+        'pharmacist_name': 'Alok Sahay',
+        'pharmacist_reg_date': '2019-06-01',
         'has_data': true,
       },
     },

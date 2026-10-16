@@ -116,7 +116,7 @@ Prices are stored in **paise** (integer). Stock = `server_qty_units` + sum of un
 
 ### Backend (mirrored + admin tables)
 
-Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details, unit and pack_size copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
+Same products/batches/stock_movements/price_changes per shop, plus: users, shops, devices, entitlements, payments, coupons, master_medicines (shared catalog), app_settings, api_tokens, password_reset_codes, invoice_scans (AI invoice uploads: file, status, extracted JSON, token usage), bills + bill_items (one item row per batch sold, all amounts in paise, seller details, unit and pack_size copied at bill time), invoice_series (per shop + FY counter). Shops gain `legal_name` and `default_gst_rate_bp` (500 = 5%), plus optional `email`, `fssai_no` and `pharmacist_name` / `_reg_no` / `_reg_date` / `_qualification` (printed on invoices when filled). Stock movement reasons include `sale`, `sale_cancel`, `purchase`, `purchase_free`, `purchase_cancel`, `expiry_writeoff`. Accounting tables: parties, purchases + purchase_items, party_payments, sale_returns + items, purchase_returns + items, document_series (CN/DN counters); bills gain a nullable `party_id`.
 
 ---
 
@@ -412,6 +412,7 @@ cd app && flutter test test/integration/
 
 - [x] **Save PDF** on a bill (A4 or 80 mm): a PC asks where with the Save dialog and writes the file; Android opens the system Save dialog (Downloads, Drive, ...) through a small `medikabiz/files` channel in `MainActivity` (no storage permission). The snackbar says where it went
 - [x] The WhatsApp / share text names the customer after the invoice line ("Customer: Alok (9650645839)", phone when there is one); walk-in bills have no customer line
+- [x] Shop & invoice details gain optional **Email**, **FSSAI licence no.** (14 digits) and the **registered pharmacist** (name, qualification, registration no., registration date picked from a calendar, shown dd MMM yyyy). Server: `shops` columns + `ShopDetails` rules (email validated, date `Y-m-d` not in the future), copied into each bill's `seller` snapshot; Filament shop view and "Edit invoice details" have them. The A4 invoice and 80 mm receipt print each one under the D.L. No. only when filled
 
 ### Remaining from original task list
 

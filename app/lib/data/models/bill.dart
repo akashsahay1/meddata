@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 import '../../domain/gst.dart';
 import '../../domain/pack_size.dart';
 import 'accounting.dart' show NoteRef;
@@ -41,6 +43,12 @@ class SellerDetails {
     this.gstin,
     this.stateCode,
     this.drugLicenseNo,
+    this.email,
+    this.pharmacistName,
+    this.pharmacistRegNo,
+    this.pharmacistRegDate,
+    this.pharmacistQualification,
+    this.fssaiNo,
   });
 
   factory SellerDetails.fromJson(Map<String, dynamic> j) => SellerDetails(
@@ -51,6 +59,12 @@ class SellerDetails {
         gstin: _str(j['gstin']),
         stateCode: _str(j['state_code']),
         drugLicenseNo: _str(j['drug_license_no']),
+        email: _str(j['email']),
+        pharmacistName: _str(j['pharmacist_name']),
+        pharmacistRegNo: _str(j['pharmacist_reg_no']),
+        pharmacistRegDate: _date(j['pharmacist_reg_date']),
+        pharmacistQualification: _str(j['pharmacist_qualification']),
+        fssaiNo: _str(j['fssai_no']),
       );
 
   final String name;
@@ -60,9 +74,35 @@ class SellerDetails {
   final String? gstin;
   final String? stateCode;
   final String? drugLicenseNo;
+  final String? email;
+  final String? pharmacistName;
+  final String? pharmacistRegNo;
+  final DateTime? pharmacistRegDate;
+  final String? pharmacistQualification;
+  final String? fssaiNo;
 
   /// Name for the invoice header: the legal name when set.
   String get displayName => legalName ?? name;
+
+  /// The optional header lines an invoice prints under the licence no.,
+  /// only for what the shop filled in.
+  List<String> get extraInvoiceLines {
+    final String? regDate =
+        pharmacistRegDate == null ? null : DateFormat('dd MMM yyyy').format(pharmacistRegDate!);
+    final String who = <String?>[
+      pharmacistName,
+      if (pharmacistQualification != null) pharmacistName == null ? pharmacistQualification : '($pharmacistQualification)',
+    ].whereType<String>().join(' ');
+    return <String>[
+      if (fssaiNo != null) 'FSSAI Lic. No.: $fssaiNo',
+      if (email != null) 'Email: $email',
+      if (who.isNotEmpty) 'Pharmacist: $who',
+      if (pharmacistRegNo != null)
+        'Reg. No.: $pharmacistRegNo${regDate == null ? '' : ' dt. $regDate'}'
+      else if (regDate != null)
+        'Reg. date: $regDate',
+    ];
+  }
 }
 
 class BillItem {
@@ -394,6 +434,12 @@ class ShopProfile {
     this.phone,
     this.invoicePrefix,
     this.defaultGstRateBp = 500,
+    this.email,
+    this.pharmacistName,
+    this.pharmacistRegNo,
+    this.pharmacistRegDate,
+    this.pharmacistQualification,
+    this.fssaiNo,
   });
 
   factory ShopProfile.fromJson(Map<String, dynamic> j) => ShopProfile(
@@ -406,6 +452,12 @@ class ShopProfile {
         phone: _str(j['phone']),
         invoicePrefix: _str(j['invoice_prefix']),
         defaultGstRateBp: (j['default_gst_rate_bp'] as num?)?.toInt() ?? 500,
+        email: _str(j['email']),
+        pharmacistName: _str(j['pharmacist_name']),
+        pharmacistRegNo: _str(j['pharmacist_reg_no']),
+        pharmacistRegDate: _date(j['pharmacist_reg_date']),
+        pharmacistQualification: _str(j['pharmacist_qualification']),
+        fssaiNo: _str(j['fssai_no']),
       );
 
   final String name;
@@ -419,6 +471,12 @@ class ShopProfile {
 
   /// GST rate for products that have none set.
   final int defaultGstRateBp;
+  final String? email;
+  final String? pharmacistName;
+  final String? pharmacistRegNo;
+  final DateTime? pharmacistRegDate;
+  final String? pharmacistQualification;
+  final String? fssaiNo;
 
   /// Enough for a proper tax invoice (GSTIN, state, address).
   bool get invoiceReady =>
@@ -434,5 +492,12 @@ class ShopProfile {
         'phone': phone,
         'invoice_prefix': invoicePrefix,
         'default_gst_rate_bp': defaultGstRateBp,
+        'email': email,
+        'pharmacist_name': pharmacistName,
+        'pharmacist_reg_no': pharmacistRegNo,
+        'pharmacist_reg_date':
+            pharmacistRegDate == null ? null : DateFormat('yyyy-MM-dd').format(pharmacistRegDate!),
+        'pharmacist_qualification': pharmacistQualification,
+        'fssai_no': fssaiNo,
       };
 }

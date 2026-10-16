@@ -98,6 +98,12 @@ class BillingAdminTest extends TestCase
                 'invoice_prefix' => 'MED',
                 'drug_license_no' => 'MH-20B-1',
                 'default_gst_rate_bp' => 1200,
+                'email' => 'shop@sahay.in',
+                'pharmacist_name' => 'Alok Sahay',
+                'pharmacist_reg_no' => 'MH/12345',
+                'pharmacist_reg_date' => '2019-06-01',
+                'pharmacist_qualification' => 'B.Pharm',
+                'fssai_no' => '11521999000012',
             ])
             ->assertHasNoActionErrors();
 
@@ -108,6 +114,15 @@ class BillingAdminTest extends TestCase
         $this->get("/shops/{$shop->id}")
             ->assertOk()
             ->assertSee('Sahay Medicals Pvt Ltd')
-            ->assertSee('12%');
+            ->assertSee('12%')
+            ->assertSee('Alok Sahay')
+            ->assertSee('01 Jun 2019')
+            ->assertSee('11521999000012');
+        $this->assertSame(['shop@sahay.in', 'MH/12345', '2019-06-01', 'B.Pharm'],
+            [$shop->email, $shop->pharmacist_reg_no, $shop->pharmacist_reg_date->toDateString(), $shop->pharmacist_qualification]);
+
+        Livewire::test(ViewShop::class, ['record' => $shop->getRouteKey()])
+            ->callAction('editInvoiceDetails', data: ['email' => 'nope'])
+            ->assertHasActionErrors(['email']);
     }
 }

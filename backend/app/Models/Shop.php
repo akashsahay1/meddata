@@ -11,6 +11,8 @@ class Shop extends Model
     protected $fillable = [
         'owner_user_id', 'name', 'legal_name', 'gstin', 'state_code', 'drug_license_no',
         'address', 'phone', 'invoice_prefix', 'default_gst_rate_bp',
+        'email', 'pharmacist_name', 'pharmacist_reg_no', 'pharmacist_reg_date',
+        'pharmacist_qualification', 'fssai_no',
     ];
 
     protected $hidden = ['seq'];
@@ -20,7 +22,7 @@ class Shop extends Model
 
     protected function casts(): array
     {
-        return ['default_gst_rate_bp' => 'integer'];
+        return ['default_gst_rate_bp' => 'integer', 'pharmacist_reg_date' => 'date:Y-m-d'];
     }
 
     public function owner(): BelongsTo
@@ -62,6 +64,12 @@ class Shop extends Model
             'gstin' => $this->gstin,
             'state_code' => $this->state_code,
             'drug_license_no' => $this->drug_license_no,
+            'email' => $this->email,
+            'pharmacist_name' => $this->pharmacist_name,
+            'pharmacist_reg_no' => $this->pharmacist_reg_no,
+            'pharmacist_reg_date' => $this->pharmacist_reg_date?->toDateString(),
+            'pharmacist_qualification' => $this->pharmacist_qualification,
+            'fssai_no' => $this->fssai_no,
         ];
     }
 

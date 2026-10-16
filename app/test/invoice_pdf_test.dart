@@ -81,6 +81,39 @@ void main() {
     }
   });
 
+  test('pharmacist, email and FSSAI print only when the shop filled them', () async {
+    final Map<String, dynamic> raw = sampleBill();
+    expect(Bill.fromJson(raw).seller.extraInvoiceLines, isEmpty);
+
+    raw['seller'] = <String, dynamic>{
+      ...raw['seller'] as Map<String, dynamic>,
+      'email': 'shop@sahay.in',
+      'pharmacist_name': 'Alok Sahay',
+      'pharmacist_reg_no': 'MH/12345',
+      'pharmacist_reg_date': '2019-06-01',
+      'pharmacist_qualification': 'B.Pharm',
+      'fssai_no': '11521999000012',
+    };
+    final Bill bill = Bill.fromJson(raw);
+    expect(bill.seller.extraInvoiceLines, <String>[
+      'FSSAI Lic. No.: 11521999000012',
+      'Email: shop@sahay.in',
+      'Pharmacist: Alok Sahay (B.Pharm)',
+      'Reg. No.: MH/12345 dt. 01 Jun 2019',
+    ]);
+    final SellerDetails partial = SellerDetails.fromJson(<String, dynamic>{
+      'name': 'Corner Chemist', 'pharmacist_qualification': 'D.Pharm', 'pharmacist_reg_date': '2020-01-31',
+    });
+    expect(partial.extraInvoiceLines, <String>['Pharmacist: D.Pharm', 'Reg. date: 31 Jan 2020']);
+
+    // Both layouts carry the extra lines (one more text run each).
+    for (final InvoiceLayout layout in InvoiceLayout.values) {
+      final int plain = (await InvoicePdf.build(Bill.fromJson(sampleBill()), layout: layout, fonts: fonts, compress: false)).length;
+      final int extra = (await InvoicePdf.build(bill, layout: layout, fonts: fonts, compress: false)).length;
+      expect(extra, greaterThan(plain + 200), reason: '$layout');
+    }
+  });
+
   test('Save PDF: a PC writes the invoice where the user picked', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);

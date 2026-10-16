@@ -169,6 +169,41 @@ class BillingApiTest extends TestCase
         $this->assertSame('Sahay Medicals Pvt Ltd', $bill['seller']['legal_name']);
         $this->assertSame('27AAPFU0939F1ZV', $bill['seller']['gstin']);
         $this->assertSame('MH-20B-12345', $bill['seller']['drug_license_no']);
+        // Optional extras not filled stay empty on the snapshot.
+        $this->assertNull($bill['seller']['pharmacist_name']);
+        $this->assertNull($bill['seller']['fssai_no']);
+    }
+
+    public function test_pharmacist_email_and_fssai_details_are_saved_and_copied_onto_bills(): void
+    {
+        $token = $this->token();
+        $shop = $this->shop($token, [
+            'email' => ' shop@sahay.in ',
+            'pharmacist_name' => 'Alok Sahay',
+            'pharmacist_reg_no' => 'mh/12345',
+            'pharmacist_reg_date' => '2019-06-01',
+            'pharmacist_qualification' => 'B.Pharm',
+            'fssai_no' => '1152 1999 0000 12',
+        ]);
+        $this->assertSame(['shop@sahay.in', 'Alok Sahay', 'MH/12345', '2019-06-01', 'B.Pharm', '11521999000012'],
+            [$shop['email'], $shop['pharmacist_name'], $shop['pharmacist_reg_no'], $shop['pharmacist_reg_date'],
+                $shop['pharmacist_qualification'], $shop['fssai_no']]);
+
+        $seller = $this->bill($token, [$this->line($this->stock($token))])->assertCreated()->json('bill.seller');
+        $this->assertSame(['shop@sahay.in', 'Alok Sahay', 'MH/12345', '2019-06-01', 'B.Pharm', '11521999000012'],
+            [$seller['email'], $seller['pharmacist_name'], $seller['pharmacist_reg_no'], $seller['pharmacist_reg_date'],
+                $seller['pharmacist_qualification'], $seller['fssai_no']]);
+
+        $patch = fn (array $data) => $this->withToken($token)->patchJson('/api/v1/shops/current', $data);
+        $patch(['email' => 'not-an-email', 'pharmacist_reg_date' => '01/06/2019', 'fssai_no' => '12345'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['email', 'pharmacist_reg_date', 'fssai_no']);
+        $patch(['pharmacist_reg_date' => '2099-01-01'])->assertStatus(422)->assertJsonValidationErrors('pharmacist_reg_date');
+        // Blanks clear a field.
+        $patch(['email' => '', 'pharmacist_reg_date' => '', 'fssai_no' => ' '])->assertOk()
+            ->assertJsonPath('shop.email', null)
+            ->assertJsonPath('shop.pharmacist_reg_date', null)
+            ->assertJsonPath('shop.fssai_no', null);
     }
 
     public function test_customer_from_another_state_gets_igst(): void
