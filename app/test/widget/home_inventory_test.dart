@@ -74,6 +74,40 @@ void main() {
       expect(find.text('All good'), findsOneWidget);
       expect(find.byType(MedicineTile), findsNothing);
     });
+
+    for (final (String label, Size size) in <(String, Size)>[
+      ('phone', const Size(390, 1400)),
+      ('desktop', const Size(1280, 800)),
+    ]) {
+      testWidgets('Alerts opened from Home has a way back ($label)',
+          (WidgetTester tester) async {
+        final TestApp app = await start(tester, seeded: false);
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(app.wrap(const HomeScreen()));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Low on stock'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertsScreen), findsOneWidget);
+        expect(find.descendant(of: find.byType(AlertsScreen), matching: find.text('All good')),
+            findsOneWidget);
+
+        await tester.tap(find.byTooltip('Back'));
+        await tester.pumpAndSettle();
+        expect(find.byType(AlertsScreen), findsNothing);
+      });
+    }
+
+    testWidgets('Alerts as a main tab has no Back button',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester, seeded: false);
+      await tester.pumpWidget(app.wrap(const AlertsScreen()));
+      await tester.pumpAndSettle();
+      expect(find.text('Alerts'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing);
+    });
   });
 
   group('inventory', () {

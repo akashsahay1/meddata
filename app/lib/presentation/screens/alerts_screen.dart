@@ -9,7 +9,8 @@ import '../../state/medicine_provider.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart';
 import 'medicine_detail_screen.dart';
-import 'product_detail_screen.dart';
+import 'product_detail_screen.dart';
+
 import '../widgets/adaptive_layout.dart';
 
 /// Soft border tints from the design handoff (not part of the core palette:
@@ -40,7 +41,15 @@ class AlertsScreen extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: empty
-            ? const _EmptyState()
+            ? const Column(
+                children: <Widget>[
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(18, 8, 18, 0),
+                    child: _Header(),
+                  ),
+                  Expanded(child: _EmptyState()),
+                ],
+              )
             : ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 120),
                 children: <Widget>[
@@ -85,7 +94,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final Widget title = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const Text(
@@ -106,6 +115,20 @@ class _Header extends StatelessWidget {
             color: AppColors.muted,
           ),
         ),
+      ],
+    );
+    // Opened from Home (a page or a desktop window over it): a way back.
+    // As a tab of the main shell there is nothing to go back to.
+    if (!Navigator.of(context).canPop()) return title;
+    return Row(
+      children: <Widget>[
+        IconButton(
+          tooltip: 'Back',
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back, color: AppColors.ink),
+        ),
+        const SizedBox(width: 4),
+        Expanded(child: title),
       ],
     );
   }
