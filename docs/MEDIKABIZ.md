@@ -477,7 +477,7 @@ cd app && flutter test test/integration/
 - [ ] Set `APP_ENV=production` (with `local` and no Razorpay keys the server still accepts fake payments) and `APP_DEBUG=false`, then run `php artisan config:cache`
 - [ ] Use live `rzp_live_` Razorpay keys (with `rzp_test_` keys anyone can "pay" with test cards)
 - [ ] Rotate old DB password and admin password (exposed in git history)
-- [ ] Set Support WhatsApp number in admin panel
+- [x] Set Support WhatsApp number in admin panel (done by the owner, 16 Oct 2026)
 - [ ] Log in to admin, verify Shops + Master catalog pages
 - [ ] Add live site URL to Razorpay dashboard (for desktop browser payment `/api/v1/pay/...`)
 - [ ] Set `GROQ_API_KEY` (and `GROQ_MODEL=qwen/qwen3.8-27b`); keep `QUEUE_CONNECTION=database`. Check the Groq account's limits for the model (30 RPM / 8K tokens per minute on the base tier: one 3-page scan is ~6K input tokens)
