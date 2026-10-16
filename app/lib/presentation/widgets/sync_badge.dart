@@ -26,6 +26,7 @@ class SyncBadge extends StatelessWidget {
       tooltip: false,
       onTap: open,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(20),
         onTap: open,
         child: Container(

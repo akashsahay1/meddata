@@ -258,6 +258,8 @@ class _PartyFormScreenState extends State<PartyFormScreen> {
             if (!gstinOk) ...<Widget>[
               const SizedBox(height: 10),
               DropdownButtonFormField<String?>(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
                 initialValue: _state,
                 isExpanded: true,
                 decoration: InputDecoration(

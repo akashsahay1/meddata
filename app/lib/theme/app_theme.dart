@@ -97,6 +97,11 @@ class AppTheme {
       fontFamily: fontFamily,
     );
 
+    // Flutter's buttons and ink default to the plain arrow on desktop; the
+    // owner wants the hand on everything clickable (arrow when disabled).
+    const WidgetStateMouseCursor click = WidgetStateMouseCursor.clickable;
+    const ButtonStyle clickStyle = ButtonStyle(mouseCursor: click);
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -177,6 +182,7 @@ class AppTheme {
           ),
           textStyle: const TextStyle(
               fontFamily: fontFamily, fontSize: 16, fontWeight: FontWeight.w700),
+          enabledMouseCursor: SystemMouseCursors.click,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -193,6 +199,7 @@ class AppTheme {
           ),
           textStyle: const TextStyle(
               fontFamily: fontFamily, fontSize: 15, fontWeight: FontWeight.w700),
+          enabledMouseCursor: SystemMouseCursors.click,
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -201,9 +208,19 @@ class AppTheme {
           foregroundColor: isDark ? AppColors.statusGreen : AppColors.green,
           textStyle:
               const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700),
+          enabledMouseCursor: SystemMouseCursors.click,
         ),
       ),
+      filledButtonTheme: const FilledButtonThemeData(style: clickStyle),
+      iconButtonTheme: const IconButtonThemeData(style: clickStyle),
+      segmentedButtonTheme: const SegmentedButtonThemeData(style: clickStyle),
+      menuButtonTheme: const MenuButtonThemeData(style: clickStyle),
+      popupMenuTheme: const PopupMenuThemeData(mouseCursor: click),
+      tabBarTheme: const TabBarThemeData(mouseCursor: click),
+      checkboxTheme: const CheckboxThemeData(mouseCursor: click),
+      radioTheme: const RadioThemeData(mouseCursor: click),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        mouseCursor: click,
         backgroundColor: AppColors.orangeButton,
         foregroundColor: Colors.white,
         // Darken on hover/focus/press, as the elevated buttons do.
@@ -240,6 +257,7 @@ class AppTheme {
         trackColor: WidgetStateProperty.resolveWith((Set<WidgetState> s) =>
             s.contains(WidgetState.selected) ? AppColors.green : AppColors.border),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        mouseCursor: click,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: AppColors.orange,

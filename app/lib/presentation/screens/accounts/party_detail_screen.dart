@@ -16,7 +16,8 @@ import 'accounts_widgets.dart';
 import 'note_detail_screen.dart';
 import 'party_form_screen.dart';
 import 'payment_screen.dart';
-import 'purchase_detail_screen.dart';
+import 'purchase_detail_screen.dart';
+
 import '../../widgets/adaptive_layout.dart';
 
 enum _Range { all, month, quarter, custom }
@@ -403,6 +404,7 @@ builder: (_) => screen));
             Material(
               type: MaterialType.transparency,
               child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: () => _entryTapped(e),
                 child: _row(
                   e.description,

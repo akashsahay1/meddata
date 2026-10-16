@@ -307,6 +307,7 @@ class _FilterChips extends StatelessWidget {
       selected: selected,
       onTap: select,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(20),
         onTap: select,
         child: AnimatedContainer(

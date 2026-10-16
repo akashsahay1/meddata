@@ -221,6 +221,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           if (_docs.isNotEmpty) ...<Widget>[
             const BillingSectionLabel('Against'),
             DropdownButtonFormField<String?>(
+              mouseCursor: WidgetStateMouseCursor.clickable,
+              dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
               initialValue: _docId,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Bill or purchase (optional)'),

@@ -593,6 +593,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
         if (_sheets.length > 1) ...<Widget>[
           const _Label('Sheet'),
           DropdownButtonFormField<int>(
+            mouseCursor: WidgetStateMouseCursor.clickable,
+            dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
             key: ValueKey<String>('sheet-$_sheetIndex'),
             initialValue: _sheetIndex,
             isExpanded: true,
@@ -744,6 +746,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
             children: <Widget>[
               const _Label('Unit for rows that have none'),
               DropdownButtonFormField<String>(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
                 initialValue: _defaultUnit,
                 isExpanded: true,
                 items: <DropdownMenuItem<String>>[
@@ -789,6 +793,8 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
       ],
     );
     final Widget picker = DropdownButtonFormField<int>(
+      mouseCursor: WidgetStateMouseCursor.clickable,
+      dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
       key: ValueKey<String>('${f.name}-$col'),
       initialValue: col ?? -1,
       isExpanded: true,
@@ -1291,6 +1297,7 @@ class _ChoiceTile extends StatelessWidget {
           color: AppColors.card,
           borderRadius: BorderRadius.circular(AppRadii.input),
           child: InkWell(
+            mouseCursor: WidgetStateMouseCursor.clickable,
             onTap: onTap,
             borderRadius: BorderRadius.circular(AppRadii.input),
             child: Container(
@@ -1380,6 +1387,7 @@ class _FilterChip extends StatelessWidget {
       button: true,
       selected: selected,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(

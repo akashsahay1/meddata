@@ -50,6 +50,12 @@ class TapTarget extends StatelessWidget {
         ),
       ),
     );
+    // GestureDetector has no cursor of its own: show the hand on desktop
+    // while the target is tappable.
+    target = MouseRegion(
+      cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      child: target,
+    );
     if (tooltip) {
       target =
           Tooltip(message: label, excludeFromSemantics: true, child: target);
@@ -241,6 +247,7 @@ class MedicineTile extends StatelessWidget {
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Ink(
@@ -423,6 +430,7 @@ class StatCard extends StatelessWidget {
 
     if (onTap == null) return content;
     return InkWell(
+      mouseCursor: WidgetStateMouseCursor.clickable,
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: content,
@@ -460,6 +468,7 @@ class AlertCard extends StatelessWidget {
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Ink(

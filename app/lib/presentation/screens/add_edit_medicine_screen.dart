@@ -811,6 +811,7 @@ builder: (_) =>
             label: 'Back',
             onTap: () => Navigator.of(context).maybePop(),
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => Navigator.of(context).maybePop(),
               borderRadius: BorderRadius.circular(11),
               child: Container(
@@ -964,6 +965,7 @@ builder: (_) => const InvoiceScanScreen(),
         .where((String s) => s.isNotEmpty)
         .join(' · ');
     return InkWell(
+      mouseCursor: WidgetStateMouseCursor.clickable,
       onTap: onTap,
       child: Container(
         constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
@@ -1144,6 +1146,7 @@ builder: (_) => const InvoiceScanScreen(),
                 label: 'Scan barcode',
                 onTap: _scanBarcode,
                 child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
                   onTap: _scanBarcode,
                   borderRadius: BorderRadius.circular(9),
                   child: Container(
@@ -1177,6 +1180,8 @@ builder: (_) => const InvoiceScanScreen(),
       children: <Widget>[
         _fieldLabel('GST rate'),
         DropdownButtonFormField<int?>(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
           initialValue: current,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
@@ -1208,6 +1213,8 @@ builder: (_) => const InvoiceScanScreen(),
       children: <Widget>[
         _fieldLabel('Unit'),
         DropdownButtonFormField<String>(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
           initialValue: _unit,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
@@ -1245,6 +1252,8 @@ builder: (_) => const InvoiceScanScreen(),
       children: <Widget>[
         _fieldLabel('Category'),
         DropdownButtonFormField<String>(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
           initialValue: _category,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down_rounded,
@@ -1277,6 +1286,7 @@ builder: (_) => const InvoiceScanScreen(),
   }) {
     final String name = label.replaceAll(' *', '');
     final Widget field = InkWell(
+      mouseCursor: WidgetStateMouseCursor.clickable,
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.input),
       // Read as one control, e.g. "Expiry date: 05 Oct 2027".

@@ -125,6 +125,8 @@ class _GstReportsScreenState extends State<GstReportsScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<DateTime>(
+            mouseCursor: WidgetStateMouseCursor.clickable,
+            dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
             initialValue: _month,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Month'),

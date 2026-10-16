@@ -191,6 +191,7 @@ class PillChoice extends StatelessWidget {
       selected: selected,
       onTap: onTap,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: AnimatedContainer(

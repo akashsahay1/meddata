@@ -455,6 +455,7 @@ cd app && flutter test test/integration/
 | Unit change with stock | Ask, then convert every batch ×/÷ pack size (owner's decision, 9 Oct); refused when not whole strips. Prices are per strip either way, so they stay |
 | Saving files on Android | System Save dialog (`ACTION_CREATE_DOCUMENT`, Storage Access Framework) via the app's own `medikabiz/files` channel: works on every Android version without storage permissions and needs no extra package |
 | Orange buttons | White text on `AppColors.orangeButton` (#D84000, 4.5:1, same hue as the brand orange); hover/press darken it. Brand #FF6B2C only where it is not behind text (owner's decision, 16 Oct) |
+| Mouse cursor | The hand on everything clickable, the arrow when disabled (owner, 16 Oct). Flutter now defaults buttons/ink to the arrow on desktop, so the theme sets the cursor for buttons, FAB, menus, tabs, switches; each `InkWell` / dropdown passes `WidgetStateMouseCursor.clickable`; `TapTarget` and bare `GestureDetector`s add a `MouseRegion` |
 | Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail. Wide windows get their own layouts (tables, columns, full width), not the phone screens stretched or centred |
 
 ---

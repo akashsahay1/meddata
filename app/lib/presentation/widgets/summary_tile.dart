@@ -85,6 +85,7 @@ class SummaryTile extends StatelessWidget {
 
     if (onTap == null) return content;
     return InkWell(
+      mouseCursor: WidgetStateMouseCursor.clickable,
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: content,

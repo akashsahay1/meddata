@@ -73,6 +73,7 @@ class AccountsPill extends StatelessWidget {
       button: true,
       selected: selected,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         borderRadius: BorderRadius.circular(24),
         onTap: onTap,
         child: Container(

@@ -202,6 +202,7 @@ class DeskTable extends StatelessWidget {
     final Widget row = onTap == null
         ? content
         : InkWell(
+            mouseCursor: WidgetStateMouseCursor.clickable,
             onTap: () => onTap!(i),
             hoverColor: AppColors.canvas,
             child: content,

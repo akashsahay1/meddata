@@ -210,6 +210,7 @@ class _AppBarAction extends StatelessWidget {
       label: label,
       onTap: onTap,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(11),
         child: Container(
@@ -394,6 +395,7 @@ class _QuantityCard extends StatelessWidget {
       label: label,
       onTap: onTap,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.input),
         child: Container(

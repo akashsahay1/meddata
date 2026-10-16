@@ -136,6 +136,7 @@ class _ScanAction extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           child: SizedBox(
             width: 38,
