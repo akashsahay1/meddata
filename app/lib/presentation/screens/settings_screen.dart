@@ -126,7 +126,9 @@ builder: (_) => const ShopSettingsScreen())),
         ),
       ]),
 
-      // Accounts (online, like billing)
+      // Accounts (online, like billing). On desktop these are tabs in the
+      // side menu, so Profile doesn't repeat them.
+      if (!desktop) ...<Widget>[
       _sectionLabel('Accounts'),
       _menuCard(<Widget>[
         _menuRow(
@@ -156,6 +158,7 @@ builder: (_) => const ReportsScreen())),
 builder: (_) => const GstReportsScreen())),
         ),
       ]),
+      ],
     ];
     final List<Widget> right = <Widget>[
       // Appearance

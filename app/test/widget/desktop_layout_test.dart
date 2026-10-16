@@ -207,6 +207,9 @@ void main() {
       final Offset appearance = tester.getTopLeft(find.text('APPEARANCE'));
       expect(appearance.dx, greaterThan(account.dx + 500), reason: 'second column');
       expect(appearance.dy, lessThan(account.dy + 200), reason: 'side by side, not below');
+      // Parties, Purchases, Reports and GST returns are side-menu tabs here.
+      expect(find.text('ACCOUNTS'), findsNothing);
+      expect(find.text('Reports (stock value, profit, expiry)'), findsNothing);
     });
   });
 
