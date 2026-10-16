@@ -79,13 +79,21 @@ class InvoiceShare {
     return d.length >= 11 && d.length <= 15 ? d : null;
   }
 
-  /// Short text version of the bill for WhatsApp / the share sheet.
+  /// Short text version of the bill for WhatsApp / the share sheet: the shop,
+  /// the invoice, who it is for, the items and the total.
   static String summary(Bill bill) {
     final StringBuffer b = StringBuffer()
       ..writeln('*${bill.seller.displayName}*')
       ..writeln('Invoice ${bill.invoiceNo}')
-      ..writeln(DateFormat('dd MMM yyyy, hh:mm a').format(bill.createdAt ?? bill.billDate))
-      ..writeln();
+      ..writeln(DateFormat('dd MMM yyyy, hh:mm a').format(bill.createdAt ?? bill.billDate));
+    final List<String> customer = customerLines(bill);
+    if (customer.isNotEmpty) {
+      b.writeln();
+      for (final String line in customer) {
+        b.writeln(line);
+      }
+    }
+    b.writeln();
     const int shown = 15;
     for (final BillItem i in bill.items.take(shown)) {
       b.writeln('${i.name} x ${i.qty} = ${Inr.format(i.totalPaise)}');
@@ -97,5 +105,21 @@ class InvoiceShare {
     if (bill.isCancelled) b.writeln('This bill was cancelled.');
     b.write('Thank you!');
     return b.toString();
+  }
+
+  /// The customer's details on the bill, one per line; empty when the bill
+  /// has none (a walk-in sale).
+  static List<String> customerLines(Bill bill) {
+    String? v(String? s) => (s == null || s.trim().isEmpty) ? null : s.trim();
+    final String? name = v(bill.customerName);
+    final String? phone = v(bill.customerPhone);
+    final String? gstin = v(bill.customerGstin);
+    final String? address = v(bill.customerAddress);
+    return <String>[
+      if (name != null) 'Customer: $name',
+      if (phone != null) 'Phone: $phone',
+      if (gstin != null) 'GSTIN: $gstin',
+      if (address != null) 'Address: $address',
+    ];
   }
 }

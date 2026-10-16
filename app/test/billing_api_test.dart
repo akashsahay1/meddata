@@ -194,4 +194,21 @@ void main() {
     expect(text, contains('*Total: ₹364.00* (UPI)'));
     expect(InvoiceShare.whatsAppUri(Bill.fromJson(sampleBill(phone: null))), isNull);
   });
+
+  test('the WhatsApp and share text names the customer with their details', () {
+    final String text = InvoiceShare.summary(Bill.fromJson(sampleBill()));
+    expect(
+      text,
+      contains('Customer: City Clinic\nPhone: 98765 43210\nGSTIN: 29AAGCB7383J1Z4\nAddress: MG Road, Bengaluru\n'),
+    );
+    // Only the details the bill has.
+    final Map<String, dynamic> nameOnly = sampleBill(phone: null)
+      ..['customer_gstin'] = null
+      ..['customer_address'] = '  ';
+    expect(InvoiceShare.customerLines(Bill.fromJson(nameOnly)), <String>['Customer: City Clinic']);
+    // A walk-in sale has no customer block.
+    final Map<String, dynamic> walkIn = Map<String, dynamic>.of(nameOnly)..['customer_name'] = null;
+    expect(InvoiceShare.customerLines(Bill.fromJson(walkIn)), isEmpty);
+    expect(InvoiceShare.summary(Bill.fromJson(walkIn)), isNot(contains('Customer:')));
+  });
 }
