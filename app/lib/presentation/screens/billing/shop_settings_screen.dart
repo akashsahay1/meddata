@@ -259,6 +259,7 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               ),
               const SizedBox(height: 12),
               InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: _pickRegDate,
                 borderRadius: BorderRadius.circular(AppRadii.input),
                 child: InputDecorator(
@@ -294,6 +295,8 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
                 key: ValueKey<String?>(_state),
                 initialValue: _state,
                 isExpanded: true,
@@ -314,6 +317,8 @@ class _ShopSettingsScreenState extends State<ShopSettingsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
                 initialValue: _rates.contains(_defaultGst) ? _defaultGst : null,
                 decoration: const InputDecoration(
                   labelText: 'GST rate for medicines without one',

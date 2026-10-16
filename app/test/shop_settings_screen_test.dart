@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikabiz/presentation/screens/billing/shop_settings_screen.dart';
 import 'package:medikabiz/services/api_client.dart';
@@ -68,6 +70,14 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'FSSAI licence no.'), '11521999000012');
     await tester.enterText(find.widgetWithText(TextField, 'Qualification'), 'B.Pharm');
     await tester.enterText(find.widgetWithText(TextField, 'Registration no.'), 'MH/12345');
+    // On desktop the date field and the dropdowns show the hand cursor.
+    for (final Finder f in <Finder>[find.text('01 Jun 2019'), find.text('5%')]) {
+      final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse, pointer: 1);
+      await mouse.addPointer(location: tester.getCenter(f));
+      await tester.pump();
+      expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
+      await mouse.removePointer();
+    }
     // Pick a new registration date with the date picker.
     await tester.tap(find.text('01 Jun 2019'));
     await tester.pumpAndSettle();

@@ -544,6 +544,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
         color: AppColors.statusAmberBg,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           borderRadius: BorderRadius.circular(AppRadii.card),
           onTap: _openShopSettings,
           child: const Padding(
@@ -818,6 +819,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: () => setState(() => _showCustomer = !_showCustomer),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -883,6 +885,8 @@ builder: (_) => ShopSettingsScreen(api: _api)));
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String?>(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
+                  dropdownMenuItemMouseCursor: WidgetStateMouseCursor.clickable,
                   key: ValueKey<int>(_formSeed),
                   initialValue: _cart.customerStateCode,
                   isExpanded: true,
@@ -1159,6 +1163,7 @@ class _CartItemCard extends StatelessWidget {
                 onPressed: item.qty > 1 ? () => cart.setQty(item, item.qty - 1) : null,
               ),
               InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: onEditQty,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(

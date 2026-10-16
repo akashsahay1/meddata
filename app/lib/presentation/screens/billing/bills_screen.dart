@@ -522,6 +522,7 @@ class _BillTile extends StatelessWidget {
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Ink(
