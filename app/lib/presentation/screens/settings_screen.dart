@@ -531,8 +531,9 @@ builder: (_) => const ImportWizardScreen()),
         action == 'camera' ? ImageSource.camera : ImageSource.gallery;
     final XFile? file;
     try {
-      // The picker asks for camera permission itself.
-      // Downscale before upload: the avatar is shown at 64px.
+      // The picker asks for camera permission itself. The size hints keep
+      // the phone's decode small; AuthService shrinks it again either way
+      // (the Windows picker ignores them).
       file = await ImagePicker().pickImage(
         source: source,
         maxWidth: 512,
@@ -554,7 +555,7 @@ builder: (_) => const ImportWizardScreen()),
     }
     if (file == null || !mounted) return;
     setState(() => _avatarBusy = true);
-    final String? err = await auth.uploadAvatar(file.path);
+    final String? err = await auth.uploadAvatar(await file.readAsBytes());
     if (!mounted) return;
     setState(() => _avatarBusy = false);
     _toast(err ?? 'Profile photo updated');

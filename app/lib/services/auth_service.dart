@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api_client.dart';
+import 'image_downscale.dart';
 import 'settings_service.dart';
 
 /// Where the Bearer token is kept. The token is as good as the password, so
@@ -349,12 +350,17 @@ class AuthService extends ChangeNotifier {
     return _errorFrom(r.body) ?? 'Could not update profile.';
   }
 
-  /// Upload a new profile photo from [filePath]. Returns null on success, or
-  /// a user-facing error message on failure.
-  Future<String?> uploadAvatar(String filePath) async {
+  /// Upload a new profile photo from the picked picture's [bytes], shrunk
+  /// to 512 px and re-encoded as JPEG first (the server takes JPG/PNG/WebP
+  /// and a small upload; the Windows picker neither shrinks nor limits the
+  /// format). Returns null on success, or a user-facing error message.
+  Future<String?> uploadAvatar(Uint8List bytes) async {
     if (!isLoggedIn) return 'You are not signed in.';
+    final Uint8List? jpeg =
+        await downscaleToJpeg(bytes, maxSide: 512, quality: 85);
+    if (jpeg == null) return 'Could not open this picture. Choose a photo.';
     final ({int status, Map<String, dynamic>? body}) r = await _api
-        .uploadAvatar(token: _token!, filePath: filePath);
+        .uploadAvatar(token: _token!, bytes: jpeg);
     return _applyAvatarResult(r, 'Could not upload photo.');
   }
 

@@ -327,10 +327,10 @@ class ApiClient {
     }
   }
 
-  /// Upload (or replace) the profile photo at [filePath] as multipart.
+  /// Upload (or replace) the profile photo, JPEG [bytes], as multipart.
   Future<({int status, Map<String, dynamic>? body})> uploadAvatar({
     required String token,
-    required String filePath,
+    required List<int> bytes,
   }) async {
     try {
       final http.MultipartRequest req =
@@ -339,7 +339,8 @@ class ApiClient {
               'Accept': 'application/json',
               'Authorization': 'Bearer $token',
             })
-            ..files.add(await http.MultipartFile.fromPath('avatar', filePath));
+            ..files.add(http.MultipartFile.fromBytes('avatar', bytes,
+                filename: 'avatar.jpg'));
       final http.Response res = await http.Response.fromStream(
           await _http.send(req).timeout(const Duration(seconds: 30)));
       Map<String, dynamic>? parsed;

@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:image/image.dart' as img;
 import 'package:medikabiz/services/api_client.dart';
 import 'package:medikabiz/services/auth_service.dart';
 import 'package:medikabiz/services/settings_service.dart';
@@ -152,6 +154,35 @@ void main() {
       expect(store.value, 'tok-good');
       expect(settings.isPremium, isTrue);
     });
+  });
+
+  test('a profile photo goes up as a JPEG of at most 512 px, whatever was '
+      'picked', () async {
+    store.value = 'tok-good';
+    http.Request? sent;
+    final AuthService auth = await launch(
+      <String, Object>{'auth_token_secure': true, 'auth_email': 'a@x.in'},
+      server: (http.Request r) async {
+        if (r.url.path.endsWith('/auth/avatar')) sent = r;
+        return http.Response(
+            jsonEncode(<String, Object?>{
+              'user': <String, Object?>{'avatar_url': 'https://x/a.jpg'},
+            }),
+            200);
+      },
+    );
+
+    // A big BMP, as the Windows picker allows (the server takes JPG/PNG/WebP).
+    final String? err = await auth.uploadAvatar(
+        img.encodeBmp(img.Image(width: 2000, height: 1000)));
+
+    expect(err, isNull);
+    expect(auth.avatarUrl, 'https://x/a.jpg');
+    final List<int> body = sent!.bodyBytes;
+    expect(latin1.decode(body), contains('filename="avatar.jpg"'));
+    final int start = latin1.decode(body).indexOf('\xFF\xD8\xFF');
+    final img.Image photo = img.decodeJpg(Uint8List.fromList(body.sublist(start)))!;
+    expect(<int>[photo.width, photo.height], <int>[512, 256]);
   });
 
   test('only a real Razorpay key counts for checkout', () {
