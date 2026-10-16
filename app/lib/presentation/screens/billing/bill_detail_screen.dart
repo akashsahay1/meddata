@@ -152,6 +152,15 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     await _run(() => InvoiceShare.sharePdf(_bill!, layout), 'Could not share the invoice.');
   }
 
+  Future<void> _save() async {
+    final InvoiceLayout? layout = await _pickLayout('Save PDF');
+    if (layout == null || !mounted) return;
+    await _run(() async {
+      final String? where = await InvoiceShare.savePdf(_bill!, layout);
+      if (where != null && mounted) _toast('Saved to $where');
+    }, 'Could not save the invoice.');
+  }
+
   Future<void> _whatsApp() async {
     final bool ok = await InvoiceShare.openWhatsApp(_bill!);
     if (!ok && mounted) _toast('Could not open WhatsApp.');
@@ -415,6 +424,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       children: <Widget>[
         _ActionButton(icon: Icons.print_outlined, label: 'Print', onPressed: _busy ? null : _print),
         _ActionButton(icon: Icons.share_outlined, label: 'Share PDF', onPressed: _busy ? null : _share),
+        _ActionButton(icon: Icons.download_outlined, label: 'Save PDF', onPressed: _busy ? null : _save),
         if (hasPhone)
           _ActionButton(icon: Icons.chat_outlined, label: 'WhatsApp customer', onPressed: _busy ? null : _whatsApp),
         if (bill.canReturn)

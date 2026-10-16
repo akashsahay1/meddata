@@ -1,6 +1,8 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -42,6 +44,42 @@ class InvoiceShare {
       text: summary(bill),
       subject: 'Invoice ${bill.invoiceNo}',
     ));
+  }
+
+  static const MethodChannel _files = MethodChannel('medikabiz/files');
+
+  /// Saves the invoice PDF on this device. A PC asks where (Save dialog) and
+  /// writes the file; Android opens the system Save dialog (Downloads, Drive,
+  /// ...; no storage permission). Returns where it went, or null when the
+  /// user closed the dialog. [pickPath] replaces the PC dialog in tests.
+  static Future<String?> savePdf(Bill bill, InvoiceLayout layout,
+      {Future<String?> Function(String suggestedName)? pickPath}) async {
+    final InvoiceFonts fonts = await InvoiceFonts.load();
+    final String name = InvoicePdf.fileName(bill, layout);
+    final Uint8List bytes = await InvoicePdf.build(bill, layout: layout, fonts: fonts);
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return _files.invokeMethod<String>('saveFile', <String, Object>{
+        'name': name,
+        'mimeType': 'application/pdf',
+        'bytes': bytes,
+      });
+    }
+    final String? path = await (pickPath ?? _pickSavePath)(name);
+    if (path == null) return null;
+    await File(path).writeAsBytes(bytes);
+    return path;
+  }
+
+  static Future<String?> _pickSavePath(String suggestedName) async {
+    final FileSaveLocation? at = await getSaveLocation(
+      suggestedName: suggestedName,
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(label: 'PDF', extensions: <String>['pdf'], mimeTypes: <String>['application/pdf'],
+            uniformTypeIdentifiers: <String>['com.adobe.pdf']),
+      ],
+    );
+    if (at == null) return null;
+    return at.path.toLowerCase().endsWith('.pdf') ? at.path : '${at.path}.pdf';
   }
 
   /// Opens WhatsApp on the customer's number with [summary]; false when the

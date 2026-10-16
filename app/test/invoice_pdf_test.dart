@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikabiz/data/models/bill.dart';
+import 'package:flutter/foundation.dart';
 import 'package:medikabiz/services/invoice_pdf.dart';
+import 'package:medikabiz/services/invoice_share.dart';
 import 'package:pdf/pdf.dart';
 
 import 'billing_api_test.dart' show sampleBill;
@@ -76,5 +79,44 @@ void main() {
       final Uint8List pdf = await InvoicePdf.build(bill, layout: layout, fonts: fonts);
       expect(pdf.length, greaterThan(1000));
     }
+  });
+
+  test('Save PDF: a PC writes the invoice where the user picked', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final Directory dir = await Directory.systemTemp.createTemp('save-pdf');
+    addTearDown(() => dir.delete(recursive: true));
+    String? suggested;
+    final String? where = await InvoiceShare.savePdf(Bill.fromJson(sampleBill()), InvoiceLayout.a4,
+        pickPath: (String name) async => '${dir.path}/${suggested = name}');
+    expect(suggested, 'Invoice-MED-26-27-000042.pdf');
+    expect(where, '${dir.path}/Invoice-MED-26-27-000042.pdf');
+    expect(latin1.decode(await File(where!).readAsBytes()).startsWith('%PDF'), isTrue);
+
+    // Closing the dialog saves nothing.
+    expect(await InvoiceShare.savePdf(Bill.fromJson(sampleBill()), InvoiceLayout.a4,
+        pickPath: (_) async => null), isNull);
+  });
+
+  test('Save PDF on Android goes through the system Save dialog', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    MethodCall? call;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('medikabiz/files'), (MethodCall c) async {
+      call = c;
+      return 'Download/Invoice-MED-26-27-000042-80mm.pdf';
+    });
+    addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('medikabiz/files'), null));
+
+    final String? where = await InvoiceShare.savePdf(Bill.fromJson(sampleBill()), InvoiceLayout.receipt80);
+    debugDefaultTargetPlatformOverride = null;
+    expect(where, 'Download/Invoice-MED-26-27-000042-80mm.pdf');
+    expect(call!.method, 'saveFile');
+    final Map<Object?, Object?> args = call!.arguments as Map<Object?, Object?>;
+    expect(args['name'], 'Invoice-MED-26-27-000042-80mm.pdf');
+    expect(args['mimeType'], 'application/pdf');
+    expect(latin1.decode(args['bytes']! as Uint8List).startsWith('%PDF'), isTrue);
   });
 }

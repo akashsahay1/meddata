@@ -405,6 +405,10 @@ cd app && flutter test test/integration/
 - [x] Alerts opened from Home has a Back button (header shown in the "All good" state too)
 - [x] Desktop accessibility: the rail's "Add medicine" uses ink on orange (white was 2.8:1); the version line on Profile is a 48 px target; the five tabs are checked for targets, labels and contrast at 1440 px and for overflow at 1000×640 with 1.3× text
 
+### Bill follow-ups (16 Oct 2026)
+
+- [x] **Save PDF** on a bill (A4 or 80 mm): a PC asks where with the Save dialog and writes the file; Android opens the system Save dialog (Downloads, Drive, ...) through a small `medikabiz/files` channel in `MainActivity` (no storage permission). The snackbar says where it went
+
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
@@ -444,6 +448,7 @@ cd app && flutter test test/integration/
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
 | Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
 | Unit change with stock | Ask, then convert every batch ×/÷ pack size (owner's decision, 9 Oct); refused when not whole strips. Prices are per strip either way, so they stay |
+| Saving files on Android | System Save dialog (`ACTION_CREATE_DOCUMENT`, Storage Access Framework) via the app's own `medikabiz/files` channel: works on every Android version without storage permissions and needs no extra package |
 | Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail. Wide windows get their own layouts (tables, columns, full width), not the phone screens stretched or centred |
 
 ---
