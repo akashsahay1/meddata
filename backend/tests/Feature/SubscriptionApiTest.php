@@ -45,12 +45,24 @@ class SubscriptionApiTest extends TestCase
 
     public function test_config_normalises_support_whatsapp_number(): void
     {
-        $this->getJson('/api/v1/config')->assertJsonPath('support_whatsapp', '');
+        // The seeded support line: +91 70537 92466.
+        $this->getJson('/api/v1/config')->assertJsonPath('support_whatsapp', '917053792466');
 
         foreach (['+91 98765 43210', '09876543210', '9876543210', '919876543210'] as $raw) {
             AppSetting::put('support_whatsapp', $raw);
             $this->getJson('/api/v1/config')->assertJsonPath('support_whatsapp', '919876543210');
         }
+    }
+
+    public function test_seeding_again_fills_a_blank_support_number_but_keeps_one_set_in_admin(): void
+    {
+        AppSetting::put('support_whatsapp', '');
+        $this->seed(DatabaseSeeder::class);
+        $this->assertSame('917053792466', AppSetting::get('support_whatsapp'));
+
+        AppSetting::put('support_whatsapp', '+91 98765 43210');
+        $this->seed(DatabaseSeeder::class);
+        $this->assertSame('+91 98765 43210', AppSetting::get('support_whatsapp'));
     }
 
     public function test_coupon_validate_percentage(): void
