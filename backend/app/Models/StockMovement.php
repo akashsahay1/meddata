@@ -15,6 +15,8 @@ class StockMovement extends Model
         'purchase_return', 'adjust', 'expiry_writeoff', 'migration',
         // A cancelled bill putting its stock back (ref_type 'bill').
         'sale_cancel',
+        // An edited bill putting its old lines' stock back (its new lines are 'sale').
+        'sale_edit',
         // A cancelled purchase entry taking its stock back out (ref_type 'purchase').
         'purchase_cancel',
     ];

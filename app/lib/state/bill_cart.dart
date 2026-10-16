@@ -359,6 +359,59 @@ class BillCart extends ChangeNotifier {
   bool get hasUnsyncedBatches =>
       lines.any((CartLine l) => l.batch.version == 0);
 
+  /// The bill being edited (null for a new bill).
+  Bill? editing;
+
+  /// Fill the cart from [bill] to edit it: its medicines with their
+  /// quantities and discounts (sold from the batch it used first), customer,
+  /// account and payment. Its own units count as available again, since the
+  /// edit gives them back first.
+  Future<void> loadBill(Bill bill) async {
+    reset();
+    editing = bill;
+    final Map<String, int> held = <String, int>{};
+    for (final BillItem i in bill.items) {
+      held[i.batchId] = (held[i.batchId] ?? 0) + i.qty;
+    }
+    for (final BillItem line in bill.items) {
+      final CartItem? same = items.where((CartItem c) => c.productId == line.productId).firstOrNull;
+      if (same != null) {
+        same.qty += line.qty;
+        continue;
+      }
+      final List<SaleBatch> batches = <SaleBatch>[
+        for (final SaleBatch b in await loadBatches(line.productId))
+          held[b.id] == null ? b : b.copyWith(qty: b.qty + held[b.id]!),
+      ];
+      _batches[line.productId] = batches;
+      items.add(CartItem(
+        productId: line.productId,
+        name: line.name,
+        unit: line.unit ?? '',
+        packSize: line.packSize,
+        qty: line.qty,
+        discountBp: line.discountBp,
+      )..pinnedBatchId = line.batchId);
+    }
+    if (bill.partyId != null) {
+      party = Party(id: bill.partyId!, type: PartyType.customer, name: bill.customerName ?? '');
+    }
+    customerName = bill.customerName ?? '';
+    customerPhone = bill.customerPhone ?? '';
+    customerGstin = bill.customerGstin ?? '';
+    customerAddress = bill.customerAddress ?? '';
+    customerStateCode = bill.customerGstin == null ? bill.customerStateCode : null;
+    if (bill.paymentMode != PaymentMode.credit) {
+      paymentMode = bill.paymentMode;
+    } else if (bill.receivedPaise > 0) {
+      paymentMode = bill.receivedMode ?? PaymentMode.cash;
+      receivedPaise = bill.receivedPaise;
+    } else {
+      paymentMode = PaymentMode.credit;
+    }
+    notifyListeners();
+  }
+
   /// Start a new bill.
   void reset() {
     items.clear();
@@ -368,6 +421,7 @@ class BillCart extends ChangeNotifier {
     customerStateCode = null;
     paymentMode = PaymentMode.cash;
     receivedPaise = null;
+    editing = null;
     _billId = _uuid.v4();
     notifyListeners();
   }

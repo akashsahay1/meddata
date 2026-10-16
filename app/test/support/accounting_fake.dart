@@ -85,6 +85,10 @@ class FakeAccountsServer {
   /// What GET /bills/{id} answers with (set by a test).
   Map<String, Object?> billDetail = const <String, Object?>{};
 
+  /// What PATCH /bills/{id} (an edit) answers with, and the new stock.
+  Map<String, Object?> editAnswer = const <String, Object?>{};
+  List<Object?> editStock = const <Object?>[];
+
   /// What GET /bills answers with.
   Map<String, Object?> billList = const <String, Object?>{
     'data': <Object?>[],
@@ -339,6 +343,9 @@ class FakeAccountsServer {
         return _json(billList);
       case ('GET', <String>['bills', _]):
         return _json(<String, Object?>{'bill': billDetail});
+      case ('PATCH', <String>['bills', _]):
+        billDetail = editAnswer;
+        return _json(<String, Object?>{'bill': editAnswer, 'batches': editStock});
       case ('GET', <String>['gst', 'gstr1']):
         return _json(gstr1);
       case ('GET', <String>['gst', 'gstr3b']):

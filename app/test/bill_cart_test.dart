@@ -193,6 +193,42 @@ void main() {
     expect(c.receivedPaise, isNull);
   });
 
+  test('editing a bill fills the cart from it; its own units count as available', () async {
+    final BillCart c = cart();
+    final Bill bill = Bill.fromJson(<String, dynamic>{
+      'id': 'bill-1', 'invoice_no': 'INV/26-27/000007', 'bill_date': '2026-10-05', 'status': 'final',
+      'payment_mode': 'credit', 'party_id': 'p-1', 'customer_name': 'Alok', 'customer_phone': '9650645839',
+      'customer_state_code': '29', 'total_paise': 15800, 'paid_paise': 5000, 'balance_paise': 10800,
+      'received_paise': 5000, 'received_mode': 'upi', 'seller': <String, dynamic>{'name': 'Shop'},
+      'items': <Map<String, dynamic>>[
+        // Dolo spilled over two batches, starting from D1.
+        <String, dynamic>{'line_no': 1, 'product_id': 'dolo', 'batch_id': 'D1', 'name': 'Dolo 650', 'unit': 'Strips',
+          'qty_units': 3, 'mrp_paise': 3000, 'discount_bp': 500, 'total_paise': 8550},
+        <String, dynamic>{'line_no': 2, 'product_id': 'dolo', 'batch_id': 'D2', 'name': 'Dolo 650', 'unit': 'Strips',
+          'qty_units': 2, 'mrp_paise': 3200, 'discount_bp': 500, 'total_paise': 6080},
+      ],
+    });
+    await c.loadBill(bill);
+    expect(c.editing, same(bill));
+    final CartItem item = c.items.single;
+    expect(<Object?>[item.productId, item.qty, item.discountBp, item.pinnedBatchId], <Object?>['dolo', 5, 500, 'D1']);
+    // Local stock D1 3 + D2 20; the bill's own 3 and 2 come back on top.
+    expect(c.available(item), 28);
+    expect(c.lines.map((CartLine l) => (l.batch.id, l.qty)), <(String, int)>[('D1', 5)]);
+    expect(<Object?>[c.party?.id, c.customerName, c.customerPhone, c.customerStateCode], <Object?>['p-1', 'Alok', '9650645839', '29']);
+    expect(<Object?>[c.paymentMode, c.receivedPaise], <Object?>[PaymentMode.upi, 5000]);
+    expect(c.requestBody(), allOf(containsPair('received_paise', 5000), containsPair('party_id', 'p-1')));
+
+    // A credit bill with nothing paid stays Credit; a paid one keeps its mode.
+    await c.loadBill(Bill.fromJson(<String, dynamic>{
+      'id': 'b2', 'invoice_no': 'X', 'bill_date': '2026-10-05', 'payment_mode': 'credit', 'total_paise': 100,
+      'paid_paise': 0, 'balance_paise': 100, 'received_paise': 0, 'items': <Object>[]}));
+    expect(<Object?>[c.paymentMode, c.receivedPaise], <Object?>[PaymentMode.credit, null]);
+    await c.loadBill(Bill.fromJson(<String, dynamic>{'id': 'b3', 'invoice_no': 'Y', 'bill_date': '2026-10-05',
+      'payment_mode': 'card', 'total_paise': 100, 'items': <Object>[]}));
+    expect(<Object?>[c.paymentMode, c.receivedPaise, c.party], <Object?>[PaymentMode.card, null, null]);
+  });
+
   test('server answers: new prices, less stock, unsellable batches', () async {
     final BillCart c = cart();
     await c.addProduct('dolo', qty: 5);

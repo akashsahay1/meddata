@@ -22,6 +22,7 @@ import '../accounts/note_detail_screen.dart';
 import '../accounts/payment_screen.dart';
 import '../accounts/return_screen.dart';
 import 'billing_widgets.dart';
+import 'new_bill_screen.dart';
 import '../../widgets/adaptive_layout.dart';
 
 /// One bill as the server has it: items, GST, totals. Print or share the
@@ -36,6 +37,7 @@ class BillDetailScreen extends StatefulWidget {
     this.alreadySaved = false,
     this.api,
     this.accountingApi,
+    this.repository,
   }) : assert(bill != null || billId != null);
 
   final Bill? bill;
@@ -48,6 +50,9 @@ class BillDetailScreen extends StatefulWidget {
   final bool alreadySaved;
   final BillingApi? api;
   final AccountingApi? accountingApi;
+
+  /// The device's inventory (tests replace it).
+  final BillingRepository? repository;
 
   /// Popped by "New bill" after a bill was made: the counter screen stays.
   static const String newBill = 'new-bill';
@@ -198,6 +203,19 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     await _load();
   }
 
+  /// Edit the bill in place (same number) on the bill screen, then show
+  /// the saved bill.
+  Future<void> _edit() async {
+    final Bill? edited = await Navigator.of(context).push<Bill>(AdaptiveLayout.route<Bill>(context,
+        maxWidth: AdaptiveLayout.contentMaxWidth,
+        builder: (_) => NewBillScreen(
+            edit: _bill, api: widget.api, repository: widget.repository, accountingApi: widget.accountingApi)));
+    if (edited == null || !mounted) return;
+    setState(() => _bill = edited);
+    _toast('Bill saved. Stock updated on all devices.');
+    await _load();
+  }
+
   /// A sale return (credit note) against this bill; reloads it after.
   Future<void> _returnItems() async {
     await Navigator.of(context)
@@ -256,7 +274,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     }
     final (Bill bill, Map<String, int> stock) = r.value!;
     setState(() => _bill = bill);
-    await BillingRepository().applyServerStock(stock);
+    await (widget.repository ?? BillingRepository()).applyServerStock(stock);
     await mp.load();
     unawaited(sync.syncNow());
     if (mounted) _toast('Bill cancelled. Its stock is back in inventory.');
@@ -274,10 +292,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
             PopupMenuButton<String>(
               tooltip: 'More actions',
               onSelected: (String v) {
+                if (v == 'edit') _edit();
                 if (v == 'paid') _markPaid();
                 if (v == 'cancel') _cancel();
               },
               itemBuilder: (_) => <PopupMenuEntry<String>>[
+                if (bill.canEdit) const PopupMenuItem<String>(value: 'edit', child: Text('Edit bill')),
                 if (bill.hasBalance && bill.partyId != null)
                   const PopupMenuItem<String>(value: 'paid', child: Text('Mark as paid')),
                 const PopupMenuItem<String>(value: 'cancel', child: Text('Cancel bill')),
@@ -414,6 +434,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                   DateFormat('dd MMM yyyy, hh:mm a').format(bill.createdAt ?? bill.billDate),
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.muted),
                 ),
+                if (bill.editedAt != null)
+                  Text(
+                    'Edited ${DateFormat('dd MMM yyyy, hh:mm a').format(bill.editedAt!)}',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted),
+                  ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,

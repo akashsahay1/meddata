@@ -28,6 +28,7 @@ class StockMovement {
       case 'restock':
       case 'sale_return':
       case 'sale_cancel': // a cancelled bill put its stock back
+      case 'sale_edit': // an edited bill put its old lines' stock back
         return StockReason.restock;
       case 'sell':
       case 'sale':

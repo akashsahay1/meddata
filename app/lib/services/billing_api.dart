@@ -163,11 +163,19 @@ class BillingApi {
     return r;
   }
 
-  Future<BillResult> create(String token, Map<String, Object?> body) async {
-    final ({int status, Map<String, dynamic>? body}) r = _checked(
-        token,
-        await _api.postResult('/bills', Map<String, dynamic>.from(body),
-            token: token, timeout: const Duration(seconds: 20)));
+  Future<BillResult> create(String token, Map<String, Object?> body) async => _billResult(
+      token,
+      await _api.postResult('/bills', Map<String, dynamic>.from(body),
+          token: token, timeout: const Duration(seconds: 20)));
+
+  /// Edit bill [id] in place (PATCH /bills/{id}) with the same body as
+  /// [create]; the same number. Refusals come back like [create]'s; an
+  /// edited bill is a [BillCreated] (never replayed) with the new stock.
+  Future<BillResult> update(String token, String id, Map<String, Object?> body) async =>
+      _billResult(token, await _api.patchResult('/bills/$id', Map<String, dynamic>.from(body), token: token));
+
+  BillResult _billResult(String token, ({int status, Map<String, dynamic>? body}) response) {
+    final ({int status, Map<String, dynamic>? body}) r = _checked(token, response);
     final Map<String, dynamic> b = r.body ?? <String, dynamic>{};
     List<Map<String, dynamic>> lines() => <Map<String, dynamic>>[
           for (final Object? l in (b['lines'] as List<dynamic>?) ?? <dynamic>[])

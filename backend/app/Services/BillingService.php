@@ -117,6 +117,120 @@ class BillingService
         });
     }
 
+    /**
+     * Edit a bill in place (same id, number, date and seller details) from
+     * the same input as create: its old lines' stock goes back ('sale_edit'
+     * movements), the new lines are checked and priced exactly like a new
+     * bill (current MRP, FEFO batches, stock), tax and totals are worked
+     * out again, and the payment taken at the counter follows the new
+     * amount received. Refused for a cancelled bill, a bill with a credit
+     * note, or when payments collected later would be more than the new
+     * total (or the bill would no longer be on that customer's account).
+     *
+     * @return array{0: Bill, 1: list<array{batch_id: string, qty_units: int}>}
+     */
+    public function update(Shop $shop, User $user, Bill $bill, array $data): array
+    {
+        return DB::transaction(function () use ($shop, $user, $bill, $data) {
+            $shop = Shop::whereKey($shop->id)->lockForUpdate()->firstOrFail();
+            /** @var Bill $bill */
+            $bill = Bill::with('items')->whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            if ($bill->isCancelled()) {
+                throw new BillRefused(422, ['message' => 'This bill is cancelled, so it can’t be edited.', 'error' => 'bill_cancelled']);
+            }
+            if (SaleReturn::where('bill_id', $bill->id)->exists()) {
+                throw new BillRefused(422, [
+                    'message' => 'This bill has a sale return (credit note), so it can’t be edited.',
+                    'error' => 'has_returns',
+                ]);
+            }
+
+            $lines = array_values($data['lines']);
+            $freed = [];
+            foreach ($bill->items as $item) {
+                $freed[$item->batch_id] = ($freed[$item->batch_id] ?? 0) + (int) $item->qty_units;
+            }
+            $batches = Batch::withTrashed()
+                ->where('shop_id', $shop->id)
+                ->whereIn('id', array_unique([...array_column($lines, 'batch_id'), ...array_keys($freed)]))
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $products = Product::withTrashed()
+                ->where('shop_id', $shop->id)
+                ->whereIn('id', $batches->pluck('product_id')->unique()->values())
+                ->get()
+                ->keyBy('id');
+
+            $this->checkAvailable($lines, $batches, $products);
+            $this->checkPrices($lines, $batches, $products);
+            $this->checkStock($lines, $batches, $products, $freed);
+
+            [$party, $data, $customer, $items, $totals] = $this->build($shop, $data, $lines, $batches, $products);
+            [$mode, $received] = $this->payment($data, (int) $totals['total_paise'], $party);
+
+            // Money collected after billing stays against this bill and this customer.
+            $later = PartyPayment::where('bill_id', $bill->id)->where('status', PartyPayment::STATUS_ACTIVE)
+                ->where('at_billing', false);
+            $collected = (int) (clone $later)->sum('amount_paise');
+            if ($collected > 0) {
+                if ($mode !== 'credit' || $party?->id !== $bill->party_id) {
+                    throw new BillRefused(422, [
+                        'message' => 'Payments were collected against this bill later, so it must stay on the same customer’s account.',
+                        'error' => 'has_payments',
+                    ]);
+                }
+                if ($received + $collected > (int) $totals['total_paise']) {
+                    throw new BillRefused(422, [
+                        'message' => 'The new total is less than what has been paid on this bill ('.number_format(($received + $collected) / 100, 2).').',
+                        'error' => 'payments_exceed_total',
+                        'paid_paise' => $received + $collected,
+                    ]);
+                }
+            }
+
+            $deviceId = $data['device_id'] ?? null;
+            foreach ($bill->items as $item) {
+                $this->move($shop, $user, $deviceId, $item->batch_id, $item->product_id,
+                    (int) $item->qty_units, 'sale_edit', $bill->id);
+            }
+            BillItem::where('bill_id', $bill->id)->delete();
+            foreach ($items as $item) {
+                BillItem::create(['bill_id' => $bill->id] + $item);
+                $this->move($shop, $user, $deviceId, $item['batch_id'], $item['product_id'],
+                    -$item['qty_units'], 'sale', $bill->id);
+            }
+
+            $bill->forceFill([
+                ...$customer,
+                'payment_mode' => $mode,
+                'edited_at' => now(),
+                'edited_by' => $user->id,
+            ] + $totals)->save();
+
+            // The counter payment follows the new amount received.
+            $counter = PartyPayment::where('bill_id', $bill->id)->where('status', PartyPayment::STATUS_ACTIVE)
+                ->where('at_billing', true)->first();
+            if ($mode === 'credit' && $received > 0) {
+                if ($counter) {
+                    $counter->forceFill(['amount_paise' => $received, 'mode' => $data['payment_mode'], 'party_id' => $bill->party_id])->save();
+                } else {
+                    $this->recordCounterPayment($bill, $user, $data['payment_mode'], $received, $deviceId);
+                }
+            } elseif ($counter) {
+                $counter->forceFill([
+                    'status' => PartyPayment::STATUS_CANCELLED,
+                    'cancelled_at' => now(),
+                    'cancel_reason' => 'Bill edited',
+                ])->save();
+            }
+
+            $stock = $this->refreshBatches($shop, $batches->keys());
+
+            return [$bill->fresh('items'), $stock];
+        });
+    }
+
     // ---------------------------------------------------------------------
 
     private function createLocked(Shop $shop, User $user, array $data): array
@@ -152,6 +266,50 @@ class BillingService
         $this->checkPrices($lines, $batches, $products);
         $this->checkStock($lines, $batches, $products);
 
+        [$party, $data, $customer, $items, $totals] = $this->build($shop, $data, $lines, $batches, $products);
+        [$mode, $received] = $this->payment($data, (int) $totals['total_paise'], $party);
+
+        $now = now(self::TIMEZONE);
+        $fy = GstMath::financialYear($now);
+        $seq = $this->nextInvoiceSeq($shop, $fy);
+
+        $bill = new Bill;
+        $bill->id = $data['id'];
+        $bill->forceFill([
+            'shop_id' => $shop->id,
+            'user_id' => $user->id,
+            'device_id' => $data['device_id'] ?? null,
+            'invoice_no' => sprintf('%s/%s/%06d', $shop->invoicePrefix(), $fy, $seq),
+            'fy' => $fy,
+            'seq' => $seq,
+            'bill_date' => $now->toDateString(),
+            ...$customer,
+            'seller' => $shop->invoiceDetails(),
+            'payment_mode' => $mode,
+            'status' => Bill::STATUS_FINAL,
+        ] + $totals)->save();
+
+        foreach ($items as $item) {
+            BillItem::create(['bill_id' => $bill->id] + $item);
+            $this->move($shop, $user, $data['device_id'] ?? null, $item['batch_id'], $item['product_id'],
+                -$item['qty_units'], 'sale', $bill->id);
+        }
+        if ($mode === 'credit' && $received > 0) {
+            $this->recordCounterPayment($bill, $user, $data['payment_mode'], $received, $data['device_id'] ?? null);
+        }
+        $stock = $this->refreshBatches($shop, $batches->keys());
+
+        return [$bill->load('items'), true, $stock];
+    }
+
+    /**
+     * The bill's customer (a chosen account fills in what the bill doesn't
+     * say), place of supply, items with tax, and totals.
+     *
+     * @return array{0: ?Party, 1: array, 2: array<string, mixed>, 3: list<array<string, mixed>>, 4: array<string, int>}
+     */
+    private function build(Shop $shop, array $data, array $lines, Collection $batches, Collection $products): array
+    {
         // A chosen customer account fills in what the bill doesn't say.
         $party = $this->party($shop, $data['party_id'] ?? null);
         if ($party) {
@@ -196,22 +354,7 @@ class BillingService
             $calcs[] = $calc;
         }
         $totals = GstMath::totals($calcs);
-        [$mode, $received] = $this->payment($data, (int) $totals['total_paise'], $party);
-
-        $now = now(self::TIMEZONE);
-        $fy = GstMath::financialYear($now);
-        $seq = $this->nextInvoiceSeq($shop, $fy);
-
-        $bill = new Bill;
-        $bill->id = $data['id'];
-        $bill->forceFill([
-            'shop_id' => $shop->id,
-            'user_id' => $user->id,
-            'device_id' => $data['device_id'] ?? null,
-            'invoice_no' => sprintf('%s/%s/%06d', $shop->invoicePrefix(), $fy, $seq),
-            'fy' => $fy,
-            'seq' => $seq,
-            'bill_date' => $now->toDateString(),
+        $customer = [
             'party_id' => $party?->id,
             'customer_name' => $data['customer_name'] ?? null,
             'customer_phone' => $data['customer_phone'] ?? null,
@@ -220,22 +363,9 @@ class BillingService
             'customer_address' => $data['customer_address'] ?? null,
             'place_of_supply' => $placeOfSupply,
             'is_inter_state' => $interState,
-            'seller' => $shop->invoiceDetails(),
-            'payment_mode' => $mode,
-            'status' => Bill::STATUS_FINAL,
-        ] + $totals)->save();
+        ];
 
-        foreach ($items as $item) {
-            BillItem::create(['bill_id' => $bill->id] + $item);
-            $this->move($shop, $user, $data['device_id'] ?? null, $item['batch_id'], $item['product_id'],
-                -$item['qty_units'], 'sale', $bill->id);
-        }
-        if ($mode === 'credit' && $received > 0) {
-            $this->recordCounterPayment($bill, $user, $data['payment_mode'], $received, $data['device_id'] ?? null);
-        }
-        $stock = $this->refreshBatches($shop, $batches->keys());
-
-        return [$bill->load('items'), true, $stock];
+        return [$party, $data, $customer, $items, $totals];
     }
 
     /**
@@ -429,7 +559,8 @@ class BillingService
         }
     }
 
-    private function checkStock(array $lines, Collection $batches, Collection $products): void
+    /** @param  array<string, int>  $freed  units this bill already holds per batch (an edit gives them back) */
+    private function checkStock(array $lines, Collection $batches, Collection $products, array $freed = []): void
     {
         $wanted = [];
         foreach ($lines as $line) {
@@ -438,7 +569,7 @@ class BillingService
         $short = [];
         foreach ($lines as $i => $line) {
             $batch = $batches[$line['batch_id']];
-            $available = max(0, (int) $batch->qty_units);
+            $available = max(0, (int) $batch->qty_units + ($freed[$batch->id] ?? 0));
             if ($wanted[$batch->id] > $available) {
                 $short[] = $this->lineRef($i, $line, $batch, $products[$batch->product_id]) + [
                     'requested_units' => $wanted[$batch->id],

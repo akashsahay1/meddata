@@ -76,6 +76,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('bills', [BillController::class, 'index']);
         Route::post('bills', [BillController::class, 'store']);
         Route::get('bills/{bill}', [BillController::class, 'show'])->whereUuid('bill');
+        Route::match(['put', 'patch'], 'bills/{bill}', [BillController::class, 'update'])->whereUuid('bill');
         Route::post('bills/{bill}/cancel', [BillController::class, 'cancel'])->whereUuid('bill');
 
         // Reports from server data: profit from bills (P4).

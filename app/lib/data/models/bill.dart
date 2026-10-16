@@ -253,6 +253,7 @@ class Bill {
     int? balancePaise,
     int? receivedPaise,
     this.receivedMode,
+    this.editedAt,
   })  : paidPaise = paidPaise ?? (paymentMode == PaymentMode.credit ? 0 : totalPaise),
         balancePaise = balancePaise ??
             (paymentMode == PaymentMode.credit && status != 'cancelled' ? totalPaise : 0),
@@ -301,6 +302,7 @@ class Bill {
         balancePaise: (j['balance_paise'] as num?)?.toInt(),
         receivedPaise: (j['received_paise'] as num?)?.toInt(),
         receivedMode: j['received_mode'] == null ? null : PaymentMode.from(_str(j['received_mode'])),
+        editedAt: _date(j['edited_at']),
       );
 
   final String id;
@@ -347,6 +349,9 @@ class Bill {
   final int receivedPaise;
   final PaymentMode? receivedMode;
 
+  /// When the bill was last edited in place (null = never).
+  final DateTime? editedAt;
+
   bool get isCancelled => status == 'cancelled';
   bool get hasBalance => !isCancelled && balancePaise > 0;
 
@@ -367,6 +372,10 @@ class Bill {
   /// "Part paid · ₹124.00 due" / "Credit - to be paid" / "Paid · UPI".
   String get paymentStatus => paymentStatusOf(
       cancelled: isCancelled, mode: paymentMode, paid: paidPaise, balance: balancePaise);
+
+  /// Can be edited in place: not cancelled and nothing returned against it.
+  bool get canEdit =>
+      !isCancelled && returns.isEmpty && items.every((BillItem i) => i.returnedQty == 0);
 
   /// Some units can still be returned.
   bool get canReturn => !isCancelled && items.any((BillItem i) => i.returnableQty > 0);

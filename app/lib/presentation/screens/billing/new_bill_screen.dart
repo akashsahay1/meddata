@@ -37,9 +37,13 @@ enum _Gate { checking, ready, offline, failed }
 /// never from an expired one. Billing is online-only: the server re-checks
 /// every price and the stock, works out the GST and numbers the invoice.
 class NewBillScreen extends StatefulWidget {
-  const NewBillScreen({super.key, this.api, this.repository, this.accountingApi});
+  const NewBillScreen({super.key, this.api, this.repository, this.accountingApi, this.edit});
 
   final BillingApi? api;
+
+  /// A bill to edit in place (same invoice number); pops with the edited
+  /// [Bill] once saved.
+  final Bill? edit;
   final BillingRepository? repository;
 
   /// For choosing the customer's account (tests replace it).
@@ -171,6 +175,18 @@ class _NewBillScreenState extends State<NewBillScreen> {
       return;
     }
     _cart.shop = shop.value;
+    final Bill? edit = widget.edit;
+    if (edit != null && _cart.editing == null) {
+      await _cart.loadBill(edit);
+      if (!mounted) return;
+      _name.text = _cart.customerName;
+      _phone.text = _cart.customerPhone;
+      _gstin.text = _cart.customerGstin;
+      _address.text = _cart.customerAddress;
+      _received.text = _cart.receivedPaise == null ? '' : (_cart.receivedPaise! / 100).toStringAsFixed(2);
+      _formSeed++;
+      _showCustomer = _cart.party != null || _cart.customerName.isNotEmpty;
+    }
     setState(() => _gate = _Gate.ready);
     // Send this device's pending changes now, so the server has them by
     // the time the bill is made.
@@ -263,12 +279,17 @@ class _NewBillScreenState extends State<NewBillScreen> {
     try {
       await _flushSync();
       if (!mounted) return;
-      result = await _api.create(token, _cart.requestBody(deviceId: auth.deviceId));
+      final Bill? editing = _cart.editing;
+      result = editing == null
+          ? await _api.create(token, _cart.requestBody(deviceId: auth.deviceId))
+          : await _api.update(token, editing.id, _cart.requestBody(deviceId: auth.deviceId)..remove('id'));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
     if (!mounted) return;
     switch (result) {
+      case BillCreated() when _cart.editing != null:
+        await _edited(result);
       case BillCreated():
         await _created(result);
       // Refused: say why (the button is usable again behind the dialog).
@@ -317,6 +338,19 @@ class _NewBillScreenState extends State<NewBillScreen> {
     // Back from the bill returns to where billing started, unless the
     // user chose "New bill" (this screen, now empty).
     if (mounted && next != BillDetailScreen.newBill) nav.pop();
+  }
+
+  /// Saved an edit: the new stock now (the sync pull brings the
+  /// movements), then back to the bill with its new contents.
+  Future<void> _edited(BillCreated saved) async {
+    final MedicineProvider mp = context.read<MedicineProvider>();
+    final SyncEngine sync = context.read<SyncEngine>();
+    final NavigatorState nav = Navigator.of(context);
+    _cart.reset();
+    await _repo.applyServerStock(saved.stock);
+    await mp.load();
+    unawaited(sync.syncNow());
+    if (mounted) nav.pop(saved.bill);
   }
 
   Future<void> _pricesChanged(List<StalePrice> lines) async {
@@ -439,8 +473,10 @@ builder: (_) => ShopSettingsScreen(api: _api)));
       await showDialog<bool>(
         context: context,
         builder: (BuildContext ctx) => AlertDialog(
-          title: const Text('Discard this bill?'),
-          content: const Text('The medicines added to it will be removed.'),
+          title: Text(widget.edit == null ? 'Discard this bill?' : 'Discard your changes?'),
+          content: Text(widget.edit == null
+              ? 'The medicines added to it will be removed.'
+              : 'The bill stays as it was.'),
           actions: <Widget>[
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Keep')),
             TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Discard')),
@@ -470,9 +506,10 @@ builder: (_) => ShopSettingsScreen(api: _api)));
       child: Scaffold(
         backgroundColor: AppColors.canvas,
         appBar: AppBar(
-          title: const Text('New bill'),
+          title: Text(widget.edit == null ? 'New bill' : 'Edit ${widget.edit!.invoiceNo}',
+              overflow: TextOverflow.ellipsis),
           actions: <Widget>[
-            if (_gate == _Gate.ready && !_cart.isEmpty)
+            if (_gate == _Gate.ready && !_cart.isEmpty && widget.edit == null)
               IconButton(
                 tooltip: 'Clear bill',
                 icon: const Icon(Icons.delete_sweep_outlined),
@@ -1057,7 +1094,9 @@ builder: (_) => ShopSettingsScreen(api: _api)));
                 child: CircularProgressIndicator(strokeWidth: 2.4, color: AppColors.ink),
               )
             : const Icon(Icons.receipt_long, size: 20),
-        label: Text(_submitting ? 'Creating bill…' : 'Create bill'),
+        label: Text(widget.edit != null
+            ? (_submitting ? 'Saving…' : 'Save changes')
+            : (_submitting ? 'Creating bill…' : 'Create bill')),
       ),
     );
   }
@@ -1179,11 +1218,18 @@ class _CartItemCard extends StatelessWidget {
                 tooltip: 'One more',
                 onPressed: item.qty < available ? () => cart.setQty(item, item.qty + 1) : null,
               ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: onEditDiscount,
-                icon: const Icon(Icons.percent, size: 16),
-                label: Text(item.discountBp > 0 ? Inr.percent(item.discountBp) : 'Discount'),
+              // On the right; shrinks (the label ellipsised) rather than
+              // overflow a narrow phone or large text.
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: onEditDiscount,
+                    icon: const Icon(Icons.percent, size: 16),
+                    label: Text(item.discountBp > 0 ? Inr.percent(item.discountBp) : 'Discount',
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
               ),
             ],
           ),

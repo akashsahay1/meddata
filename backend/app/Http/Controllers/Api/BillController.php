@@ -106,35 +106,7 @@ class BillController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $input = $request->all();
-        if (is_string($input['customer_gstin'] ?? null)) {
-            $input['customer_gstin'] = strtoupper(trim($input['customer_gstin'])) ?: null;
-        }
-        $request->replace($input);
-
-        $data = $request->validate([
-            'id' => ['required', 'uuid'],
-            'device_id' => ['nullable', 'string', 'max:64'],
-            'payment_mode' => ['required', Rule::in(Bill::PAYMENT_MODES)],
-            // A credit (udhaar) sale goes on a customer's account; a cash
-            // bill can just carry a typed name.
-            'party_id' => ['nullable', 'uuid', 'required_if:payment_mode,credit'],
-            'customer_name' => ['nullable', 'string', 'max:100'],
-            'customer_phone' => ['nullable', 'string', 'regex:/^[0-9+\-\s()]{6,20}$/'],
-            'customer_gstin' => ['nullable', 'string', new Gstin],
-            'customer_state_code' => ['nullable', 'string', Rule::in(GstStates::codes())],
-            'customer_address' => ['nullable', 'string', 'max:500'],
-            'lines' => ['required', 'array', 'min:1', 'max:200'],
-            'lines.*.batch_id' => ['required', 'uuid'],
-            'lines.*.qty_units' => ['required', 'integer', 'min:1', 'max:100000'],
-            'lines.*.mrp_paise' => ['required', 'integer', 'min:0'],
-            'lines.*.batch_version' => ['required', 'integer', 'min:0'],
-            'lines.*.discount_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
-            // Money taken at the counter; less than the total makes it a credit
-            // bill for the rest. Default: all of it (none for credit).
-            'received_paise' => ['nullable', 'integer', 'min:0', 'max:100000000000',
-                Rule::prohibitedIf(fn () => $request->input('payment_mode') === 'credit' && (int) $request->input('received_paise') > 0)],
-        ]);
+        $data = $this->validated($request, true);
         $data['id'] = strtolower($data['id']);
 
         $user = $request->user();
@@ -186,6 +158,56 @@ class BillController extends Controller
             $data['reason'] ?? null, $data['device_id'] ?? null);
 
         return response()->json(['bill' => $model->toApi(), 'batches' => $stock]);
+    }
+
+    /**
+     * PUT/PATCH /bills/{id}: edit the bill in place with the same body as POST
+     * (the id may be left out). Same number, date and seller details.
+     * 200 {bill, batches} | 409 price_changed | 422 bill_cancelled / has_returns /
+     * has_payments / payments_exceed_total / insufficient_stock / batch_unavailable / validation
+     */
+    public function update(Request $request, string $bill): JsonResponse
+    {
+        $data = $this->validated($request, false);
+        $user = $request->user();
+        $shop = $this->shops->forUser($user);
+        [$model, $stock] = $this->billing->update($shop, $user, $this->find($shop, $bill), $data);
+
+        return response()->json(['bill' => $model->toApi(), 'batches' => $stock]);
+    }
+
+    /** POST/PUT /bills body. */
+    private function validated(Request $request, bool $creating): array
+    {
+        $input = $request->all();
+        if (is_string($input['customer_gstin'] ?? null)) {
+            $input['customer_gstin'] = strtoupper(trim($input['customer_gstin'])) ?: null;
+        }
+        $request->replace($input);
+
+        return $request->validate([
+            'id' => [$creating ? 'required' : 'nullable', 'uuid'],
+            'device_id' => ['nullable', 'string', 'max:64'],
+            'payment_mode' => ['required', Rule::in(Bill::PAYMENT_MODES)],
+            // A credit (udhaar) sale goes on a customer's account; a cash
+            // bill can just carry a typed name.
+            'party_id' => ['nullable', 'uuid', 'required_if:payment_mode,credit'],
+            'customer_name' => ['nullable', 'string', 'max:100'],
+            'customer_phone' => ['nullable', 'string', 'regex:/^[0-9+\-\s()]{6,20}$/'],
+            'customer_gstin' => ['nullable', 'string', new Gstin],
+            'customer_state_code' => ['nullable', 'string', Rule::in(GstStates::codes())],
+            'customer_address' => ['nullable', 'string', 'max:500'],
+            'lines' => ['required', 'array', 'min:1', 'max:200'],
+            'lines.*.batch_id' => ['required', 'uuid'],
+            'lines.*.qty_units' => ['required', 'integer', 'min:1', 'max:100000'],
+            'lines.*.mrp_paise' => ['required', 'integer', 'min:0'],
+            'lines.*.batch_version' => ['required', 'integer', 'min:0'],
+            'lines.*.discount_bp' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            // Money taken at the counter; less than the total makes it a credit
+            // bill for the rest. Default: all of it (none for credit).
+            'received_paise' => ['nullable', 'integer', 'min:0', 'max:100000000000',
+                Rule::prohibitedIf(fn () => $request->input('payment_mode') === 'credit' && (int) $request->input('received_paise') > 0)],
+        ]);
     }
 
     /** The shop's bill, or 404 (another shop's bill is "not found" too). */

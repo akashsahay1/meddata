@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A GST sale invoice. Created only by BillingService (one transaction with
- * its number, items and stock movements). Cancelling keeps its number used.
+ * its number, items and stock movements). Editing (BillingService::update)
+ * keeps its id, number and date; cancelling keeps its number used.
  *
  * payment_mode: cash/upi/card = paid in full at the counter; credit = on
  * the customer's account, with whatever was taken at the counter recorded
@@ -56,6 +57,7 @@ class Bill extends Model
             'round_off_paise' => 'integer',
             'total_paise' => 'integer',
             'cancelled_at' => 'datetime',
+            'edited_at' => 'datetime',
         ];
     }
 
@@ -186,6 +188,7 @@ class Bill extends Model
             'user_id' => $this->user_id,
             'cancelled_at' => $this->cancelled_at?->toIso8601String(),
             'cancel_reason' => $this->cancel_reason,
+            'edited_at' => $this->edited_at?->toIso8601String(),
             'paid_paise' => $this->paidPaise(),
             'balance_paise' => $this->balancePaise(),
             ...$this->receivedAtBilling(),

@@ -71,6 +71,9 @@ return new class extends Migration
             $table->timestamp('cancelled_at')->nullable();
             $table->foreignId('cancelled_by')->nullable()->constrained('users')->nullOnDelete();
             $table->string('cancel_reason')->nullable();
+            // Last in-place edit (lines, customer, payment); number and date stay.
+            $table->timestamp('edited_at')->nullable();
+            $table->foreignId('edited_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->unique(['shop_id', 'fy', 'seq']);

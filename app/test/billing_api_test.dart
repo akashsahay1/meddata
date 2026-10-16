@@ -80,6 +80,14 @@ class _FakeApi extends ApiClient {
   }
 
   @override
+  Future<({int status, Map<String, dynamic>? body})> patchResult(String path, Map<String, dynamic> body,
+      {String? token}) async {
+    lastPath = 'PATCH $path';
+    lastBody = body;
+    return (status: status, body: this.body);
+  }
+
+  @override
   Future<({int status, Map<String, dynamic>? body})> getResult(String path,
           {Map<String, String>? query, String? token, Duration? timeout}) async =>
       (status: status, body: body);
@@ -145,6 +153,30 @@ void main() {
     expect((r as BillFailed).message, contains('customer name'));
 
     expect(await BillingApi(_FakeApi(0, null)).create('t', <String, Object?>{}), isA<BillOffline>());
+  });
+
+  test('editing a bill PATCHes it and maps the answers like create', () async {
+    final _FakeApi fake = _FakeApi(200, <String, dynamic>{
+      'bill': sampleBill()..['edited_at'] = '2026-10-06T10:00:00+05:30',
+      'batches': <Map<String, dynamic>>[<String, dynamic>{'batch_id': 'b1', 'qty_units': 12}],
+    });
+    final BillResult r = await BillingApi(fake).update('t', 'bill-1', <String, Object?>{'payment_mode': 'cash', 'lines': <Object>[]});
+    expect(fake.lastPath, 'PATCH /bills/bill-1');
+    expect(fake.lastBody, <String, dynamic>{'payment_mode': 'cash', 'lines': <Object>[]});
+    expect((r as BillCreated).stock, <String, int>{'b1': 12});
+    expect(r.bill.editedAt, isNotNull);
+
+    final BillResult short = await BillingApi(_FakeApi(422, <String, dynamic>{
+      'error': 'insufficient_stock',
+      'lines': <Map<String, dynamic>>[
+        <String, dynamic>{'index': 0, 'batch_id': 'b1', 'requested_units': 30, 'available_units': 25},
+      ],
+    })).update('t', 'bill-1', <String, Object?>{});
+    expect((short as BillStockShort).lines.single.available, 25);
+    final BillResult refused = await BillingApi(_FakeApi(422, <String, dynamic>{
+      'error': 'has_returns', 'message': 'This bill has a sale return (credit note), so it can’t be edited.',
+    })).update('t', 'bill-1', <String, Object?>{});
+    expect((refused as BillFailed).message, contains('can’t be edited'));
   });
 
   test('cancel sends the reason and returns the bill with the new stock', () async {
