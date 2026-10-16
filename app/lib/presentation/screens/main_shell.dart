@@ -119,7 +119,7 @@ builder: (_) => const AddEditMedicineScreen()),
         mp.expiringCount + mp.expiredCount + mp.lowStockCount;
 
     // Wide windows (Windows PC, tablets): side rail instead of the bottom
-    // bar, and content kept to a readable width.
+    // bar; the tabs switch to their desktop layouts.
     final double width = MediaQuery.sizeOf(context).width;
     if (AdaptiveLayout.isDesktop(context)) {
       final bool extendedRail = width >= 1100;
@@ -170,7 +170,9 @@ builder: (_) => const AddEditMedicineScreen()),
                               label: const Text('Add medicine'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.orange,
-                                foregroundColor: Colors.white,
+                                // Ink, not white, on orange: 5.0:1 contrast
+                                // (white is 2.8).
+                                foregroundColor: AppColors.ink,
                                 minimumSize: const Size.fromHeight(46),
                               ),
                             ),
@@ -211,17 +213,8 @@ builder: (_) => const AddEditMedicineScreen()),
               ],
             ),
             const VerticalDivider(width: 1),
-            Expanded(
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AdaptiveLayout.contentMaxWidth,
-                  ),
-                  child: IndexedStack(index: _index, children: _tabs),
-                ),
-              ),
-            ),
+            // Each tab lays itself out for the full width (tables, columns).
+            Expanded(child: IndexedStack(index: _index, children: _tabs)),
           ],
         ),
       );

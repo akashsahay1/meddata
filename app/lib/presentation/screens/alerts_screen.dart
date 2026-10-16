@@ -12,6 +12,7 @@ import 'medicine_detail_screen.dart';
 import 'product_detail_screen.dart';
 
 import '../widgets/adaptive_layout.dart';
+import '../widgets/desktop_kit.dart';
 
 /// Soft border tints from the design handoff (not part of the core palette:
 /// a low-alpha version of each status hue used only for the alert tile edges).
@@ -35,6 +36,57 @@ class AlertsScreen extends StatelessWidget {
     ];
 
     final bool empty = expired.isEmpty && expiring.isEmpty && low.isEmpty;
+
+    if (AdaptiveLayout.isDesktop(context) && !empty) {
+      // Wide window: the three kinds of alert side by side, each scrolling
+      // on its own.
+      Widget column(String title, Color dot, Color chip, List<Medicine> items, _AlertKind kind) =>
+          Expanded(
+            child: deskSurface(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                children: <Widget>[
+                  _AlertSection(
+                    title: title,
+                    dotColor: dot,
+                    chipBg: chip,
+                    items: items,
+                    mp: mp,
+                    kind: kind,
+                  ),
+                ],
+              ),
+            ),
+          );
+      return Scaffold(
+        backgroundColor: AppColors.canvas,
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(kDeskGutter, 28, kDeskGutter, kDeskGutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const _Header(),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    column('Expired', AppColors.statusRed, AppColors.statusRedBg, expired,
+                        _AlertKind.expiry),
+                    const SizedBox(width: 16),
+                    column('Expiring soon', AppColors.statusRed, AppColors.statusRedBg,
+                        expiring, _AlertKind.expiry),
+                    const SizedBox(width: 16),
+                    column('Low on stock', AppColors.statusAmber, AppColors.statusAmberBg, low,
+                        _AlertKind.lowStock),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -204,6 +256,18 @@ class _AlertSection extends StatelessWidget {
             ],
           ),
         ),
+        if (items.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Nothing here right now.',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+              ),
+            ),
+          ),
         for (int i = 0; i < items.length; i++) ...<Widget>[
           _alertTile(context, items[i], accent, borderColor),
           if (i != items.length - 1) const SizedBox(height: 10),

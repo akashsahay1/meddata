@@ -10,8 +10,10 @@ import '../widgets/status_chip.dart';
 import '../widgets/sync_badge.dart';
 import 'barcode_lookup.dart';
 import 'import/import_wizard_screen.dart';
-import 'product_detail_screen.dart';
+import 'product_detail_screen.dart';
+
 import '../widgets/adaptive_layout.dart';
+import '../widgets/desktop_kit.dart';
 
 /// The Inventory tab: a title, a search field and a scrollable list of
 /// medicines rendered as [MedicineTile]. Reads from the shared
@@ -48,10 +50,140 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
+  Widget _searchField(MedicineProvider mp) => TextField(
+        controller: _search,
+        onChanged: mp.setQuery,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AppColors.ink,
+        ),
+        decoration: InputDecoration(
+          hintText: 'Search medicines',
+          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
+          suffixIcon: mp.query.isEmpty
+              ? IconButton(
+                  tooltip: 'Scan barcode',
+                  icon: const Icon(Icons.qr_code_scanner,
+                      size: 20, color: AppColors.muted),
+                  onPressed: () => scanAndOpen(context),
+                )
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () {
+                    _search.clear();
+                    mp.setQuery('');
+                  },
+                ),
+        ),
+      );
+
+  MedicineStatus _statusOf(MedicineProvider mp, ProductStock p) => MedicineStatus(
+        expiryState: p.worstExpiry(mp.warningDays),
+        daysToExpiry: 0,
+        isLowStock: p.isLowStock,
+      );
+
+  /// Wide window: search and filters on one line, then every medicine as a
+  /// row of a table.
+  Widget _desktop(MedicineProvider mp, List<ProductStock> items) {
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(kDeskGutter, 28, kDeskGutter, kDeskGutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            DeskPageHeader(
+              title: 'Inventory',
+              subtitle: mp.productCount == 1
+                  ? '1 medicine'
+                  : '${mp.productCount} medicines',
+              actions: <Widget>[
+                const SyncBadge(),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    AdaptiveLayout.route<void>(context,
+                        maxWidth: AdaptiveLayout.contentMaxWidth,
+                        builder: (_) => const ImportWizardScreen()),
+                  ),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+                  icon: const Icon(Icons.upload_file_outlined, size: 20),
+                  label: const Text('Import from Excel / CSV'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: <Widget>[
+                SizedBox(width: 420, child: _searchField(mp)),
+                const SizedBox(width: 16),
+                Expanded(child: _FilterChips(mp: mp)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: mp.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : items.isEmpty
+                      ? _EmptyInventory(
+                          hasAny: mp.productCount > 0,
+                          filtered: mp.filter != MedicineFilter.all,
+                        )
+                      : DeskTable(
+                          columns: const <DeskColumn>[
+                            DeskColumn('Medicine', flex: 5),
+                            DeskColumn('Category', flex: 2),
+                            DeskColumn('Stock', flex: 2),
+                            DeskColumn('Batches', flex: 1),
+                            DeskColumn.end('MRP', flex: 2),
+                            DeskColumn('Nearest expiry', flex: 2),
+                            DeskColumn('Status', flex: 2),
+                          ],
+                          rowCount: items.length,
+                          onTap: (int i) => _openProduct(items[i]),
+                          cells: (int i) {
+                            final ProductStock p = items[i];
+                            return <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  InitialsAvatar(text: initialsOf(p.name), size: 36),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: DeskCell(p.name,
+                                        strong: true,
+                                        sub: p.brand.isEmpty ? null : p.brand),
+                                  ),
+                                ],
+                              ),
+                              DeskCell(p.category.isEmpty ? '-' : p.category),
+                              DeskCell('${p.totalQty} ${p.unit}', strong: true),
+                              DeskCell('${p.batches.length}'),
+                              DeskCell(
+                                p.currentMrp > 0 ? Fmt.money(p.currentMrp) : '-',
+                                strong: true,
+                                align: TextAlign.end,
+                              ),
+                              DeskCell(Fmt.dateShort(p.nearestExpiry)),
+                              medicineStatusPill(_statusOf(mp, p), p.totalQty),
+                            ];
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.watch<MedicineProvider>();
     final List<ProductStock> items = mp.visibleProducts;
+
+    if (AdaptiveLayout.isDesktop(context)) return _desktop(mp, items);
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -84,36 +216,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ],
                   ),
                   const SizedBox(height: 5.5),
-                  TextField(
-                    controller: _search,
-                    onChanged: mp.setQuery,
-                    textInputAction: TextInputAction.search,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.ink,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search medicines',
-                      prefixIcon: const Icon(Icons.search,
-                          size: 20, color: AppColors.muted),
-                      suffixIcon: mp.query.isEmpty
-                          ? IconButton(
-                              tooltip: 'Scan barcode',
-                              icon: const Icon(Icons.qr_code_scanner,
-                                  size: 20, color: AppColors.muted),
-                              onPressed: () => scanAndOpen(context),
-                            )
-                          : IconButton(
-                              tooltip: 'Clear search',
-                              icon: const Icon(Icons.close, size: 18),
-                              onPressed: () {
-                                _search.clear();
-                                mp.setQuery('');
-                              },
-                            ),
-                    ),
-                  ),
+                  _searchField(mp),
                   const SizedBox(height: 6.5),
                   _FilterChips(mp: mp),
                 ],
@@ -134,11 +237,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               const SizedBox(height: 10),
                           itemBuilder: (BuildContext context, int i) {
                             final ProductStock p = items[i];
-                            final MedicineStatus s = MedicineStatus(
-                              expiryState: p.worstExpiry(mp.warningDays),
-                              daysToExpiry: 0,
-                              isLowStock: p.isLowStock,
-                            );
+                            final MedicineStatus s = _statusOf(mp, p);
                             final List<String> subParts = <String>[
                               if (p.brand.isNotEmpty) p.brand,
                               if (p.category.isNotEmpty) p.category,

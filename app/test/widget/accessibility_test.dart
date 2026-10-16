@@ -657,6 +657,43 @@ void main() {
     }
   });
 
+  group('desktop window layouts', () {
+    // Each main tab of the shell on a PC window: tables, columns and panels.
+    for (final String tab in <String>['Home', 'Inventory', 'Bills', 'Alerts', 'Profile']) {
+      Future<TestApp> desktop(WidgetTester tester, Size size) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = size;
+        addTearDown(tester.view.reset);
+        final TestApp app = await TestApp.create(signedIn: true, backend: _billingServer());
+        addTearDown(app.dispose);
+        await app.seedShop();
+        await tester.pumpWidget(app.wrap(const MainShell()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(tab).first);
+        await tester.pumpAndSettle();
+        return app;
+      }
+
+      testWidgets('$tab: targets, labels and contrast on a desktop window',
+          (WidgetTester tester) async {
+        final SemanticsHandle semantics = tester.ensureSemantics();
+        await desktop(tester, const Size(1440, 1400));
+        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await expectLater(tester, meetsGuideline(textContrastGuideline));
+        semantics.dispose();
+      });
+
+      testWidgets('$tab: fits a small desktop window with large text',
+          (WidgetTester tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await desktop(tester, const Size(1000, 640));
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
+
   group('large text', () {
     for (final double scale in <double>[1.3, 1.5]) {
       for (final _Screen screen in <_Screen>[

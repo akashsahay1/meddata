@@ -399,6 +399,12 @@ cd app && flutter test test/integration/
 - [x] Journey follow-ups, round 2 (9 Oct): a strip medicine goes on a bill a strip at a time (or what's left); "Low-stock at (strips)" in strips mode; expiry typed as MM/YY (month's last day, "Pick a day" for full dates) and the app locale en-IN (day/month/year); passwords 8 characters in the app as on the server; switching plan re-applies the coupon
 - [x] Hindi removed (owner's decision, 9 Oct): the app is English only; the unused l10n files (17 strings) and the language setting are gone
 
+### Desktop layouts ✅ (16 Oct 2026)
+
+- [x] On a PC window the main tabs no longer show the phone's single column of cards in a centred 1200 px strip. They use the window: Home is a dashboard (four numbers in a row, "Needs attention" as a table beside Quick actions); Inventory and Bills are tables with column headings (search and filters on one line, a row opens the medicine / bill); Alerts shows Expired, Expiring soon and Low on stock side by side; Profile puts its settings in two columns. Phones are unchanged. Shared pieces in `widgets/desktop_kit.dart`
+- [x] Alerts opened from Home has a Back button (header shown in the "All good" state too)
+- [x] Desktop accessibility: the rail's "Add medicine" uses ink on orange (white was 2.8:1); the version line on Profile is a 48 px target; the five tabs are checked for targets, labels and contrast at 1440 px and for overflow at 1000×640 with 1.3× text
+
 ### Remaining from original task list
 
 - [ ] Verify notification reliability under battery optimization (real OEM device test)
@@ -438,7 +444,7 @@ cd app && flutter test test/integration/
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
 | Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
 | Unit change with stock | Ask, then convert every batch ×/÷ pack size (owner's decision, 9 Oct); refused when not whole strips. Prices are per strip either way, so they stay |
-| Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail |
+| Desktop layout | Decided by width (`AdaptiveLayout.isDesktop`, ≥ 900 px), not by OS; the Windows window has a 900×620 minimum so it always gets the rail. Wide windows get their own layouts (tables, columns, full width), not the phone screens stretched or centred |
 
 ---
 

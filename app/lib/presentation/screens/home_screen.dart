@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/formatters.dart';
 import '../../data/models/medicine.dart';
 import '../../domain/medicine_status.dart';
 import '../../domain/product_stock.dart';
@@ -10,9 +11,13 @@ import '../../theme/app_theme.dart';
 import '../widgets/status_chip.dart'; // exports the shared ui_kit + medicineStatusPill
 import '../widgets/sync_badge.dart';
 import '../widgets/adaptive_layout.dart';
+import '../widgets/desktop_kit.dart';
+import 'accounts/parties_screen.dart';
+import 'accounts/purchases_screen.dart';
 import 'add_edit_medicine_screen.dart';
 import 'alerts_screen.dart';
 import 'billing/new_bill_screen.dart';
+import 'import/import_wizard_screen.dart';
 import 'medicine_detail_screen.dart';
 import 'product_detail_screen.dart';
 import 'reports_screen.dart';
@@ -58,6 +63,22 @@ builder: (_) => const AddEditMedicineScreen()),
   Widget build(BuildContext context) {
     final MedicineProvider mp = context.watch<MedicineProvider>();
     final SettingsService settings = context.watch<SettingsService>();
+
+    if (AdaptiveLayout.isDesktop(context)) {
+      return _DesktopHome(
+        mp: mp,
+        settings: settings,
+        onSearch: _addMedicine,
+        onNewBill: () => _open(const NewBillScreen()),
+        onUpgrade: _openUpgrade,
+        onAlerts: () => _open(const AlertsScreen()),
+        onOpen: _open,
+        onOpenWide: (Widget screen) => Navigator.of(context).push(
+          AdaptiveLayout.route<void>(context,
+              maxWidth: AdaptiveLayout.contentMaxWidth, builder: (_) => screen),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -470,13 +491,17 @@ class _DashboardSummary extends StatelessWidget {
       ),
     ];
     if (desktop) {
-      return Row(
-        children: <Widget>[
-          for (int i = 0; i < cards.length; i++) ...<Widget>[
-            Expanded(child: cards[i]),
-            if (i != cards.length - 1) const SizedBox(width: 16),
+      // One row, all four the same height.
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (int i = 0; i < cards.length; i++) ...<Widget>[
+              Expanded(child: cards[i]),
+              if (i != cards.length - 1) const SizedBox(width: 16),
+            ],
           ],
-        ],
+        ),
       );
     }
     return Column(
@@ -612,6 +637,261 @@ class _TrialBanner extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Home on a wide window: a title bar with search and "New bill", the four
+/// key numbers in a row, then "Needs attention" as a table beside a panel of
+/// everyday actions.
+class _DesktopHome extends StatelessWidget {
+  final MedicineProvider mp;
+  final SettingsService settings;
+  final VoidCallback onSearch;
+  final VoidCallback onNewBill;
+  final VoidCallback onUpgrade;
+  final VoidCallback onAlerts;
+  final ValueChanged<Widget> onOpen;
+  final ValueChanged<Widget> onOpenWide;
+
+  const _DesktopHome({
+    required this.mp,
+    required this.settings,
+    required this.onSearch,
+    required this.onNewBill,
+    required this.onUpgrade,
+    required this.onAlerts,
+    required this.onOpen,
+    required this.onOpenWide,
+  });
+
+  /// Rows shown before "See all".
+  static const int _maxRows = 8;
+
+  String _greeting() {
+    final DateTime now = DateTime.now();
+    final String part = now.hour < 12
+        ? 'Good morning'
+        : now.hour < 17
+            ? 'Good afternoon'
+            : 'Good evening';
+    return '$part · ${Fmt.dateShort(now)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Medicine> all = mp.visibleAllForAlerts;
+    final int totalUnits = all.fold(0, (int sum, Medicine m) => sum + m.quantity);
+    final int catCount = all
+        .map((Medicine m) => m.category.trim())
+        .where((String c) => c.isNotEmpty)
+        .toSet()
+        .length;
+    final List<(ProductStock, int, MedicineStatus)> attention =
+        <(ProductStock, int, MedicineStatus)>[
+          for (final ProductStock p in mp.products)
+            if (_DashboardBody._problem(mp, p)
+                case (final int sev, final MedicineStatus st))
+              (p, sev, st),
+        ]..sort((a, b) => a.$2.compareTo(b.$2));
+    final List<(ProductStock, int, MedicineStatus)> shown =
+        attention.take(_maxRows).toList();
+
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(kDeskGutter, 28, kDeskGutter, kDeskGutter),
+        children: <Widget>[
+          DeskPageHeader(
+            title: 'Dashboard',
+            subtitle: _greeting(),
+            actions: <Widget>[
+              SizedBox(width: 340, child: _DesktopSearch(onTap: onSearch)),
+              const SyncBadge(),
+              ElevatedButton.icon(
+                onPressed: onNewBill,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(0, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                ),
+                icon: const Icon(Icons.receipt_long, size: 20),
+                label: const Text('New bill'),
+              ),
+            ],
+          ),
+          if (!settings.isPremium && settings.isTrialActive) ...<Widget>[
+            const SizedBox(height: 20),
+            _TrialBanner(daysLeft: settings.trialDaysLeft, onUpgrade: onUpgrade),
+          ],
+          const SizedBox(height: 24),
+          _DashboardSummary(
+            desktop: true,
+            stockValue:
+                '${settings.currency}${_DashboardBody._grouped(mp.totalStockValue.round())}',
+            totalUnits: '${_DashboardBody._grouped(totalUnits)} units',
+            medicineCount: '${mp.productCount}',
+            categoryLabel: catCount == 1 ? '1 category' : '$catCount categories',
+            lowStockCount: mp.lowStockCount,
+            expiringCount: mp.expiringCount,
+            onAlerts: onAlerts,
+            onStockValue: () => onOpenWide(const ReportsScreen()),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    SectionHeader(
+                      title: attention.length > shown.length
+                          ? 'Needs attention (${attention.length})'
+                          : 'Needs attention',
+                      actionLabel: 'See all',
+                      onAction: onAlerts,
+                    ),
+                    if (shown.isEmpty)
+                      const _AllGoodCard()
+                    else
+                      DeskTable(
+                        shrinkWrap: true,
+                        columns: const <DeskColumn>[
+                          DeskColumn('Medicine', flex: 4),
+                          DeskColumn('Stock', flex: 2),
+                          DeskColumn('Nearest expiry', flex: 2),
+                          DeskColumn('Status', flex: 2),
+                        ],
+                        rowCount: shown.length,
+                        onTap: (int i) => onOpen(
+                            ProductDetailScreen(productId: shown[i].$1.productId)),
+                        cells: (int i) {
+                          final ProductStock p = shown[i].$1;
+                          return <Widget>[
+                            DeskCell(p.name,
+                                strong: true,
+                                sub: p.brand.trim().isEmpty ? null : p.brand),
+                            DeskCell('${p.totalQty} ${p.unit}'),
+                            DeskCell(Fmt.dateShort(p.nearestExpiry)),
+                            medicineStatusPill(shown[i].$3, p.totalQty),
+                          ];
+                        },
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 2,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: _QuickActions(
+                    actions: <(IconData, String, String, VoidCallback)>[
+                      (Icons.receipt_long_outlined, 'New bill', 'Bill a customer', onNewBill),
+                      (Icons.add_box_outlined, 'Add medicine',
+                          'A new medicine or a new batch', onSearch),
+                      (Icons.local_shipping_outlined, 'Purchases',
+                          'Record a supplier bill', () => onOpen(const PurchasesScreen())),
+                      (Icons.people_outline, 'Parties',
+                          'Customers, suppliers and dues', () => onOpen(const PartiesScreen())),
+                      (Icons.insights_outlined, 'Reports',
+                          'Stock value, profit and expiry', () => onOpenWide(const ReportsScreen())),
+                      (Icons.upload_file_outlined, 'Import stock',
+                          'Bring in an Excel or CSV list',
+                          () => onOpenWide(const ImportWizardScreen())),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The desktop "Search or add medicine" box (opens the medicine form).
+class _DesktopSearch extends StatelessWidget {
+  final VoidCallback onTap;
+  const _DesktopSearch({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadii.input),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.input),
+        child: Ink(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.input),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Row(
+            children: <Widget>[
+              Icon(Icons.search, size: 20, color: AppColors.muted),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Search or add medicine',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Everyday jobs, one click each.
+class _QuickActions extends StatelessWidget {
+  final List<(IconData, String, String, VoidCallback)> actions;
+  const _QuickActions({required this.actions});
+
+  @override
+  Widget build(BuildContext context) {
+    return DeskPanel(
+      title: 'Quick actions',
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      child: Column(
+        children: <Widget>[
+          for (final (IconData icon, String title, String sub, VoidCallback onTap)
+              in actions)
+            ListTile(
+              onTap: onTap,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.statusGreenBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, size: 20, color: AppColors.green),
+              ),
+              title: Text(title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.ink)),
+              subtitle: Text(sub,
+                  style: const TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted)),
+              trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
+            ),
+        ],
       ),
     );
   }

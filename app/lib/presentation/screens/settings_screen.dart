@@ -25,6 +25,7 @@ import 'billing/shop_settings_screen.dart';
 import 'import/import_wizard_screen.dart';
 import 'upgrade_screen.dart';
 import '../widgets/adaptive_layout.dart';
+import '../widgets/desktop_kit.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -89,216 +90,256 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final String? displayEmail =
         auth.name?.isNotEmpty == true ? auth.email : null;
 
+    final bool desktop = AdaptiveLayout.isDesktop(context);
+    final Widget header = _header(displayName, displayEmail, topInset, auth.avatarUrl);
+    final List<Widget> plan = <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+        child: _planCard(context, s),
+      ),
+    ];
+    final List<Widget> left = <Widget>[
+      // Account
+      _sectionLabel('Account'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.person_outline,
+          label: 'Edit profile',
+          onTap: () => _editProfile(context, auth),
+        ),
+        _menuRow(
+          icon: Icons.lock_outline,
+          label: 'Change password',
+          onTap: () => _changePassword(context),
+        ),
+      ]),
+
+      // Billing (GST invoices)
+      _sectionLabel('Billing'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.storefront_outlined,
+          label: 'Shop & invoice details',
+          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              maxWidth: AdaptiveLayout.desktopFormMaxWidth,
+builder: (_) => const ShopSettingsScreen())),
+        ),
+      ]),
+
+      // Accounts (online, like billing)
+      _sectionLabel('Accounts'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.insights_outlined,
+          label: 'Reports (stock value, profit, expiry)',
+          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ReportsScreen())),
+        ),
+        _menuRow(
+          icon: Icons.people_outline,
+          label: 'Parties (customers & suppliers)',
+          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              builder: (_) => const PartiesScreen())),
+        ),
+        _menuRow(
+          icon: Icons.local_shipping_outlined,
+          label: 'Purchases',
+          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              builder: (_) => const PurchasesScreen())),
+        ),
+        _menuRow(
+          icon: Icons.account_balance_outlined,
+          label: 'GST returns (GSTR-1 / 3B)',
+          onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
+              maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const GstReportsScreen())),
+        ),
+      ]),
+    ];
+    final List<Widget> right = <Widget>[
+      // Appearance
+      _sectionLabel('Appearance'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.brightness_6_outlined,
+          label: 'Theme',
+          value: _themeLabel(s.themeMode),
+          onTap: () => _pickTheme(context, s),
+        ),
+      ]),
+
+      // Alerts
+      _sectionLabel('Alerts'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.schedule,
+          label: 'Expiry warning window',
+          value: '${s.warningDays} days',
+          onTap: () => _pickWarningDays(context, s),
+        ),
+        _menuRow(
+          icon: Icons.access_time,
+          label: 'Daily reminder time',
+          value: s.reminderTime.format(context),
+          onTap: () async {
+            final TimeOfDay? t = await showTimePicker(
+                context: context, initialTime: s.reminderTime);
+            if (t != null) await s.setReminderTime(t);
+          },
+        ),
+        _switchRow(
+          icon: Icons.event_busy_outlined,
+          label: 'Expiry notifications',
+          value: s.notifExpiry,
+          onChanged: s.setNotifExpiry,
+        ),
+        _switchRow(
+          icon: Icons.inventory_2_outlined,
+          label: 'Low-stock notifications',
+          value: s.notifLowStock,
+          onChanged: s.setNotifLowStock,
+        ),
+      ]),
+
+      // Data
+      _sectionLabel('Data'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.upload_file_outlined,
+          label: 'Import stock from Excel / CSV',
+          onTap: () => Navigator.of(context).push(
+            AdaptiveLayout.route<void>(context, 
+                maxWidth: AdaptiveLayout.contentMaxWidth,
+builder: (_) => const ImportWizardScreen()),
+          ),
+        ),
+        _menuRow(
+          icon: Icons.table_view_outlined,
+          label: 'Export as CSV',
+          onTap: () => _exportCsv(context),
+        ),
+        _menuRow(
+          icon: Icons.settings_backup_restore,
+          label: 'Restore JSON backup',
+          onTap: () => _importJson(context),
+        ),
+      ]),
+
+      // Support (WhatsApp; number is set in the admin panel)
+      _sectionLabel('Support'),
+      _menuCard(<Widget>[
+        _menuRow(
+          icon: Icons.support_agent,
+          label: 'Chat with support',
+          onTap: () => _openSupportChat(auth),
+        ),
+        _menuRow(
+          icon: Icons.rate_review_outlined,
+          label: 'Send feedback',
+          onTap: () => _sendFeedback(auth),
+        ),
+      ]),
+
+      if (kDebugMode && _devUnlocked) ...<Widget>[
+        _sectionLabel('Developer / Testing'),
+        _menuCard(<Widget>[
+          _switchRow(
+            icon: Icons.workspace_premium_outlined,
+            label: 'Test premium unlock',
+            value: s.isPremium,
+            onChanged: (bool v) => s.setPremium(v),
+          ),
+          _menuRow(
+            icon: Icons.perm_device_information_outlined,
+            label: 'Device ID',
+            value: _deviceId,
+            trailing: const Icon(Icons.copy, size: 18, color: AppColors.muted),
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: _deviceId));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Device ID copied')),
+              );
+            },
+          ),
+        ]),
+      ],
+
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
+        child: SecondaryButton(
+          label: 'Log out',
+          icon: Icons.logout,
+          onPressed: () => _confirmLogout(context),
+        ),
+      ),
+
+      const SizedBox(height: 16),
+      Center(
+        child: GestureDetector(
+          onTap: kDebugMode ? _onVersionTap : null,
+          behavior: HitTestBehavior.opaque,
+          child: const Padding(
+            // 48dp tall: it answers taps (developer options in debug builds).
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Text(
+              'Medikabiz v$_appVersion',
+              // Small muted text needs w600: at w500 the thin
+              // strokes never reach the full colour (contrast test).
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted, // AA on the canvas
+              ),
+            ),
+          ),
+        ),
+      ),
+      SizedBox(height: 24 + bottomInset),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.canvas,
       body: Stack(
         children: <Widget>[
-          ListView(
-            padding: EdgeInsets.zero,
-            children: <Widget>[
-              _header(displayName, displayEmail, topInset, auth.avatarUrl),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
-                child: _planCard(context, s),
-              ),
-
-              // Account
-              _sectionLabel('Account'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.person_outline,
-                  label: 'Edit profile',
-                  onTap: () => _editProfile(context, auth),
-                ),
-                _menuRow(
-                  icon: Icons.lock_outline,
-                  label: 'Change password',
-                  onTap: () => _changePassword(context),
-                ),
-              ]),
-
-              // Billing (GST invoices)
-              _sectionLabel('Billing'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.storefront_outlined,
-                  label: 'Shop & invoice details',
-                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
-                      maxWidth: AdaptiveLayout.desktopFormMaxWidth,
-builder: (_) => const ShopSettingsScreen())),
-                ),
-              ]),
-
-              // Accounts (online, like billing)
-              _sectionLabel('Accounts'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.insights_outlined,
-                  label: 'Reports (stock value, profit, expiry)',
-                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
-                      maxWidth: AdaptiveLayout.contentMaxWidth,
-builder: (_) => const ReportsScreen())),
-                ),
-                _menuRow(
-                  icon: Icons.people_outline,
-                  label: 'Parties (customers & suppliers)',
-                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
-                      builder: (_) => const PartiesScreen())),
-                ),
-                _menuRow(
-                  icon: Icons.local_shipping_outlined,
-                  label: 'Purchases',
-                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
-                      builder: (_) => const PurchasesScreen())),
-                ),
-                _menuRow(
-                  icon: Icons.account_balance_outlined,
-                  label: 'GST returns (GSTR-1 / 3B)',
-                  onTap: () => Navigator.of(context).push(AdaptiveLayout.route<void>(context, 
-                      maxWidth: AdaptiveLayout.contentMaxWidth,
-builder: (_) => const GstReportsScreen())),
-                ),
-              ]),
-
-              // Appearance
-              _sectionLabel('Appearance'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.brightness_6_outlined,
-                  label: 'Theme',
-                  value: _themeLabel(s.themeMode),
-                  onTap: () => _pickTheme(context, s),
-                ),
-              ]),
-
-              // Alerts
-              _sectionLabel('Alerts'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.schedule,
-                  label: 'Expiry warning window',
-                  value: '${s.warningDays} days',
-                  onTap: () => _pickWarningDays(context, s),
-                ),
-                _menuRow(
-                  icon: Icons.access_time,
-                  label: 'Daily reminder time',
-                  value: s.reminderTime.format(context),
-                  onTap: () async {
-                    final TimeOfDay? t = await showTimePicker(
-                        context: context, initialTime: s.reminderTime);
-                    if (t != null) await s.setReminderTime(t);
-                  },
-                ),
-                _switchRow(
-                  icon: Icons.event_busy_outlined,
-                  label: 'Expiry notifications',
-                  value: s.notifExpiry,
-                  onChanged: s.setNotifExpiry,
-                ),
-                _switchRow(
-                  icon: Icons.inventory_2_outlined,
-                  label: 'Low-stock notifications',
-                  value: s.notifLowStock,
-                  onChanged: s.setNotifLowStock,
-                ),
-              ]),
-
-              // Data
-              _sectionLabel('Data'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.upload_file_outlined,
-                  label: 'Import stock from Excel / CSV',
-                  onTap: () => Navigator.of(context).push(
-                    AdaptiveLayout.route<void>(context, 
-                        maxWidth: AdaptiveLayout.contentMaxWidth,
-builder: (_) => const ImportWizardScreen()),
+          if (desktop)
+            // Wide window: the profile banner, then the settings in two
+            // columns.
+            ListView(
+              padding: const EdgeInsets.fromLTRB(
+                  kDeskGutter - 18, 28, kDeskGutter - 18, kDeskGutter),
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.cardLg),
+                    child: header,
                   ),
                 ),
-                _menuRow(
-                  icon: Icons.table_view_outlined,
-                  label: 'Export as CSV',
-                  onTap: () => _exportCsv(context),
-                ),
-                _menuRow(
-                  icon: Icons.settings_backup_restore,
-                  label: 'Restore JSON backup',
-                  onTap: () => _importJson(context),
-                ),
-              ]),
-
-              // Support (WhatsApp; number is set in the admin panel)
-              _sectionLabel('Support'),
-              _menuCard(<Widget>[
-                _menuRow(
-                  icon: Icons.support_agent,
-                  label: 'Chat with support',
-                  onTap: () => _openSupportChat(auth),
-                ),
-                _menuRow(
-                  icon: Icons.rate_review_outlined,
-                  label: 'Send feedback',
-                  onTap: () => _sendFeedback(auth),
-                ),
-              ]),
-
-              if (kDebugMode && _devUnlocked) ...<Widget>[
-                _sectionLabel('Developer / Testing'),
-                _menuCard(<Widget>[
-                  _switchRow(
-                    icon: Icons.workspace_premium_outlined,
-                    label: 'Test premium unlock',
-                    value: s.isPremium,
-                    onChanged: (bool v) => s.setPremium(v),
-                  ),
-                  _menuRow(
-                    icon: Icons.perm_device_information_outlined,
-                    label: 'Device ID',
-                    value: _deviceId,
-                    trailing: const Icon(Icons.copy, size: 18, color: AppColors.muted),
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: _deviceId));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Device ID copied')),
-                      );
-                    },
-                  ),
-                ]),
-              ],
-
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 24, 18, 0),
-                child: SecondaryButton(
-                  label: 'Log out',
-                  icon: Icons.logout,
-                  onPressed: () => _confirmLogout(context),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              Center(
-                child: GestureDetector(
-                  onTap: kDebugMode ? _onVersionTap : null,
-                  behavior: HitTestBehavior.opaque,
-                  child: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 6),
-                    child: Text(
-                      'Medikabiz v$_appVersion',
-                      // Small muted text needs w600: at w500 the thin
-                      // strokes never reach the full colour (contrast test).
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.muted, // AA on the canvas
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[...plan, ...left],
                       ),
                     ),
-                  ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: right,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              SizedBox(height: 24 + bottomInset),
-            ],
-          ),
+              ],
+            )
+          else
+            ListView(
+              padding: EdgeInsets.zero,
+              children: <Widget>[header, ...plan, ...left, ...right],
+            ),
           // Header-green strip behind the status bar so scrolled rows don't
           // run under the clock and battery icons.
           Positioned(

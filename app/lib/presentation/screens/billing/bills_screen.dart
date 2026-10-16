@@ -12,8 +12,10 @@ import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import 'bill_detail_screen.dart';
 import 'billing_widgets.dart';
-import 'new_bill_screen.dart';
+import 'new_bill_screen.dart';
+
 import '../../widgets/adaptive_layout.dart';
+import '../../widgets/desktop_kit.dart';
 
 enum _Range { today, yesterday, week, month, custom }
 
@@ -161,8 +163,159 @@ class _BillsScreenState extends State<BillsScreen> {
     return d.start == d.end ? DateFormat('dd MMM yyyy').format(d.start) : '${f.format(d.start)} - ${f.format(d.end)}';
   }
 
+  Widget _searchField() => TextField(
+        controller: _search,
+        onChanged: _onSearch,
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink),
+        decoration: InputDecoration(
+          hintText: 'Search invoice no., customer or phone',
+          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
+          suffixIcon: _search.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Clear search',
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () {
+                    _search.clear();
+                    _refresh();
+                  },
+                ),
+        ),
+      );
+
+  Widget _rangeChips() => Row(
+        children: <Widget>[
+          for (final (_Range r, String label) in <(_Range, String)>[
+            (_Range.today, 'Today'),
+            (_Range.yesterday, 'Yesterday'),
+            (_Range.week, 'Last 7 days'),
+            (_Range.month, 'This month'),
+          ])
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: PillChoice(label: label, selected: _range == r, onTap: () => _setRange(r)),
+            ),
+          PillChoice(
+            label: _range == _Range.custom ? _rangeLabel() : 'Pick dates',
+            icon: Icons.date_range,
+            selected: _range == _Range.custom,
+            onTap: _pickDates,
+          ),
+        ],
+      );
+
+  Widget _newBillButton() => ElevatedButton.icon(
+        onPressed: () => _open(const NewBillScreen()),
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('New bill'),
+      );
+
+  /// Wide window: the period's totals as three cards, then the bills as a
+  /// table (more load as it scrolls).
+  Widget _desktop() {
+    final BillPage? p = _page;
+    return Scaffold(
+      backgroundColor: AppColors.canvas,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(kDeskGutter, 28, kDeskGutter, kDeskGutter),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            DeskPageHeader(
+              title: 'Bills',
+              subtitle: _rangeLabel(),
+              actions: <Widget>[_newBillButton()],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: <Widget>[
+                SizedBox(width: 420, child: _searchField()),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: _rangeChips(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (_failure != null)
+              Expanded(
+                child: BillingOfflineNotice(
+                  onRetry: _refresh,
+                  offline: _failure!.isOffline,
+                  message: _failure!.message,
+                ),
+              )
+            else ...<Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: StatCard(
+                      label: 'Sales',
+                      value: p == null ? '-' : Inr.format(p.finalTotalPaise),
+                      sub: _rangeLabel(),
+                      subColor: AppColors.statusGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatCard(
+                      label: 'Bills',
+                      value: p == null ? '-' : '${p.finalCount}',
+                      sub: 'not counting cancelled',
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: StatCard(
+                      label: 'Cancelled',
+                      value: p == null ? '-' : '${p.cancelledCount}',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: _page != null && _bills.isEmpty
+                    ? _empty()
+                    : DeskTable(
+                        controller: _scroll,
+                        columns: const <DeskColumn>[
+                          DeskColumn('Invoice no.', flex: 3),
+                          DeskColumn('Date & time', flex: 3),
+                          DeskColumn('Customer', flex: 3),
+                          DeskColumn.end('Items', flex: 1),
+                          DeskColumn('Payment', flex: 2),
+                          DeskColumn.end('Amount', flex: 2),
+                        ],
+                        rowCount: _bills.length,
+                        onTap: (int i) => _open(BillDetailScreen(billId: _bills[i].id)),
+                        cells: (int i) => _BillTile.cells(_bills[i]),
+                        footer: _loading
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Center(child: CircularProgressIndicator()),
+                              )
+                            : null,
+                      ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (AdaptiveLayout.isDesktop(context)) return _desktop();
     final double bottom = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
       backgroundColor: AppColors.canvas,
@@ -186,64 +339,18 @@ class _BillsScreenState extends State<BillsScreen> {
                       ),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _open(const NewBillScreen()),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 44),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    icon: const Icon(Icons.add, size: 20),
-                    label: const Text('New bill'),
-                  ),
+                  _newBillButton(),
                 ],
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-              child: TextField(
-                controller: _search,
-                onChanged: _onSearch,
-                textInputAction: TextInputAction.search,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.ink),
-                decoration: InputDecoration(
-                  hintText: 'Search invoice no., customer or phone',
-                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.muted),
-                  suffixIcon: _search.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Clear search',
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () {
-                            _search.clear();
-                            _refresh();
-                          },
-                        ),
-                ),
-              ),
+              child: _searchField(),
             ),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
-              child: Row(
-                children: <Widget>[
-                  for (final (_Range r, String label) in <(_Range, String)>[
-                    (_Range.today, 'Today'),
-                    (_Range.yesterday, 'Yesterday'),
-                    (_Range.week, 'Last 7 days'),
-                    (_Range.month, 'This month'),
-                  ])
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: PillChoice(label: label, selected: _range == r, onTap: () => _setRange(r)),
-                    ),
-                  PillChoice(
-                    label: _range == _Range.custom ? _rangeLabel() : 'Pick dates',
-                    icon: Icons.date_range,
-                    selected: _range == _Range.custom,
-                    onTap: _pickDates,
-                  ),
-                ],
-              ),
+              child: _rangeChips(),
             ),
             Expanded(
               child: _failure != null
@@ -327,12 +434,45 @@ class _BillTile extends StatelessWidget {
   final BillSummary bill;
   final VoidCallback onTap;
 
+  static String _when(BillSummary bill) => bill.createdAt == null
+      ? DateFormat('dd MMM').format(bill.billDate)
+      : DateFormat('dd MMM, hh:mm a').format(bill.createdAt!);
+
+  static String _who(BillSummary bill) =>
+      bill.customerName ?? bill.customerPhone ?? 'Walk-in';
+
+  static Widget _payment(BillSummary bill) {
+    if (bill.isCancelled) return StatusPill.danger('Cancelled');
+    if (bill.paymentMode == PaymentMode.credit) return StatusPill.low('Credit');
+    return Text(bill.paymentMode.label,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.muted));
+  }
+
+  /// One desktop table row: invoice, date, customer, items, payment, amount.
+  static List<Widget> cells(BillSummary bill) => <Widget>[
+        DeskCell(bill.invoiceNo, strong: true),
+        DeskCell(_when(bill)),
+        DeskCell(_who(bill),
+            sub: bill.customerName != null && bill.customerPhone != null
+                ? bill.customerPhone
+                : null),
+        DeskCell('${bill.itemsCount}', align: TextAlign.end),
+        _payment(bill),
+        Text(
+          Inr.format(bill.totalPaise),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: bill.isCancelled ? AppColors.muted : AppColors.ink,
+            decoration: bill.isCancelled ? TextDecoration.lineThrough : null,
+          ),
+        ),
+      ];
+
   @override
   Widget build(BuildContext context) {
-    final String when = bill.createdAt == null
-        ? DateFormat('dd MMM').format(bill.billDate)
-        : DateFormat('dd MMM, hh:mm a').format(bill.createdAt!);
-    final String who = bill.customerName ?? bill.customerPhone ?? 'Walk-in';
+    final String when = _when(bill);
+    final String who = _who(bill);
     return Material(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(AppRadii.card),
@@ -377,10 +517,8 @@ class _BillTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (bill.isCancelled)
-                    StatusPill.danger('Cancelled')
-                  else if (bill.paymentMode == PaymentMode.credit)
-                    StatusPill.low('Credit')
+                  if (bill.isCancelled || bill.paymentMode == PaymentMode.credit)
+                    _payment(bill)
                   else
                     Text(bill.paymentMode.label,
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.muted)),
