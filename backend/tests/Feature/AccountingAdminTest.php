@@ -36,20 +36,20 @@ class AccountingAdminTest extends TestCase
         ]);
         $gone->delete();
 
-        $this->get('/parties')
+        $this->get('/admin/parties')
             ->assertOk()
             ->assertSee('Pune Pharma Distributors')
             ->assertSee('Sahay Medicals')
             ->assertSee('₹1,250.00 to pay', false);
 
-        $this->get("/parties/{$party->id}")
+        $this->get("/admin/parties/{$party->id}")
             ->assertOk()
             ->assertSee('27AAPFU0939F1ZV')
             ->assertSee('27 - Maharashtra')
             ->assertSee('₹1,250.00 to pay', false);
-        $this->get("/parties/{$gone->id}")->assertOk()->assertSee('Old Customer');
+        $this->get("/admin/parties/{$gone->id}")->assertOk()->assertSee('Old Customer');
 
-        $this->get('/parties/create')->assertNotFound();
-        $this->get("/parties/{$party->id}/edit")->assertNotFound();
+        $this->get('/admin/parties/create')->assertNotFound();
+        $this->get("/admin/parties/{$party->id}/edit")->assertNotFound();
     }
 }

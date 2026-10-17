@@ -2,7 +2,7 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Dashboard;
+use Filament\Pages\Dashboard;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -35,12 +35,10 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('')
+            // The website is the site root; the admin panel lives at /admin
+            // (login at /admin/login).
+            ->path('admin')
             ->login()
-            ->loginRouteSlug('/')
-            // '/' is the login form, so send authenticated users to '/dashboard'
-            // instead of the panel root (avoids a post-login redirect loop).
-            ->homeUrl(fn (): string => Dashboard::getUrl())
             ->brandName('Medikabiz')
             ->brandLogo(asset('images/medikabiz_logo.png'))
             ->darkModeBrandLogo(asset('images/medikabiz_logo_dark.png'))

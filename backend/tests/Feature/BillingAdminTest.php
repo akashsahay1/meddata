@@ -62,13 +62,13 @@ class BillingAdminTest extends TestCase
         /** @var Bill $bill */
         [, $bill] = $this->shopWithBill();
 
-        $this->get('/bills')
+        $this->get('/admin/bills')
             ->assertOk()
             ->assertSee('INV/26-27/000001', false)
             ->assertSee('Sahay Medicals')
             ->assertSee('Ramesh Kumar');
 
-        $this->get("/bills/{$bill->id}")
+        $this->get("/admin/bills/{$bill->id}")
             ->assertOk()
             ->assertSee('INV/26-27/000001', false)
             ->assertSee('Ramesh Kumar')
@@ -79,8 +79,8 @@ class BillingAdminTest extends TestCase
             ->assertSee('B77')
             ->assertSee('5%');
 
-        $this->get('/bills/create')->assertNotFound();
-        $this->get("/bills/{$bill->id}/edit")->assertNotFound();
+        $this->get('/admin/bills/create')->assertNotFound();
+        $this->get("/admin/bills/{$bill->id}/edit")->assertNotFound();
     }
 
     public function test_admin_can_edit_a_shops_invoice_details(): void
@@ -111,7 +111,7 @@ class BillingAdminTest extends TestCase
         $this->assertSame(['Sahay Medicals Pvt Ltd', '27AAPFU0939F1ZV', '27', 'MED', 'MH-20B-1', 1200],
             [$shop->legal_name, $shop->gstin, $shop->state_code, $shop->invoice_prefix, $shop->drug_license_no, $shop->default_gst_rate_bp]);
 
-        $this->get("/shops/{$shop->id}")
+        $this->get("/admin/shops/{$shop->id}")
             ->assertOk()
             ->assertSee('Sahay Medicals Pvt Ltd')
             ->assertSee('12%')

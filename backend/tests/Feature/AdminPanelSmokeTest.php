@@ -101,11 +101,20 @@ class AdminPanelSmokeTest extends TestCase
         return $shop;
     }
 
-    public function test_login_page_renders(): void
+    // The site root was the admin login; it is now the public website and
+    // the admin panel lives at /admin.
+    public function test_the_website_is_the_site_root_and_admin_is_at_admin(): void
     {
         $this->get('/')
-            ->assertStatus(200)
-            ->assertSee('Medikabiz');
+            ->assertOk()
+            ->assertSee('The smarter way')
+            ->assertSee('₹99')
+            ->assertDontSee('Sign in');
+
+        $this->get('/admin')->assertRedirect('/admin/login');
+        $this->get('/admin/login')
+            ->assertOk()
+            ->assertSee('Sign in');
     }
 
     public function test_dashboard_renders_with_shop_data(): void
@@ -113,7 +122,7 @@ class AdminPanelSmokeTest extends TestCase
         $this->seedShop();
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')->assertStatus(200);
+        $this->get('/admin')->assertStatus(200);
 
         // Dashboard widgets are lazy-loaded, so render each one directly.
         Livewire::test(StatsOverview::class)
@@ -131,7 +140,7 @@ class AdminPanelSmokeTest extends TestCase
     {
         $this->actingAs($this->admin());
 
-        $this->get('/dashboard')->assertStatus(200);
+        $this->get('/admin')->assertStatus(200);
         Livewire::test(StatsOverview::class)->assertSee('0 expired in stock');
         Livewire::test(ShopGrowthChart::class)->assertSuccessful();
         Livewire::test(ProductCategoryChart::class)->assertSuccessful();
@@ -158,7 +167,7 @@ class AdminPanelSmokeTest extends TestCase
         ];
 
         foreach ($indexes as $url) {
-            $this->get($url)->assertStatus(200);
+            $this->get("/admin{$url}")->assertStatus(200);
         }
     }
 
@@ -167,12 +176,12 @@ class AdminPanelSmokeTest extends TestCase
         $shop = $this->seedShop();
         $this->actingAs($this->admin());
 
-        $this->get('/shops')
+        $this->get('/admin/shops')
             ->assertStatus(200)
             ->assertSee('Sahay Medicals')
             ->assertSee('owner@example.com');
 
-        $this->get("/shops/{$shop->id}")
+        $this->get("/admin/shops/{$shop->id}")
             ->assertStatus(200)
             ->assertSee('Sahay Medicals')
             ->assertSee('owner@example.com');
@@ -189,8 +198,8 @@ class AdminPanelSmokeTest extends TestCase
             ->assertTableColumnStateSet('batches_count', 1, Product::where('name', 'Paracetamol 500')->first());
 
         // Read-only: no create/edit routes.
-        $this->get('/shops/create')->assertStatus(404);
-        $this->get("/shops/{$shop->id}/edit")->assertStatus(404);
+        $this->get('/admin/shops/create')->assertStatus(404);
+        $this->get("/admin/shops/{$shop->id}/edit")->assertStatus(404);
     }
 
     public function test_medicine_master_list_searches(): void
@@ -198,11 +207,11 @@ class AdminPanelSmokeTest extends TestCase
         $this->seedShop();
         $this->actingAs($this->admin());
 
-        $this->get('/medicine-master?search=parac')
+        $this->get('/admin/medicine-master?search=parac')
             ->assertStatus(200)
             ->assertSee('Paracetamol 500');
 
-        $this->get('/medicine-master/create')->assertStatus(404);
+        $this->get('/admin/medicine-master/create')->assertStatus(404);
     }
 
     public function test_all_resource_create_pages_render(): void
@@ -220,7 +229,7 @@ class AdminPanelSmokeTest extends TestCase
         ];
 
         foreach ($creates as $url) {
-            $this->get($url)->assertStatus(200);
+            $this->get("/admin{$url}")->assertStatus(200);
         }
     }
 }

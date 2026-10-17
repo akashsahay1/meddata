@@ -266,7 +266,8 @@ php artisan queue:work database   # needed for AI invoice reading
 
 **AI invoice env:** `GROQ_API_KEY` (required for invoice scans), `GROQ_MODEL=qwen/qwen3.8-27b`; optional `GROQ_TEXT_MODEL` (`openai/gpt-oss-120b`, reads PDFs that have text), `GROQ_TEXT_MAX_TOKENS` (16384), `GROQ_MAX_TOKENS` (8192; the model allows 16384), `GROQ_TIMEOUT` (120 s), `GROQ_BASE_URL` (`https://api.groq.com/openai/v1`), `DB_QUEUE_RETRY_AFTER=600`. PDF scans need `pdftotext` (poppler-utils) for PDFs with text inside, and php-imagick + Ghostscript with an ImageMagick policy that allows reading PDF for scanned ones (photos only need php-gd).
 
-- **Admin panel:** `/admin` → login with ADMIN_EMAIL / ADMIN_PASSWORD from `.env`
+- **Website:** `/` is the public one-page site (`resources/views/website.blade.php`, from the owner's Features and Benefits brochure, 17 Oct 2026)
+- **Admin panel:** `/admin` → login at `/admin/login` with ADMIN_EMAIL / ADMIN_PASSWORD from `.env` (until 17 Oct 2026 the panel was at the site root)
 
 ### Tests
 
