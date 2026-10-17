@@ -1,13 +1,20 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:medikabiz/data/models/medicine.dart';
 import 'package:medikabiz/data/repositories/medicine_repository.dart';
 import 'package:medikabiz/domain/product_stock.dart';
 import 'package:medikabiz/presentation/screens/invoice_scan_screen.dart';
+import 'package:medikabiz/presentation/widgets/ui_kit.dart';
 import 'package:medikabiz/services/invoice_scan_service.dart';
 import 'package:medikabiz/state/medicine_provider.dart';
 import 'package:medikabiz/sync/sync_engine.dart';
 import 'package:provider/provider.dart';
+
+import 'support/test_app.dart';
 
 /// In-memory stand-in for the SQLite repository: a batch joins the product
 /// with the same name, unit and brand, like the real one.
@@ -104,6 +111,56 @@ void main() {
       find.text('AI invoice reading is not set up on the server yet.'),
       findsOneWidget,
     );
+    // Another try of the same file would not help here. (The offline notice
+    // has its own "Try again" link, for sync.)
+    expect(find.widgetWithText(PrimaryButton, 'Try again'), findsNothing);
+  });
+
+  // A busy AI service used to end in an error after two tries, and the only
+  // way on was to pick the file again; staff took it for a broken feature.
+  testWidgets('a failed scan is read again from the same file, and a busy '
+      'AI service shows that it is trying again', (WidgetTester tester) async {
+    final List<String> calls = <String>[];
+    Map<String, Object?> scan(String status, {bool retrying = false}) =>
+        <String, Object?>{
+          'id': 9,
+          'status': status,
+          'retrying': retrying,
+          'can_retry': false,
+        };
+    final InvoiceScanService service = InvoiceScanService(
+      baseUrl: 'http://api.test',
+      client: MockClient((http.Request r) async {
+        calls.add('${r.method} ${r.url.path}');
+        final Object body = r.method == 'POST'
+            ? <String, Object?>{'scan': scan('queued')}
+            : <String, Object?>{'scan': scan('queued', retrying: true)};
+        return http.Response(jsonEncode(body), r.method == 'POST' ? 202 : 200);
+      }),
+    );
+    final TestApp app = await TestApp.create(signedIn: true);
+    addTearDown(app.dispose);
+    await tester.pumpWidget(app.wrap(InvoiceScanScreen(
+      service: service,
+      initialScan: const InvoiceScan(
+        id: 9,
+        status: 'failed',
+        errorCode: 'busy',
+        error: 'The AI service is busy right now. Please try again in a few minutes.',
+        canRetry: true,
+      ),
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(PrimaryButton, 'Try again'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 4)); // one poll
+    expect(calls, <String>['POST /invoices/scan/9/retry', 'GET /invoices/scan/9']);
+    expect(find.text('Trying again…'), findsOneWidget);
+    expect(find.textContaining('keep trying by itself'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel')); // stops polling
+    await tester.pump(const Duration(seconds: 4));
   });
 }
 

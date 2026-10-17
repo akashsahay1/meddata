@@ -100,6 +100,12 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   int? _scanId;
   String _scanStatus = 'queued';
 
+  /// The server is waiting to try again (AI service busy, or a bad reply).
+  bool _retrying = false;
+
+  /// The failed scan can be read again from the same file ("Try again").
+  bool _canRetry = false;
+
   /// Polling stopped (network trouble / very slow); offer "Check again".
   String? _pollProblem;
   InvoiceDraft? _draft;
@@ -232,6 +238,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       _stage = _Stage.uploading;
       _error = null;
       _offline = false;
+      _canRetry = false;
     });
     final bool pdf = ext == 'pdf';
     Uint8List bytes = await file.readAsBytes();
@@ -315,11 +322,13 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       setState(() {
         _stage = _Stage.pick;
         _error = scan.error ?? 'Could not read this invoice. Please try again.';
+        _canRetry = scan.canRetry;
       });
     } else {
       setState(() {
         _stage = _Stage.reading;
         _scanStatus = scan.status;
+        _retrying = scan.retrying;
         _pollProblem = null;
       });
       _poll(scan.id);
@@ -348,8 +357,15 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
         _show(scan);
         return;
       }
-      if (scan.status != _scanStatus) setState(() => _scanStatus = scan.status);
-      if (DateTime.now().difference(started) > const Duration(minutes: 8)) {
+      if (scan.status != _scanStatus || scan.retrying != _retrying) {
+        setState(() {
+          _scanStatus = scan.status;
+          _retrying = scan.retrying;
+        });
+      }
+      // The server keeps trying a busy AI service for ~10 minutes and gives
+      // up on a scan stuck for 15.
+      if (DateTime.now().difference(started) > const Duration(minutes: 16)) {
         setState(
           () => _pollProblem =
               'This is taking longer than usual. The server is still working on it.',
@@ -366,9 +382,36 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     _poll(id);
   }
 
+  /// Read the failed scan's file again (no new upload).
+  Future<void> _retryScan() async {
+    final int? id = _scanId;
+    final String? token = context.read<AuthService>().token;
+    if (id == null || token == null) return;
+    setState(() {
+      _stage = _Stage.uploading;
+      _error = null;
+      _offline = false;
+      _canRetry = false;
+    });
+    final InvoiceScanResponse r = await _service.retry(token: token, id: id);
+    if (!mounted || _scanId != id) return;
+    final InvoiceScan? scan = r.scan;
+    if (scan == null) {
+      setState(() {
+        _stage = _Stage.pick;
+        _error = r.message;
+        _offline = r.offline;
+        _canRetry = r.offline;   // nothing reached the server: still worth a try
+      });
+      return;
+    }
+    _show(scan);
+  }
+
   void _startOver() {
     setState(() {
       _scanId = null;
+      _canRetry = false;
       _draft = null;
       _supplier = null;
       _duplicates = <String>{};
@@ -934,6 +977,17 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             bg: AppColors.statusRedBg,
             title: "Couldn't read the invoice",
             text: _error!,
+            action: _canRetry
+                ? Align(
+                    alignment: Alignment.centerLeft,
+                    child: PrimaryButton(
+                      label: 'Try again',
+                      icon: Icons.refresh,
+                      expand: false,
+                      onPressed: _retryScan,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 14),
         ],
@@ -970,6 +1024,15 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   Widget _readingView() {
     final String? problem = _pollProblem;
     if (problem == null) {
+      if (_retrying && _scanStatus == 'queued') {
+        return _Waiting(
+          title: 'Trying again…',
+          text: 'The AI service is busy right now, so Medikabiz will keep '
+              'trying by itself. This can take a few minutes. Please keep '
+              'this screen open.',
+          action: TextButton(onPressed: _startOver, child: const Text('Cancel')),
+        );
+      }
       return _Waiting(
         title: _scanStatus == 'processing'
             ? 'Reading the invoice…'

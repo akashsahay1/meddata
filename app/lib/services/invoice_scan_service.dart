@@ -13,6 +13,8 @@ class InvoiceScan {
     this.errorCode,
     this.error,
     this.result,
+    this.retrying = false,
+    this.canRetry = false,
   });
 
   factory InvoiceScan.fromJson(Map<String, dynamic> j) {
@@ -23,6 +25,8 @@ class InvoiceScan {
       errorCode: j['error_code'] as String?,
       error: j['error'] as String?,
       result: result is Map<String, dynamic> ? result : null,
+      retrying: j['retrying'] == true,
+      canRetry: j['can_retry'] == true,
     );
   }
 
@@ -37,6 +41,12 @@ class InvoiceScan {
 
   /// The extracted invoice once done (see InvoiceDraftMapper).
   final Map<String, dynamic>? result;
+
+  /// Waiting for the server's next try (AI service busy, or a bad reply).
+  final bool retrying;
+
+  /// Failed, but reading the same file again may work ([InvoiceScanService.retry]).
+  final bool canRetry;
 
   bool get isDone => status == 'done';
   bool get isFailed => status == 'failed';
@@ -59,7 +69,8 @@ class InvoiceScanResponse {
 }
 
 /// Uploads purchase invoices for AI reading and polls the result
-/// (`POST /invoices/scan`, `GET /invoices/scan/{id}`). Online only.
+/// (`POST /invoices/scan`, `GET /invoices/scan/{id}`,
+/// `POST /invoices/scan/{id}/retry`). Online only.
 class InvoiceScanService {
   InvoiceScanService({http.Client? client, String? baseUrl, this.onUnauthorized})
     : _http = client ?? http.Client(),
@@ -115,6 +126,26 @@ class InvoiceScanService {
           .timeout(const Duration(seconds: 20));
     } catch (e) {
       debugPrint('[InvoiceScan] poll failed: $e');
+      return const InvoiceScanResponse.error(offlineMessage, offline: true);
+    }
+    return _parse(res, token);
+  }
+
+  /// Read a failed scan's file again, without uploading it again.
+  Future<InvoiceScanResponse> retry({
+    required String token,
+    required int id,
+  }) async {
+    final http.Response res;
+    try {
+      res = await _http
+          .post(
+            Uri.parse('$_baseUrl/invoices/scan/$id/retry'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      debugPrint('[InvoiceScan] retry failed: $e');
       return const InvoiceScanResponse.error(offlineMessage, offline: true);
     }
     return _parse(res, token);
