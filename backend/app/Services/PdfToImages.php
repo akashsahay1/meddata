@@ -71,7 +71,7 @@ class PdfToImages
             $page = $im->getImage();
             // Transparent areas would turn black in a JPEG.
             $page->setImageBackgroundColor('white');
-            $flat = $page->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
+            $flat = $this->squeeze($page->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN));
             $flat->setImageFormat('jpeg');
             $flat->setImageCompressionQuality(85);
             $flat->stripImage();
@@ -82,6 +82,60 @@ class PdfToImages
         }
 
         return $pages;
+    }
+
+    /**
+     * Every pixel sent costs input tokens, and Groq's per-minute token budget
+     * is small; on a typical A4 bill a third of the page is blank (margins,
+     * the gap above the footer). Blank bands taller than GAP rows shrink to
+     * GAP, then the side margins are trimmed. The print is not scaled.
+     */
+    private function squeeze(Imagick $page): Imagick
+    {
+        $gap = 24;
+        $rows = clone $page;
+        $rows->transformImageColorspace(Imagick::COLORSPACE_GRAY);
+        $rows->scaleImage(1, $page->getImageHeight());   // one averaged pixel per row
+        $levels = $rows->exportImagePixels(0, 0, 1, $page->getImageHeight(), 'I', Imagick::PIXEL_CHAR);
+        if (min($levels) >= 253) {
+            return $page;   // blank page: nothing to squeeze
+        }
+
+        $out = new Imagick;
+        $blank = 0;
+        $from = 0;
+        foreach ($levels as $y => $level) {
+            if ($level >= 253) {
+                $blank++;
+
+                continue;
+            }
+            if ($blank > $gap) {   // end the band GAP rows into the blank run, resume here
+                $this->addBand($out, $page, $from, $y - $blank + $gap);
+                $from = $y;
+            }
+            $blank = 0;
+        }
+        $this->addBand($out, $page, $from, count($levels) - $blank + min($blank, $gap));
+
+        $out->resetIterator();
+        $squeezed = $out->appendImages(true);
+        $squeezed->trimImage(0.02 * Imagick::getQuantum());
+        $squeezed->setImagePage(0, 0, 0, 0);
+        $squeezed->borderImage('white', $gap, $gap);
+
+        return $squeezed;
+    }
+
+    private function addBand(Imagick $out, Imagick $page, int $from, int $to): void
+    {
+        if ($to <= $from) {
+            return;
+        }
+        $band = clone $page;
+        $band->cropImage($page->getImageWidth(), $to - $from, 0, $from);
+        $band->setImagePage(0, 0, 0, 0);
+        $out->addImage($band);
     }
 
     private function unsupported(Throwable $e): InvoiceReadException
