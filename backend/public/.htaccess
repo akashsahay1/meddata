@@ -5,6 +5,16 @@
 
     RewriteEngine On
 
+    # medikabiz.com -> https://www.medikabiz.com (one address for the site and the app's API)
+    RewriteCond %{HTTP_HOST} ^medikabiz\.com$ [NC]
+    RewriteRule ^ https://www.medikabiz.com%{REQUEST_URI} [L,R=301]
+
+    # http -> https (X-Forwarded-Proto covers a proxy or load balancer in front)
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteCond %{HTTP_HOST} ^www\.medikabiz\.com$ [NC]
+    RewriteRule ^ https://www.medikabiz.com%{REQUEST_URI} [L,R=301]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
