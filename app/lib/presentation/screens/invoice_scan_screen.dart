@@ -1270,6 +1270,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
         Row(
           children: <Widget>[
             Expanded(
+              flex: 2,
               child: SecondaryButton(
                 label: 'Start over',
                 onPressed: saving
@@ -1283,7 +1284,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              flex: 2,
+              flex: 3,
               child: PrimaryButton(
                 label: saving
                     ? (_supplier != null ? 'Recording…' : 'Adding…')

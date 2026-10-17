@@ -288,19 +288,25 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       appBar: AppBar(
         title: Text(bill?.invoiceNo ?? 'Bill', overflow: TextOverflow.ellipsis),
         actions: <Widget>[
-          if (bill != null && !bill.isCancelled)
+          if (bill != null)
             PopupMenuButton<String>(
               tooltip: 'More actions',
+              enabled: !_busy,
               onSelected: (String v) {
+                if (v == 'save') _save();
                 if (v == 'edit') _edit();
                 if (v == 'paid') _markPaid();
                 if (v == 'cancel') _cancel();
               },
               itemBuilder: (_) => <PopupMenuEntry<String>>[
-                if (bill.canEdit) const PopupMenuItem<String>(value: 'edit', child: Text('Edit bill')),
-                if (bill.hasBalance && bill.partyId != null)
-                  const PopupMenuItem<String>(value: 'paid', child: Text('Mark as paid')),
-                const PopupMenuItem<String>(value: 'cancel', child: Text('Cancel bill')),
+                // Less used than the four buttons on the bill.
+                const PopupMenuItem<String>(value: 'save', child: Text('Save PDF')),
+                if (!bill.isCancelled) ...<PopupMenuEntry<String>>[
+                  if (bill.canEdit) const PopupMenuItem<String>(value: 'edit', child: Text('Edit bill')),
+                  if (bill.hasBalance && bill.partyId != null)
+                    const PopupMenuItem<String>(value: 'paid', child: Text('Mark as paid')),
+                  const PopupMenuItem<String>(value: 'cancel', child: Text('Cancel bill')),
+                ],
               ],
             ),
         ],
@@ -478,19 +484,50 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Widget _actions(Bill bill) {
     final bool hasPhone = InvoiceShare.whatsAppNumber(bill.customerPhone) != null;
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+    VoidCallback? idle(VoidCallback f) => _busy ? null : f;
+    final List<Widget> tiles = <Widget>[
+      _ActionTile(icon: Icons.print_outlined, label: 'Print', onPressed: idle(_print)),
+      if (hasPhone)
+        _ActionTile(
+          icon: Icons.chat_outlined,
+          label: 'WhatsApp',
+          semanticsLabel: 'WhatsApp customer',
+          onPressed: idle(_whatsApp),
+        ),
+      _ActionTile(icon: Icons.share_outlined, label: 'Share PDF', onPressed: idle(_share)),
+      if (bill.canReturn)
+        _ActionTile(
+          icon: Icons.assignment_return_outlined,
+          label: 'Return',
+          semanticsLabel: 'Return items',
+          onPressed: idle(_returnItems),
+        ),
+    ];
+    // Up to four big buttons in a row (Save PDF is in the ⋮ menu); money
+    // still due is the one full-width action below them.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        _ActionButton(icon: Icons.print_outlined, label: 'Print', onPressed: _busy ? null : _print),
-        _ActionButton(icon: Icons.share_outlined, label: 'Share PDF', onPressed: _busy ? null : _share),
-        _ActionButton(icon: Icons.download_outlined, label: 'Save PDF', onPressed: _busy ? null : _save),
-        if (hasPhone)
-          _ActionButton(icon: Icons.chat_outlined, label: 'WhatsApp customer', onPressed: _busy ? null : _whatsApp),
-        if (bill.hasBalance && bill.partyId != null)
-          _ActionButton(icon: Icons.payments_outlined, label: 'Mark as paid', onPressed: _busy ? null : _markPaid),
-        if (bill.canReturn)
-          _ActionButton(icon: Icons.assignment_return_outlined, label: 'Return items', onPressed: _busy ? null : _returnItems),
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints c) {
+            const double gap = 10;
+            final int perRow = tiles.length < 4 ? 4 : tiles.length;
+            final double w = (c.maxWidth - gap * (perRow - 1)) / perRow;
+            return Wrap(
+              spacing: gap,
+              runSpacing: 12,
+              children: <Widget>[for (final Widget t in tiles) SizedBox(width: w, child: t)],
+            );
+          },
+        ),
+        if (bill.hasBalance && bill.partyId != null) ...<Widget>[
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: idle(_markPaid),
+            icon: const Icon(Icons.payments_outlined),
+            label: const Text('Mark as paid'),
+          ),
+        ],
       ],
     );
   }
@@ -600,20 +637,54 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.label, required this.onPressed});
+/// A big icon button with its label underneath (the bill's share and print
+/// actions).
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({required this.icon, required this.label, required this.onPressed, this.semanticsLabel});
 
   final IconData icon;
   final String label;
+  final String? semanticsLabel;
   final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 46)),
-      icon: Icon(icon, size: 19),
-      label: Text(label),
+    final bool enabled = onPressed != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: semanticsLabel ?? label,
+      excludeSemantics: true,
+      child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: <Widget>[
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Icon(icon, size: 24, color: enabled ? AppColors.primary : AppColors.muted),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.ink),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

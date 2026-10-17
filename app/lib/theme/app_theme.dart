@@ -228,6 +228,8 @@ class AppTheme {
           foregroundColor: ink,
           backgroundColor: surface,
           minimumSize: const Size.fromHeight(54),
+          // Room for a short label in a narrow half-width button.
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           side: BorderSide(color: line, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.button),
