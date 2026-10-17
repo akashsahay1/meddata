@@ -1,40 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Medikabiz design system (green + orange), sourced from the product design
-/// handoff. Light-first: a calm off-white canvas, deep-green headers/surfaces,
-/// and an orange accent reserved for primary actions.
+/// Medikabiz design system: the logo's navy and green, as on medikabiz.com
+/// (owner's choice, 17 Oct 2026). Light-first: a cool off-white canvas, navy
+/// headers and brand surfaces, and green for actions and links. Red and amber
+/// are kept for things that need attention.
 class AppColors {
   AppColors._();
 
-  // Brand greens
-  static const Color greenDarkest = Color(0xFF0A302E); // headings, dark cards
-  static const Color green = Color(0xFF0E4D4A); // primary, headers, brand
-  static const Color greenMid = Color(0xFF12615C); // avatars, accents
+  // Brand navy (headers, side menu, brand surfaces)
+  static const Color navyDeep = Color(0xFF04132A); // snackbars, deepest surfaces
+  static const Color navy = Color(0xFF071D3B); // headers, brand
+  static const Color navyLight = Color(0xFF0E2A52); // raised surfaces on navy
 
-  // Accent orange
-  static const Color orange = Color(0xFFFF6B2C); // primary CTAs, FAB, brand
-  static const Color orangeHover = Color(0xFFF2551E);
-  static const Color orangeLight = Color(0xFFFF8A5C);
-  // Background of filled orange actions (buttons, FAB, badges) that carry
-  // white text or icons. Same hue as [orange], darkened just enough for
-  // white to reach WCAG AA: 4.5:1 (white on [orange] is only 2.8:1).
-  static const Color orangeButton = Color(0xFFD84000);
+  // Brand green (actions, links, selection)
+  // White text on it 6.1:1; as text it stays above 5:1 even on the green,
+  // amber and soft tints over the canvas (WCAG AA 4.5:1).
+  static const Color primary = Color(0xFF007056);
+  static const Color primaryDark = Color(0xFF00604A); // hover / pressed
+  static const Color primaryBright = Color(0xFF00B88D); // the logo's green, on navy
+  static const Color primarySoft = Color(0xFFDDF5EE); // selected / tinted backgrounds
 
   // Surfaces
-  static const Color canvas = Color(0xFFEEF2F1); // app background
-  static const Color page = Color(0xFFDCE4E2);
+  static const Color canvas = Color(0xFFF3F6F9); // app background
+  static const Color page = Color(0xFFE2E8EF);
   static const Color card = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFE2E9E8);
-  static const Color divider = Color(0xFFEEF2F1);
+  static const Color border = Color(0xFFDCE4EC);
+  static const Color divider = Color(0xFFEDF1F5);
 
   // Text
-  static const Color ink = Color(0xFF0A302E); // primary text
-  // Secondary text/labels. The design's #66807D, darkened a little (same
-  // hue) to reach WCAG AA 4.5:1 on cards (5.2:1) and the canvas (4.6:1).
-  static const Color muted = Color(0xFF5B726F);
-  static const Color onDarkMuted = Color(0xFF9BC6C1); // muted text on green
-  static const Color onDarkFaint = Color(0xFF7FA8A3);
+  static const Color ink = Color(0xFF0B1B33); // primary text
+  // Secondary text/labels: 6.0:1 on cards, 5.6:1 on the canvas (WCAG AA).
+  static const Color muted = Color(0xFF50617D);
+  static const Color onDarkMuted = Color(0xFFB8C5D9); // muted text on navy
+  static const Color onDarkFaint = Color(0xFF8FA2BF);
 
   // Status
   static const Color statusGreen = Color(0xFF12A47C); // in stock
@@ -46,9 +45,9 @@ class AppColors {
   static const Color statusAmberBg = Color(0x24EA8C1F);
   static const Color statusRedBg = Color(0x1FE5484D);
 
-  // Dark-mode surfaces (adapted from the light design)
-  static const Color darkBg = Color(0xFF0A1918);
-  static const Color darkCard = Color(0xFF11302E);
+  // Dark-mode surfaces
+  static const Color darkBg = Color(0xFF06142A);
+  static const Color darkCard = Color(0xFF0E2240);
 }
 
 /// Shared corner radii used across the design.
@@ -65,7 +64,25 @@ class AppRadii {
 class AppTheme {
   AppTheme._();
 
-  static const String fontFamily = 'GoogleSansFlex';
+  /// Body text (has ₹ and →); headings use [displayFamily].
+  static const String fontFamily = 'Figtree';
+
+  /// Headings and big numbers, as on medikabiz.com. It has no ₹, which
+  /// comes from [fontFamily] through [displayFallback].
+  static const String displayFamily = 'HankenGrotesk';
+  static const List<String> displayFallback = <String>[fontFamily];
+
+  /// A heading or large-number style in the display face.
+  static TextStyle display({double? size, FontWeight weight = FontWeight.w800, Color? color, double? height}) =>
+      TextStyle(
+        fontFamily: displayFamily,
+        fontFamilyFallback: displayFallback,
+        fontSize: size,
+        fontWeight: weight,
+        color: color,
+        height: height,
+        letterSpacing: -0.2,
+      );
 
   static ThemeData get light => _build(Brightness.light);
   static ThemeData get dark => _build(Brightness.dark);
@@ -77,13 +94,13 @@ class AppTheme {
     final Color surface = isDark ? AppColors.darkCard : AppColors.card;
     final Color ink = isDark ? Colors.white : AppColors.ink;
     final Color muted = isDark ? AppColors.onDarkMuted : AppColors.muted;
-    final Color line = isDark ? const Color(0xFF20423F) : AppColors.border;
+    final Color line = isDark ? const Color(0xFF1E3B66) : AppColors.border;
 
     final ColorScheme scheme = ColorScheme(
       brightness: brightness,
-      primary: AppColors.green,
+      primary: AppColors.primary,
       onPrimary: Colors.white,
-      secondary: AppColors.orange,
+      secondary: AppColors.navy,
       onSecondary: Colors.white,
       error: AppColors.statusRed,
       onError: Colors.white,
@@ -91,10 +108,22 @@ class AppTheme {
       onSurface: ink,
     );
 
-    final TextTheme base = Typography.blackMountainView.apply(
+    final TextTheme body = Typography.blackMountainView.apply(
       bodyColor: ink,
       displayColor: ink,
       fontFamily: fontFamily,
+    );
+    // Headings and titles in the display face, as on the website.
+    TextStyle? heading(TextStyle? s) =>
+        s?.copyWith(fontFamily: displayFamily, fontFamilyFallback: displayFallback);
+    final TextTheme base = body.copyWith(
+      displayLarge: heading(body.displayLarge),
+      displayMedium: heading(body.displayMedium),
+      displaySmall: heading(body.displaySmall),
+      headlineLarge: heading(body.headlineLarge),
+      headlineMedium: heading(body.headlineMedium),
+      headlineSmall: heading(body.headlineSmall),
+      titleLarge: heading(body.titleLarge),
     );
 
     // Flutter's buttons and ink default to the plain arrow on desktop; the
@@ -121,7 +150,8 @@ class AppTheme {
         systemOverlayStyle:
             isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         titleTextStyle: TextStyle(
-          fontFamily: fontFamily,
+          fontFamily: displayFamily,
+          fontFamilyFallback: displayFallback,
           color: ink,
           fontSize: 20,
           fontWeight: FontWeight.w800,
@@ -145,7 +175,7 @@ class AppTheme {
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         labelStyle: TextStyle(color: muted, fontWeight: FontWeight.w700),
         floatingLabelStyle:
-            const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
+            const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700),
         hintStyle: TextStyle(color: muted, fontWeight: FontWeight.w500),
         // The default helper grey is 2.4:1 on the canvas; muted passes AA.
         // w600: small muted text at w500 fails the contrast guideline.
@@ -160,7 +190,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.input),
-          borderSide: const BorderSide(color: AppColors.green, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadii.input),
@@ -169,10 +199,10 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.orangeButton,
-          // White on the deeper button orange: 4.5:1 (owner's decision).
+          backgroundColor: AppColors.primary,
+          // White on the brand green: 6.1:1.
           foregroundColor: Colors.white,
-          // Hover/press darken the orange (a white overlay would lower the
+          // Hover/press darken the green (a white overlay would lower the
           // contrast of the white label).
           overlayColor: Colors.black,
           elevation: 0,
@@ -204,8 +234,8 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          // Brand green is too dark on dark surfaces; use a lighter green there.
-          foregroundColor: isDark ? AppColors.statusGreen : AppColors.green,
+          // The brand green is too dark on dark surfaces; use the logo green there.
+          foregroundColor: isDark ? AppColors.primaryBright : AppColors.primary,
           textStyle:
               const TextStyle(fontFamily: fontFamily, fontWeight: FontWeight.w700),
           enabledMouseCursor: SystemMouseCursors.click,
@@ -221,7 +251,7 @@ class AppTheme {
       radioTheme: const RadioThemeData(mouseCursor: click),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         mouseCursor: click,
-        backgroundColor: AppColors.orangeButton,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         // Darken on hover/focus/press, as the elevated buttons do.
         hoverColor: Color(0x14000000),
@@ -231,7 +261,7 @@ class AppTheme {
         highlightElevation: 0,
       ),
       iconTheme: IconThemeData(color: ink),
-      listTileTheme: ListTileThemeData(iconColor: AppColors.green, textColor: ink),
+      listTileTheme: ListTileThemeData(iconColor: AppColors.primary, textColor: ink),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.statusGreenBg,
         side: BorderSide.none,
@@ -242,10 +272,10 @@ class AppTheme {
         ),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: AppColors.greenDarkest,
+        backgroundColor: AppColors.navyDeep,
         contentTextStyle: const TextStyle(
             color: Colors.white, fontFamily: fontFamily, fontWeight: FontWeight.w700),
-        actionTextColor: AppColors.orangeLight,
+        actionTextColor: AppColors.primaryBright,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.input),
@@ -255,12 +285,12 @@ class AppTheme {
         thumbColor: WidgetStateProperty.resolveWith((Set<WidgetState> s) =>
             s.contains(WidgetState.selected) ? Colors.white : AppColors.muted),
         trackColor: WidgetStateProperty.resolveWith((Set<WidgetState> s) =>
-            s.contains(WidgetState.selected) ? AppColors.green : AppColors.border),
+            s.contains(WidgetState.selected) ? AppColors.primary : AppColors.border),
         trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
         mouseCursor: click,
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: AppColors.orange,
+        color: AppColors.primary,
       ),
     );
   }

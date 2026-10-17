@@ -80,9 +80,9 @@ class AccountsPill extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: kMinInteractiveDimension),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppColors.green : AppColors.card,
+            color: selected ? AppColors.navy : AppColors.card,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: selected ? AppColors.green : AppColors.border),
+            border: Border.all(color: selected ? AppColors.navy : AppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

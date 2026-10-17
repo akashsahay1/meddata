@@ -641,32 +641,32 @@ void main() {
           greaterThanOrEqualTo(4.5));
       expect(_contrast(AppColors.muted, AppColors.canvas),
           greaterThanOrEqualTo(4.5));
-      expect(_contrast(AppColors.onDarkMuted, AppColors.green),
+      expect(_contrast(AppColors.onDarkMuted, AppColors.navy),
           greaterThanOrEqualTo(4.5));
-      expect(_contrast(AppColors.onDarkFaint, AppColors.greenDarkest),
+      expect(_contrast(AppColors.onDarkFaint, AppColors.navyDeep),
           greaterThanOrEqualTo(4.5));
     });
 
     test('orange buttons carry white text on the deeper button orange', () {
-      expect(_contrast(Colors.white, AppColors.orangeButton),
+      expect(_contrast(Colors.white, AppColors.primary),
           greaterThanOrEqualTo(4.5));
       for (final ThemeData theme in <ThemeData>[AppTheme.light, AppTheme.dark]) {
         final ButtonStyle button = theme.elevatedButtonTheme.style!;
         const Set<WidgetState> idle = <WidgetState>{};
-        expect(button.backgroundColor!.resolve(idle), AppColors.orangeButton);
+        expect(button.backgroundColor!.resolve(idle), AppColors.primary);
         expect(button.foregroundColor!.resolve(idle), Colors.white);
         // Hover/press darken (a light overlay would cut the label's contrast).
         for (final WidgetState s in <WidgetState>[WidgetState.hovered, WidgetState.pressed]) {
           final Color overlay = button.overlayColor!.resolve(<WidgetState>{s})!;
-          final Color shown = Color.alphaBlend(overlay, AppColors.orangeButton);
+          final Color shown = Color.alphaBlend(overlay, AppColors.primary);
           expect(_contrast(Colors.white, shown),
-              greaterThan(_contrast(Colors.white, AppColors.orangeButton)));
+              greaterThan(_contrast(Colors.white, AppColors.primary)));
         }
         final FloatingActionButtonThemeData fab = theme.floatingActionButtonTheme;
-        expect(fab.backgroundColor, AppColors.orangeButton);
+        expect(fab.backgroundColor, AppColors.primary);
         expect(fab.foregroundColor, Colors.white);
         expect(_contrast(Colors.white,
-                Color.alphaBlend(fab.hoverColor!, AppColors.orangeButton)),
+                Color.alphaBlend(fab.hoverColor!, AppColors.primary)),
             greaterThanOrEqualTo(4.5));
       }
     });
@@ -681,7 +681,7 @@ void main() {
           .color!;
       // The pill is white at 12% over the green header.
       final Color pill = Color.alphaBlend(
-          Colors.white.withValues(alpha: 0.12), AppColors.green);
+          Colors.white.withValues(alpha: 0.12), AppColors.navy);
       expect(_contrast(hint, pill), greaterThanOrEqualTo(4.5));
     });
 

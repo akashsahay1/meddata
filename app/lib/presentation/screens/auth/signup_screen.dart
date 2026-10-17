@@ -148,7 +148,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.orange,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),

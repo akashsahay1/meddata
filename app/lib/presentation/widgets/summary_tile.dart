@@ -25,7 +25,7 @@ class SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = emphasized ? AppColors.statusRed : AppColors.green;
+    final Color accent = emphasized ? AppColors.statusRed : AppColors.navy;
     final Color chipBg =
         emphasized ? AppColors.statusRedBg : AppColors.canvas;
 
@@ -35,7 +35,7 @@ class SummaryTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.card),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x140A302E),
+            color: Color(0x14071D3B),
             blurRadius: 24,
             offset: Offset(0, 8),
           ),

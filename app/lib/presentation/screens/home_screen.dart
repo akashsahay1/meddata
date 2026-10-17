@@ -154,7 +154,7 @@ class _Header extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(22, topInset + 20, 22, 62),
       decoration: const BoxDecoration(
-        color: AppColors.green,
+        color: AppColors.navy,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(26),
           bottomRight: Radius.circular(26),
@@ -238,7 +238,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Material(
-                color: AppColors.orangeButton,
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   mouseCursor: WidgetStateMouseCursor.clickable,
@@ -292,7 +292,7 @@ class _AvatarButton extends StatelessWidget {
       onTap: onTap,
       alignment: Alignment.centerRight,
       child: Material(
-        color: AppColors.greenMid,
+        color: AppColors.navyLight,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           mouseCursor: WidgetStateMouseCursor.clickable,
@@ -620,7 +620,7 @@ class _TrialBanner extends StatelessWidget {
               const Icon(
                 Icons.timelapse,
                 size: 18,
-                color: AppColors.orangeHover,
+                color: AppColors.primaryDark,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -641,7 +641,7 @@ class _TrialBanner extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.orangeHover,
+                  color: AppColors.primaryDark,
                 ),
               ),
             ],
@@ -895,7 +895,7 @@ class _BusinessSection extends StatelessWidget {
                         color: AppColors.statusGreenBg,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(icon, size: 20, color: AppColors.green),
+                      child: Icon(icon, size: 20, color: AppColors.navy),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -964,7 +964,7 @@ class _QuickActions extends StatelessWidget {
                   color: AppColors.statusGreenBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, size: 20, color: AppColors.green),
+                child: Icon(icon, size: 20, color: AppColors.navy),
               ),
               title: Text(title,
                   style: const TextStyle(

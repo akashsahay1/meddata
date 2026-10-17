@@ -17,7 +17,7 @@ class AuthHeader extends StatelessWidget {
     // Brand green only reads on the light canvas; on dark the wordmark/title
     // switch to the theme's onSurface and the subtitle to a light muted tone.
     final Color wordmarkColor =
-        isDark ? theme.colorScheme.onSurface : AppColors.green;
+        isDark ? theme.colorScheme.onSurface : AppColors.navy;
     final Color subtitleColor = isDark ? AppColors.onDarkMuted : AppColors.muted;
     return Column(
       children: <Widget>[

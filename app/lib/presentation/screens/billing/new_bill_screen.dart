@@ -588,7 +588,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
             padding: EdgeInsets.all(14),
             child: Row(
               children: <Widget>[
-                Icon(Icons.storefront_outlined, size: 20, color: AppColors.orangeHover),
+                Icon(Icons.storefront_outlined, size: 20, color: AppColors.primaryDark),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -597,7 +597,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
                   ),
                 ),
                 SizedBox(width: 8),
-                Icon(Icons.chevron_right, color: AppColors.orangeHover),
+                Icon(Icons.chevron_right, color: AppColors.primaryDark),
               ],
             ),
           ),
@@ -698,7 +698,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
         style: TextStyle(fontSize: 12, color: canSell ? AppColors.muted : AppColors.statusRed),
       ),
       trailing: Icon(Icons.add_circle_outline,
-          color: canSell ? AppColors.green : AppColors.border),
+          color: canSell ? AppColors.navy : AppColors.border),
     );
   }
 
@@ -804,7 +804,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
               ),
               ListTile(
                 leading: Icon(item.pinnedBatchId == null ? Icons.radio_button_checked : Icons.radio_button_off,
-                    color: AppColors.green),
+                    color: AppColors.navy),
                 title: const Text('Earliest expiry first (automatic)'),
                 onTap: () => Navigator.of(ctx).pop(''),
               ),
@@ -817,7 +817,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
                     enabled: selectable,
                     leading: Icon(
                         item.pinnedBatchId == b.id ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: selectable ? AppColors.green : AppColors.border),
+                        color: selectable ? AppColors.navy : AppColors.border),
                     title: Text(b.batchNo.isEmpty ? 'No batch no.' : 'Batch ${b.batchNo}',
                         style: const TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: Text(
@@ -862,7 +862,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: <Widget>[
-                      const Icon(Icons.person_outline, size: 20, color: AppColors.green),
+                      const Icon(Icons.person_outline, size: 20, color: AppColors.navy),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -989,7 +989,7 @@ builder: (_) => ShopSettingsScreen(api: _api)));
     }
     return Row(
       children: <Widget>[
-        const Icon(Icons.badge_outlined, size: 18, color: AppColors.green),
+        const Icon(Icons.badge_outlined, size: 18, color: AppColors.navy),
         const SizedBox(width: 8),
         Expanded(
           child: Text('Account: ${p.name}',
@@ -1320,7 +1320,7 @@ class _StepButton extends StatelessWidget {
       style: IconButton.styleFrom(
         minimumSize: const Size(40, 40),
         side: const BorderSide(color: AppColors.border, width: 1.5),
-        foregroundColor: AppColors.green,
+        foregroundColor: AppColors.navy,
       ),
     );
   }

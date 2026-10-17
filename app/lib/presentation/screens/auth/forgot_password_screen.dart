@@ -112,7 +112,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       border: Border.all(color: theme.dividerColor),
                       boxShadow: const <BoxShadow>[
                         BoxShadow(
-                          color: Color(0x140A302E),
+                          color: Color(0x14071D3B),
                           blurRadius: 24,
                           offset: Offset(0, 8),
                         ),
@@ -185,7 +185,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.orange,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),

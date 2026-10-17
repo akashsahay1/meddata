@@ -163,7 +163,7 @@ class InitialsAvatar extends StatelessWidget {
     super.key,
     required this.text,
     this.size = 44,
-    this.color = AppColors.green,
+    this.color = AppColors.navy,
     this.bg = AppColors.canvas,
   });
 
@@ -232,7 +232,7 @@ class MedicineTile extends StatelessWidget {
     this.qtyLabel,
     this.priceLabel,
     this.expLabel,
-    this.avatarColor = AppColors.green,
+    this.avatarColor = AppColors.navy,
     this.avatarBg = AppColors.canvas,
     this.borderColor = AppColors.border,
     this.onTap,
@@ -384,7 +384,7 @@ class StatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.card),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0x140A302E),
+            color: Color(0x14071D3B),
             blurRadius: 24,
             offset: Offset(0, 8),
           ),
@@ -567,7 +567,7 @@ class SectionHeader extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.green,
+                color: AppColors.navy,
               ),
             ),
           ),

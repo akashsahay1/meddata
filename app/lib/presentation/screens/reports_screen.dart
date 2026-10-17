@@ -315,7 +315,7 @@ class _BarRow extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.green,
+                  color: AppColors.navy,
                 ),
               ),
             ],
@@ -335,7 +335,7 @@ class _BarRow extends StatelessWidget {
                   width: c.maxWidth * frac,
                   height: 10,
                   decoration: BoxDecoration(
-                    color: AppColors.green,
+                    color: AppColors.navy,
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
                 ),

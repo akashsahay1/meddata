@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: Border.all(color: theme.dividerColor),
                         boxShadow: const <BoxShadow>[
                           BoxShadow(
-                            color: Color(0x140A302E),
+                            color: Color(0x14071D3B),
                             blurRadius: 24,
                             offset: Offset(0, 8),
                           ),
@@ -196,7 +196,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.orange,
+                                color: AppColors.primary,
                               ),
                             ),
                           ),

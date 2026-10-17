@@ -259,7 +259,7 @@ class _ProfitSectionState extends State<ProfitSection> {
                 spacing: 16,
                 runSpacing: 4,
                 children: <Widget>[
-                  LegendItem(color: AppColors.green, text: 'Gross profit'),
+                  LegendItem(color: AppColors.navy, text: 'Gross profit'),
                   LegendItem(color: AppColors.page, text: 'Revenue'),
                 ],
               ),
@@ -410,10 +410,10 @@ class _RangePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? AppColors.green : AppColors.card,
+          color: selected ? AppColors.navy : AppColors.card,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: selected ? AppColors.green : AppColors.border),
+              color: selected ? AppColors.navy : AppColors.border),
         ),
         child: Text(
           label,

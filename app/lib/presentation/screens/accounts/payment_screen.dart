@@ -213,7 +213,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           const SizedBox(height: 4),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.event_outlined, color: AppColors.green),
+            leading: const Icon(Icons.event_outlined, color: AppColors.navy),
             title: const Text('Date'),
             subtitle: Text(DateFormat('dd MMM yyyy').format(_date)),
             onTap: _pickDate,

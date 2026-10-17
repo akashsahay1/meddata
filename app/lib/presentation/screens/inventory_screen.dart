@@ -274,7 +274,7 @@ class _FilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<(MedicineFilter, String, int, Color)> options =
         <(MedicineFilter, String, int, Color)>[
-      (MedicineFilter.all, 'All', mp.productCount, AppColors.green),
+      (MedicineFilter.all, 'All', mp.productCount, AppColors.navy),
       (MedicineFilter.lowStock, 'Low stock', mp.lowStockCount,
           AppColors.statusAmber),
       (MedicineFilter.expiring, 'Expiring soon', mp.productsExpiringCount,

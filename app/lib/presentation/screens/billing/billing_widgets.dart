@@ -199,9 +199,9 @@ class PillChoice extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 40),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? AppColors.green : AppColors.card,
+            color: selected ? AppColors.navy : AppColors.card,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: selected ? AppColors.green : AppColors.border),
+            border: Border.all(color: selected ? AppColors.navy : AppColors.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

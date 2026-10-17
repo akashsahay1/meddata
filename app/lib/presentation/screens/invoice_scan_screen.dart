@@ -879,7 +879,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       children: <Widget>[
         const _Notice(
           icon: Icons.document_scanner_outlined,
-          color: AppColors.green,
+          color: AppColors.navy,
           bg: AppColors.card,
           title: 'Add stock from a supplier bill',
           text:
@@ -1066,7 +1066,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
                 counts.join(' · '),
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: toFix > 0 ? AppColors.statusRed : AppColors.green,
+                  color: toFix > 0 ? AppColors.statusRed : AppColors.navy,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1232,7 +1232,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
                 enabled: editable,
                 leading: const Icon(
                   Icons.event_outlined,
-                  color: AppColors.green,
+                  color: AppColors.navy,
                 ),
                 title: const Text('Invoice date'),
                 subtitle: Text(
@@ -1543,8 +1543,8 @@ class _LineCard extends StatelessWidget {
                     product == null
                         ? const StatusPill(
                             text: 'New medicine',
-                            color: AppColors.orange,
-                            bg: Color(0x1FFF6B2C),
+                            color: AppColors.primary,
+                            bg: AppColors.primarySoft,
                           )
                         : StatusPill.inStock('New batch'),
                     const SizedBox(height: 8),
@@ -1812,7 +1812,7 @@ class _LineEditorState extends State<_LineEditor> {
                         icon: _linked
                             ? Icons.inventory_2_outlined
                             : Icons.add_box_outlined,
-                        color: AppColors.green,
+                        color: AppColors.navy,
                         bg: AppColors.statusGreenBg,
                         title: _linked
                             ? 'New batch of ${product.name}'
@@ -1942,7 +1942,7 @@ class _LineEditorState extends State<_LineEditor> {
                       '${preview.countsPieces ? unit.toLowerCase() : 'pack'}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        color: AppColors.green,
+                        color: AppColors.navy,
                       ),
                     ),
                   ],

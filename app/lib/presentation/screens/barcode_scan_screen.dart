@@ -55,9 +55,9 @@ class _BarcodeScanScreenState extends State<BarcodeScanScreen> {
         final bool scanning = state.error == null;
         return Scaffold(
           backgroundColor:
-              scanning ? AppColors.greenDarkest : AppColors.canvas,
+              scanning ? AppColors.navyDeep : AppColors.canvas,
           appBar: AppBar(
-            backgroundColor: scanning ? AppColors.greenDarkest : null,
+            backgroundColor: scanning ? AppColors.navyDeep : null,
             foregroundColor: scanning ? Colors.white : null,
             elevation: 0,
             title: const Text('Scan barcode'),
@@ -185,7 +185,7 @@ class _ReticlePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round
-      ..color = AppColors.orange;
+      ..color = AppColors.primary;
 
     const double len = 30;
     final double w = size.width;
@@ -302,7 +302,7 @@ class _PermMessage extends StatelessWidget {
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  color: AppColors.green,
+                  color: AppColors.navy,
                   borderRadius: BorderRadius.circular(AppRadii.card),
                 ),
                 child: Icon(icon, size: 28, color: Colors.white),

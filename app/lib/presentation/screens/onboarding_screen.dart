@@ -81,7 +81,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   border: Border.all(color: AppColors.border),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x160A302E),
+                      color: Color(0x16071D3B),
                       blurRadius: 44,
                       offset: Offset(0, 18),
                     ),
@@ -158,7 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                           ),
                                           decoration: BoxDecoration(
                                             color: active
-                                                ? AppColors.orange
+                                                ? AppColors.primary
                                                 : AppColors.border,
                                             borderRadius: BorderRadius.circular(
                                               AppRadii.pill,
@@ -175,7 +175,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   child: ElevatedButton(
                                     onPressed: _next,
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.orangeButton,
+                                      backgroundColor: AppColors.primary,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(
@@ -209,7 +209,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildPhone() {
     final bool last = _page == _slides.length - 1;
     return Scaffold(
-      backgroundColor: AppColors.greenDarkest,
+      backgroundColor: AppColors.navyDeep,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.only(top: 12),
@@ -259,7 +259,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           margin: const EdgeInsets.symmetric(horizontal: 4),
                           decoration: BoxDecoration(
                             color: active
-                                ? AppColors.orange
+                                ? AppColors.primary
                                 : Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                           ),
@@ -274,7 +274,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           borderRadius: BorderRadius.circular(AppRadii.button),
                           boxShadow: <BoxShadow>[
                             BoxShadow(
-                              color: AppColors.orange.withValues(alpha: 0.4),
+                              color: AppColors.primary.withValues(alpha: 0.4),
                               blurRadius: 28,
                               offset: const Offset(0, 12),
                             ),
@@ -283,7 +283,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         child: ElevatedButton(
                           onPressed: _next,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.orangeButton,
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 13),
@@ -320,7 +320,7 @@ class _DesktopBrandPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.greenDarkest,
+      color: AppColors.navyDeep,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -345,13 +345,14 @@ class _DesktopBrandPanel extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
               decoration: BoxDecoration(
-                color: const Color(0x1FFF6B2C),
+                // The logo green, translucent on the dark onboarding page.
+                color: const Color(0x2400B88D),
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
               child: const Text(
                 'MADE FOR YOUR MEDICINE SHOP',
                 style: TextStyle(
-                  color: AppColors.orangeLight,
+                  color: AppColors.primaryBright,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.7,
@@ -384,7 +385,7 @@ class _DesktopBrandPanel extends StatelessWidget {
               children: <Widget>[
                 Icon(
                   Icons.cloud_off_outlined,
-                  color: AppColors.orangeLight,
+                  color: AppColors.primaryBright,
                   size: 18,
                 ),
                 SizedBox(width: 9),
@@ -480,7 +481,7 @@ class _Slide {
                 style: const TextStyle(
                   fontSize: 27,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.greenDarkest,
+                  color: AppColors.navyDeep,
                   letterSpacing: -0.5,
                 ),
               ),

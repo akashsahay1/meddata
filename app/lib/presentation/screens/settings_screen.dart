@@ -350,7 +350,7 @@ builder: (_) => const ImportWizardScreen()),
             left: 0,
             right: 0,
             height: topInset,
-            child: const ColoredBox(color: AppColors.green),
+            child: const ColoredBox(color: AppColors.navy),
           ),
         ],
       ),
@@ -417,7 +417,7 @@ builder: (_) => const ImportWizardScreen()),
   Widget _avatar(String name, String? avatarUrl) {
     final Widget initials = Container(
       alignment: Alignment.center,
-      color: AppColors.greenMid,
+      color: AppColors.navyLight,
       child: Text(
         initialsOf(name),
         style: const TextStyle(
@@ -476,9 +476,9 @@ builder: (_) => const ImportWizardScreen()),
                   width: 26,
                   height: 26,
                   decoration: BoxDecoration(
-                    color: AppColors.orangeButton,
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.green, width: 2),
+                    border: Border.all(color: AppColors.navy, width: 2),
                   ),
                   child: const Icon(Icons.photo_camera,
                       size: 14, color: Colors.white),
@@ -579,7 +579,7 @@ builder: (_) => const ImportWizardScreen()),
       String name, String? email, double topInset, String? avatarUrl) {
     return Container(
       width: double.infinity,
-      color: AppColors.green,
+      color: AppColors.navy,
       padding: EdgeInsets.fromLTRB(22, topInset + 24, 22, 30),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -649,7 +649,7 @@ builder: (_) => const ImportWizardScreen()),
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.greenDarkest,
+        color: AppColors.navyDeep,
         borderRadius: BorderRadius.circular(20),
       ),
       padding: const EdgeInsets.all(18),
@@ -699,13 +699,13 @@ builder: (_) => const ImportWizardScreen()),
                 height: 44,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.orange.withValues(alpha: 0.18),
+                  color: AppColors.primary.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(
                   premium ? Icons.verified_outlined : Icons.shield_outlined,
                   size: 22,
-                  color: AppColors.orange,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -869,7 +869,7 @@ builder: (_) => const ImportWizardScreen()),
           color: AppColors.canvas,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, size: 18, color: AppColors.green),
+        child: Icon(icon, size: 18, color: AppColors.navy),
       );
 
   // --- Preserved logic ------------------------------------------------------
@@ -1168,7 +1168,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                             ? Icons.star_rounded
                             : Icons.star_border_rounded,
                         size: 32,
-                        color: AppColors.orange,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),

@@ -457,6 +457,7 @@ cd app && flutter test test/integration/
 | Schema changes | Wipe DB + re-upload (no upgrade migrations while there are no real users) |
 | Master catalog | Shop's new medicines auto-added without moderation (max 200/shop/day) |
 | AI invoice | Server-side processing, not on-device |
+| App look | Owner's decision (17 Oct 2026), from the HTML design board (option A of three): the logo's **navy and green**, as on medikabiz.com: navy headers and side menu, green (#007056) buttons and links, red/amber only for problems; fonts **Hanken Grotesk** (headings) + **Figtree** (text, has ₹ and →), bundled for offline use. Same features and layouts; screens restyled one by one |
 | AI invoice provider | Owner's decision (16 Oct): **Groq** `qwen/qwen3.8-27b` (vision + strict JSON schema) **replaces** Claude — not switchable. 17 Oct: PDFs with text inside are read from their text by `openai/gpt-oss-120b` (exact, cheaper, production model; qwen3.8-27b is a Groq *preview* model). Scanned PDFs are converted to page images **on the server** (Imagick + Ghostscript); at most **3 pages** per scan (the model's image limit) — a longer PDF fails with `too_many_pages`, and a server that can't open PDFs fails with `pdf_unsupported` ("send a photo instead") |
 | Pricing | Plan prices not finalized yet |
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |

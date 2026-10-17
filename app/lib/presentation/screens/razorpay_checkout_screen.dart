@@ -232,7 +232,7 @@ class _RazorpayCheckoutScreenState extends State<RazorpayCheckoutScreen> {
     return Scaffold(
       backgroundColor: AppColors.page,
       appBar: AppBar(
-        backgroundColor: AppColors.green,
+        backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text(

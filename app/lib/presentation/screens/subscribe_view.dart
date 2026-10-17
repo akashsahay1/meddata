@@ -446,7 +446,7 @@ class _SubscribeViewState extends State<SubscribeView> {
             boxShadow: selected
                 ? const <BoxShadow>[
                     BoxShadow(
-                      color: Color(0x140A302E),
+                      color: Color(0x14071D3B),
                       blurRadius: 10,
                       offset: Offset(0, 3),
                     ),
@@ -469,7 +469,7 @@ class _SubscribeViewState extends State<SubscribeView> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: AppColors.orangeButton,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -497,11 +497,11 @@ class _SubscribeViewState extends State<SubscribeView> {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: AppColors.greenDarkest,
+        color: AppColors.navyDeep,
         borderRadius: BorderRadius.circular(AppRadii.cardLg),
         boxShadow: const <BoxShadow>[
           BoxShadow(
-            color: Color(0xB30A302E),
+            color: Color(0xB3071D3B),
             blurRadius: 44,
             offset: Offset(0, 20),
             spreadRadius: -24,
@@ -528,7 +528,7 @@ class _SubscribeViewState extends State<SubscribeView> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.orange.withValues(alpha: 0.2),
+                    color: AppColors.primary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
                   child: const Text(
@@ -536,7 +536,7 @@ class _SubscribeViewState extends State<SubscribeView> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.orangeLight,
+                      color: AppColors.primaryBright,
                     ),
                   ),
                 ),
@@ -611,10 +611,10 @@ class _SubscribeViewState extends State<SubscribeView> {
             height: 22,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.orange.withValues(alpha: 0.16),
+              color: AppColors.primary.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check, size: 14, color: AppColors.orange),
+            child: const Icon(Icons.check, size: 14, color: AppColors.primary),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -691,7 +691,7 @@ class _SubscribeViewState extends State<SubscribeView> {
               : TextButton(
                   onPressed: _busy ? null : _applyCoupon,
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.orange,
+                    foregroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),
                   child: const Text('Apply'),

@@ -96,17 +96,7 @@ Future<TestApp> _app(WidgetTester tester, Size size, double dpr,
 }
 
 Future<void> _show(WidgetTester tester, TestApp app, Widget screen) async {
-  await tester.pumpWidget(RepaintBoundary(
-    key: _frame,
-    child: app.wrap(Builder(
-      builder: (BuildContext context) => Theme(
-        data: Theme.of(context).copyWith(
-          textTheme: Theme.of(context).textTheme.apply(fontFamilyFallback: <String>['SystemFallback']),
-        ),
-        child: screen,
-      ),
-    )),
-  ));
+  await tester.pumpWidget(RepaintBoundary(key: _frame, child: app.wrap(screen)));
   await tester.pumpAndSettle();
   // Let asset images (the logo) decode, then paint them.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
@@ -157,13 +147,6 @@ void main() {
     final FontLoader icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
-    // A phone fills in characters its app font lacks (such as "→") from a
-    // system font; stand in for that with one of the Mac's fonts (see _show).
-    final FontLoader fallback = FontLoader('SystemFallback')
-      ..addFont(File('/System/Library/Fonts/Supplemental/Arial Unicode.ttf')
-          .readAsBytes()
-          .then((List<int> b) => ByteData.sublistView(Uint8List.fromList(b))));
-    await fallback.load();
   });
 
   const Size desktop = Size(1440, 900);

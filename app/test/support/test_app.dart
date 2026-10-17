@@ -45,9 +45,12 @@ DatabaseHelper memoryDatabase() {
 /// Loads the app's font so text is measured as on a phone (the default test
 /// font draws every glyph as a 1em square, which overstates text widths).
 Future<void> loadAppFont() async {
-  final FontLoader font = FontLoader(AppTheme.fontFamily)
-    ..addFont(rootBundle.load('assets/fonts/GoogleSansFlex-Variable.ttf'));
-  await font.load();
+  for (final (String family, String file) in <(String, String)>[
+    (AppTheme.fontFamily, 'assets/fonts/Figtree-Variable.ttf'),
+    (AppTheme.displayFamily, 'assets/fonts/HankenGrotesk-Variable.ttf'),
+  ]) {
+    await (FontLoader(family)..addFont(rootBundle.load(file))).load();
+  }
 }
 
 /// A 360dp-wide phone (the common budget-Android width). Functional tests

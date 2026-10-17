@@ -44,11 +44,11 @@ class LockScreen extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: AppColors.greenDarkest,
+                    color: AppColors.navyDeep,
                     borderRadius: BorderRadius.circular(AppRadii.cardLg),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
-                          color: Color(0x660A302E),
+                          color: Color(0x66071D3B),
                           blurRadius: 44,
                           offset: Offset(0, 20)),
                     ],
@@ -94,11 +94,11 @@ class LockScreen extends StatelessWidget {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: const Color(0x2EFF6B2C),
+                              color: const Color(0x2E00B88D),
                               borderRadius: BorderRadius.circular(13),
                             ),
                             child: const Icon(Icons.lock_outline,
-                                size: 22, color: AppColors.orange),
+                                size: 22, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -109,12 +109,12 @@ class LockScreen extends StatelessWidget {
                           onPressed: () =>
                               context.read<SubscriptionService>().refresh(),
                           icon: const Icon(Icons.refresh,
-                              size: 16, color: AppColors.orangeLight),
+                              size: 16, color: AppColors.primaryBright),
                           label: const Text('I already paid, refresh',
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.orangeLight)),
+                                  color: AppColors.primaryBright)),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 11),
                             shape: RoundedRectangleBorder(

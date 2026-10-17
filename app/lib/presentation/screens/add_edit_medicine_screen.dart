@@ -1154,7 +1154,7 @@ builder: (_) =>
                     height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppColors.green,
+                      color: AppColors.navy,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(Icons.qr_code_scanner,

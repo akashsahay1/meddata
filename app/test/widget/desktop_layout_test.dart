@@ -87,7 +87,7 @@ void main() {
       final Color? fg = (style.foregroundColor ?? theme.foregroundColor)!.resolve(<WidgetState>{});
       final Color? bg = (style.backgroundColor ?? theme.backgroundColor)!.resolve(<WidgetState>{});
       expect(fg, Colors.white);
-      expect(bg, AppColors.orangeButton);
+      expect(bg, AppColors.primary);
     });
 
     // Parties, Purchases, Reports and GST returns were only inside

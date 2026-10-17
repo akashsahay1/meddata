@@ -200,7 +200,7 @@ builder: (_) => const AddEditMedicineScreen()),
                               Text(
                                 'Medikabiz',
                                 style: TextStyle(
-                                  color: AppColors.greenDarkest,
+                                  color: AppColors.navyDeep,
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.4,
@@ -310,7 +310,7 @@ class _BottomBar extends StatelessWidget {
         border: Border(top: BorderSide(color: Color(0xFFEAF0EF))),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x140A302E),
+            color: Color(0x14071D3B),
             blurRadius: 24,
             offset: Offset(0, -8),
           ),
@@ -372,7 +372,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.green : AppColors.muted;
+    final Color color = selected ? AppColors.navy : AppColors.muted;
     return Expanded(
       child: Semantics(
         container: true,
@@ -475,11 +475,11 @@ class _CenterAddButton extends StatelessWidget {
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: AppColors.orangeButton,
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(AppRadii.fab),
                     boxShadow: const <BoxShadow>[
                       BoxShadow(
-                        color: Color(0xCCFF6B2C),
+                        color: Color(0x40071D3B),
                         blurRadius: 24,
                         offset: Offset(0, 12),
                         spreadRadius: -10,

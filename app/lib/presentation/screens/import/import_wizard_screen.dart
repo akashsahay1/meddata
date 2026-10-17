@@ -419,7 +419,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
 
   /// Selected segments in brand green, like the other choices in the app.
   static final ButtonStyle _segmentStyle = SegmentedButton.styleFrom(
-    selectedBackgroundColor: AppColors.green,
+    selectedBackgroundColor: AppColors.navy,
     selectedForegroundColor: Colors.white,
     foregroundColor: AppColors.ink,
     backgroundColor: AppColors.card,
@@ -534,7 +534,7 @@ class _ImportWizardScreenState extends State<ImportWizardScreen> {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(Icons.upload_file_outlined,
-                    size: 26, color: AppColors.green),
+                    size: 26, color: AppColors.navy),
               ),
               const SizedBox(height: 14),
               const Text(
@@ -1111,7 +1111,7 @@ class _StepBar extends StatelessWidget {
                     height: 4,
                     margin: EdgeInsets.only(right: i == 3 ? 0 : 6),
                     decoration: BoxDecoration(
-                      color: i <= index ? AppColors.green : AppColors.border,
+                      color: i <= index ? AppColors.navy : AppColors.border,
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
                   ),
@@ -1204,7 +1204,7 @@ class _Point extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(icon, size: 20, color: AppColors.green),
+          Icon(icon, size: 20, color: AppColors.navy),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -1306,7 +1306,7 @@ class _ChoiceTile extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppRadii.input),
                 border: Border.all(
-                  color: selected ? AppColors.green : AppColors.border,
+                  color: selected ? AppColors.navy : AppColors.border,
                   width: selected ? 2 : 1,
                 ),
               ),
@@ -1317,7 +1317,7 @@ class _ChoiceTile extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.green : AppColors.canvas,
+                      color: selected ? AppColors.navy : AppColors.canvas,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1356,7 +1356,7 @@ class _ChoiceTile extends StatelessWidget {
                   if (selected) ...<Widget>[
                     const SizedBox(width: 8),
                     const Icon(Icons.check_circle,
-                        size: 20, color: AppColors.green),
+                        size: 20, color: AppColors.navy),
                   ],
                 ],
               ),
@@ -1396,10 +1396,10 @@ class _FilterChip extends StatelessWidget {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: selected ? AppColors.green : AppColors.card,
+              color: selected ? AppColors.navy : AppColors.card,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                  color: selected ? AppColors.green : AppColors.border),
+                  color: selected ? AppColors.navy : AppColors.border),
             ),
             child: Text(
               label,
@@ -1576,7 +1576,7 @@ class _RowTile extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.greenMid,
+                  color: AppColors.navyLight,
                 ),
               ),
             ),

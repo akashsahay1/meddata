@@ -260,9 +260,9 @@ class ReportExport {
 
   static Future<Uint8List> pdf(ReportDoc doc,
       {required InvoiceFonts fonts, bool compress = true}) async {
-    const PdfColor ink = PdfColor.fromInt(0xFF0A302E);
-    const PdfColor muted = PdfColor.fromInt(0xFF5B726F);
-    const PdfColor band = PdfColor.fromInt(0xFFEEF2F1);
+    const PdfColor ink = PdfColor.fromInt(0xFF0B1B33);
+    const PdfColor muted = PdfColor.fromInt(0xFF50617D);
+    const PdfColor band = PdfColor.fromInt(0xFFF3F6F9);
     final pw.Document d = pw.Document(
       compress: compress,
       theme: pw.ThemeData.withFont(base: fonts.regular, bold: fonts.bold),

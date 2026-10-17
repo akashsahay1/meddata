@@ -20,10 +20,10 @@ import 'invoice_pdf.dart';
 class AccountingPdf {
   AccountingPdf._();
 
-  static const PdfColor _ink = PdfColor.fromInt(0xFF0A302E);
+  static const PdfColor _ink = PdfColor.fromInt(0xFF0B1B33);
   static const PdfColor _muted = PdfColor.fromInt(0xFF66807D);
   static const PdfColor _line = PdfColor.fromInt(0xFFB4C4C1);
-  static const PdfColor _band = PdfColor.fromInt(0xFFEEF2F1);
+  static const PdfColor _band = PdfColor.fromInt(0xFFF3F6F9);
   static final DateFormat _d = DateFormat('dd MMM yyyy');
 
   static String _safe(String s) => s.replaceAll(RegExp(r'[^A-Za-z0-9-]+'), '-');

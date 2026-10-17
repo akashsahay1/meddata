@@ -356,7 +356,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       Material(
                         type: MaterialType.transparency,
                         child: ListTile(
-                          leading: const Icon(Icons.assignment_return_outlined, color: AppColors.green),
+                          leading: const Icon(Icons.assignment_return_outlined, color: AppColors.navy),
                           title: Text('Credit note ${n.noteNo}', style: const TextStyle(fontWeight: FontWeight.w700)),
                           subtitle: Text(DateFormat('dd MMM yyyy').format(n.date)),
                           trailing: Text('-${Inr.format(n.totalPaise)}',

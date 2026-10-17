@@ -255,7 +255,7 @@ class _HeaderCard extends StatelessWidget {
               InitialsAvatar(
                 text: initialsOf(medicine.name),
                 size: 56,
-                color: AppColors.green,
+                color: AppColors.navy,
                 bg: AppColors.canvas,
               ),
               const SizedBox(width: 14),
@@ -402,14 +402,14 @@ class _QuantityCard extends StatelessWidget {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: filled ? AppColors.orangeButton : AppColors.canvas,
+            color: filled ? AppColors.primary : AppColors.canvas,
             border: filled ? null : Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(AppRadii.input),
           ),
           child: Icon(
             icon,
             size: 24,
-            color: filled ? Colors.white : AppColors.green,
+            color: filled ? Colors.white : AppColors.navy,
           ),
         ),
       ),

@@ -135,7 +135,7 @@ builder: (_) => PartyFormScreen(
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.person_add_alt_1_outlined, color: AppColors.green),
+                leading: const Icon(Icons.person_add_alt_1_outlined, color: AppColors.navy),
                 title: Text('Add new $_noun', style: const TextStyle(fontWeight: FontWeight.w700)),
                 onTap: _addNew,
               ),

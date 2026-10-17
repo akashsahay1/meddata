@@ -155,7 +155,7 @@ class _ExpirySectionState extends State<ExpirySection> {
                         '${r.batchNo.isEmpty ? '' : ', batch ${r.batchNo}'}',
                     onTap: _busy ? null : () => _writeOff(<StockRow>[r]),
                     child: const Icon(Icons.delete_sweep_outlined,
-                        color: AppColors.green),
+                        color: AppColors.navy),
                   ),
                 ),
             ]),

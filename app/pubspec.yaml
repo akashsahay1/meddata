@@ -109,6 +109,10 @@ flutter:
     - assets/fonts/pdf/
 
   fonts:
-    - family: GoogleSansFlex
+    # As on medikabiz.com (SIL Open Font License, see assets/fonts/OFL-*.txt).
+    - family: Figtree
       fonts:
-        - asset: assets/fonts/GoogleSansFlex-Variable.ttf
+        - asset: assets/fonts/Figtree-Variable.ttf
+    - family: HankenGrotesk
+      fonts:
+        - asset: assets/fonts/HankenGrotesk-Variable.ttf

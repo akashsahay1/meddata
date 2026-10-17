@@ -120,7 +120,7 @@ class ValueBar extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.green,
+                    color: AppColors.navy,
                   ),
                 ),
               ],
@@ -150,9 +150,9 @@ class ValueBar extends StatelessWidget {
                     width: c.maxWidth * f,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: negative ? null : AppColors.green,
+                      color: negative ? null : AppColors.navy,
                       border: negative
-                          ? Border.all(color: AppColors.green, width: 1.5)
+                          ? Border.all(color: AppColors.navy, width: 1.5)
                           : null,
                       borderRadius: BorderRadius.circular(AppRadii.pill),
                     ),
@@ -219,7 +219,7 @@ class ColumnChart extends StatelessWidget {
                         children: <Widget>[
                           _bar(max == 0 ? 0 : c.total / max, AppColors.page),
                           _bar(max == 0 ? 0 : math.max(0, c.part) / max,
-                              AppColors.green),
+                              AppColors.navy),
                         ],
                       ),
                     ),
