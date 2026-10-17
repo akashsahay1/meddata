@@ -54,6 +54,10 @@ return [
         'model' => env('GROQ_MODEL', 'qwen/qwen3.8-27b'),
         // Room for a long invoice; the model allows up to 16384.
         'max_tokens' => (int) env('GROQ_MAX_TOKENS', 8192),
+        // Reads the text inside a PDF made by billing software (exact, cheap).
+        'text_model' => env('GROQ_TEXT_MODEL', 'openai/gpt-oss-120b'),
+        // A 48-line bill took ~6,100 reply tokens.
+        'text_max_tokens' => (int) env('GROQ_TEXT_MAX_TOKENS', 16384),
         // Seconds for one API call; the job's own timeout is longer.
         'timeout' => (int) env('GROQ_TIMEOUT', 120),
         'base_url' => env('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),

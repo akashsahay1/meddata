@@ -71,7 +71,7 @@ backend/
 │   ├── Filament/Resources/     Admin panel: ShopResource, ProductResource,
 │   │                           MasterCatalog, CouponResource, PaymentResource
 │   └── Services/               RazorpayService, GroqInvoiceReader (AI invoice
-│                               reading), PdfToImages (PDF pages → JPEGs)
+│                               reading), PdfText (a PDF's own text), PdfToImages (PDF pages → JPEGs)
 ├── routes/api.php              All API routes under /api/v1
 ├── database/migrations/        Schema
 └── database/database.sqlite    Dev database
@@ -264,7 +264,7 @@ php artisan serve --host=0.0.0.0 --port=8000
 php artisan queue:work database   # needed for AI invoice reading
 ```
 
-**AI invoice env:** `GROQ_API_KEY` (required for invoice scans), `GROQ_MODEL=qwen/qwen3.8-27b`; optional `GROQ_MAX_TOKENS` (8192; the model allows 16384), `GROQ_TIMEOUT` (120 s), `GROQ_BASE_URL` (`https://api.groq.com/openai/v1`), `DB_QUEUE_RETRY_AFTER=600`. PDF scans also need php-imagick + Ghostscript on the server and an ImageMagick policy that allows reading PDF (photos only need php-gd).
+**AI invoice env:** `GROQ_API_KEY` (required for invoice scans), `GROQ_MODEL=qwen/qwen3.8-27b`; optional `GROQ_TEXT_MODEL` (`openai/gpt-oss-120b`, reads PDFs that have text), `GROQ_TEXT_MAX_TOKENS` (16384), `GROQ_MAX_TOKENS` (8192; the model allows 16384), `GROQ_TIMEOUT` (120 s), `GROQ_BASE_URL` (`https://api.groq.com/openai/v1`), `DB_QUEUE_RETRY_AFTER=600`. PDF scans need `pdftotext` (poppler-utils) for PDFs with text inside, and php-imagick + Ghostscript with an ImageMagick policy that allows reading PDF for scanned ones (photos only need php-gd).
 
 - **Admin panel:** `/admin` → login with ADMIN_EMAIL / ADMIN_PASSWORD from `.env`
 
@@ -347,7 +347,7 @@ cd app && flutter test test/integration/
   - Rows join an existing medicine with the same name when maker/unit agree; same medicine + batch (or same expiry without batch) = duplicate → skip or add quantity; zero-qty rows skipped by default; free-plan limit explained before importing
   - Saved in one transaction via `MedicineRepository.importStock` (products, batches, opening/purchase movements, outbox — same as adding by hand). The old fixed-column CSV import is removed; JSON backup restore kept
 - [x] AI invoice reading (server-side): photo/PDF → extract purchase entry
-  - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Groq (`qwen/qwen3.8-27b` vision, OpenAI-compatible chat completions, strict JSON schema via `response_format`) → `GET /invoices/scan/{id}`, shop-scoped. Replaced Claude on 16 Oct 2026 (owner's decision). The model takes images only: a PDF is turned into one JPEG per page on the server (`PdfToImages`: Imagick + Ghostscript, 170 dpi, flattened on white, q85), at most 3 pages; a photo over 3 MB (or a WebP) is re-encoded as a smaller JPEG with GD
+  - `POST /invoices/scan` (photo ≤7 MB / PDF ≤10 MB; trial or paid plan; 6/min and 100/day per account) → queued `ProcessInvoiceScan` job reads it with Groq (`qwen/qwen3.8-27b` vision, OpenAI-compatible chat completions, strict JSON schema via `response_format`) → `GET /invoices/scan/{id}`, shop-scoped. Replaced Claude on 16 Oct 2026 (owner's decision). Since 17 Oct a PDF made by billing software is read from **its own text** (`PdfText`: `pdftotext -layout`) by `openai/gpt-oss-120b` (reasoning_effort low): exact characters, every batch right on the 5 sample bills, 48 lines in ~14 s, about a fifth of the image cost. Photos, and PDFs that are only a scan (under 200 letters/digits of text), go to the vision model. The vision model takes images only: a scanned PDF is turned into one JPEG per page on the server (`PdfToImages`: Imagick + Ghostscript, 170 dpi, flattened on white, q85), at most 3 pages; a photo over 3 MB (or a WebP) is re-encoded as a smaller JPEG with GD
   - Dates/numbers/GSTIN/HSN normalised; each line matched to the shop's products and the master catalog (barcode, then exact name, then loose name); retries with backoff; clear failure codes (`not_configured`, `refused`, `too_long`, `unreadable_output`, `no_items`, `auth`, `busy`, `too_many_pages`, `pdf_unsupported`, `stalled` after 15 min); files deleted after 30 days
   - App "Scan invoice" button on Add Medicine: camera/gallery/PDF on phones, file picker on desktop; online-only; editable review (fix/remove lines, duplicate-batch warning) → adds through `MedicineProvider.addFromInvoice` → `MedicineRepository.insert` like a manual add (known medicine = new batch); free-plan limit respected
   - [x] Scanned HSN and GST% saved on new medicines (a known medicine keeps its own)
@@ -455,7 +455,7 @@ cd app && flutter test test/integration/
 | Schema changes | Wipe DB + re-upload (no upgrade migrations while there are no real users) |
 | Master catalog | Shop's new medicines auto-added without moderation (max 200/shop/day) |
 | AI invoice | Server-side processing, not on-device |
-| AI invoice provider | Owner's decision (16 Oct): **Groq** `qwen/qwen3.8-27b` (vision + strict JSON schema) **replaces** Claude — not switchable. PDFs are converted to page images **on the server** (Imagick + Ghostscript); at most **3 pages** per scan (the model's image limit) — a longer PDF fails with `too_many_pages`, and a server that can't open PDFs fails with `pdf_unsupported` ("send a photo instead") |
+| AI invoice provider | Owner's decision (16 Oct): **Groq** `qwen/qwen3.8-27b` (vision + strict JSON schema) **replaces** Claude — not switchable. 17 Oct: PDFs with text inside are read from their text by `openai/gpt-oss-120b` (exact, cheaper, production model; qwen3.8-27b is a Groq *preview* model). Scanned PDFs are converted to page images **on the server** (Imagick + Ghostscript); at most **3 pages** per scan (the model's image limit) — a longer PDF fails with `too_many_pages`, and a server that can't open PDFs fails with `pdf_unsupported` ("send a photo instead") |
 | Pricing | Plan prices not finalized yet |
 | Pack size | Per medicine (`products.pack_size`), never assumed; stock stays in pieces; strips + loose is an entry/display convenience. Only applies to Tablets / Capsules / ML |
 | Prices per price pack | Batch MRP / purchase rate are per strip when the pack size applies, else per unit; line amounts = price × qty / pack, rounded once (both sides). Invoices print MRP and rate per strip with the quantity in tablets |
@@ -481,7 +481,7 @@ cd app && flutter test test/integration/
 - [ ] Log in to admin, verify Shops + Master catalog pages
 - [ ] Add live site URL to Razorpay dashboard (for desktop browser payment `/api/v1/pay/...`)
 - [ ] Set `GROQ_API_KEY` (and `GROQ_MODEL=qwen/qwen3.8-27b`); keep `QUEUE_CONNECTION=database`. Check the Groq account's limits for the model (30 RPM / 8K tokens per minute on the base tier: one 3-page scan is ~6K input tokens)
-- [ ] PDF scans: install php-imagick and Ghostscript (Ubuntu: `apt install php8.4-imagick ghostscript`, then restart PHP-FPM and the queue worker; cPanel: enable `imagick` in Select PHP Version / EasyApache and ask the host for Ghostscript). Allow PDF reads in ImageMagick's `policy.xml` (Ubuntu ships `<policy domain="coder" rights="none" pattern="PDF" />` — change to `rights="read"`). Check: `php -r 'print_r(Imagick::queryFormats("PDF"));'` and `gs --version`
+- [ ] PDF scans: install poppler-utils (`apt install poppler-utils`; check `pdftotext -v`) for PDFs with text, and php-imagick and Ghostscript for scanned PDFs (Ubuntu: `apt install php8.4-imagick ghostscript`, then restart PHP-FPM and the queue worker; cPanel: enable `imagick` in Select PHP Version / EasyApache and ask the host for Ghostscript). Allow PDF reads in ImageMagick's `policy.xml` (Ubuntu ships `<policy domain="coder" rights="none" pattern="PDF" />` — change to `rights="read"`). Check: `php -r 'print_r(Imagick::queryFormats("PDF"));'` and `gs --version`
 - [ ] Run the queue worker under supervisor: `php artisan queue:work database --sleep=3 --tries=3 --timeout=330 --max-time=3600` (`autorestart=true`, `stopwaitsecs=360`); `php artisan queue:restart` after each deploy
 - [ ] Raise upload limits to ~12 MB: PHP `upload_max_filesize` + `post_max_size` (currently 2 MB) and nginx `client_max_body_size`
 - [ ] Cron: `* * * * * php artisan schedule:run` (daily cleanup of old invoice scans)

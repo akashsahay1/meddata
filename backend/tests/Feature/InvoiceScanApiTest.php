@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\EntitlementService;
 use App\Services\GroqInvoiceReader;
 use App\Services\InvoiceProductMatcher;
+use App\Services\PdfText;
 use App\Services\PdfToImages;
 use App\Services\ShopService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -343,6 +344,39 @@ class InvoiceScanApiTest extends TestCase
                 && str_starts_with($part['image_url']['url'], 'data:image/jpeg;base64,'));
 
             return count($content) === 4 && count($images) === 3 && end($content)['type'] === 'text';
+        });
+    }
+
+    // A PDF made by billing software was read from page images, where small
+    // print got misread (T71027 as T17027) and long bills ran over the free
+    // tier's limits; its own text is exact and far cheaper to read.
+    public function test_a_pdf_with_text_inside_is_read_from_its_text_not_from_images(): void
+    {
+        Http::fake([self::GROQ => Http::response($this->reply($this->invoice()))]);
+        $this->fakePdf(pages: 1, broken: true);   // converting to images would fail the scan
+        $text = "SHREE BALAJI PHARMA   Invoice No: SBP/2627/04518\n1  Dolo 650 Tab  15 TAB  3004  B21265  07/28  10  33.60  22.40  12\n";
+        $this->app->instance(PdfText::class, new class($text) extends PdfText
+        {
+            public function __construct(private string $text) {}
+
+            public function extract(string $pdf): ?string
+            {
+                return $this->text;
+            }
+        });
+
+        $scan = $this->scanFor($this->user(), '%PDF-1.4 billing software', 'application/pdf');
+        $this->runJob($scan);
+
+        $this->assertSame('done', $scan->refresh()->status);
+        Http::assertSent(function (HttpRequest $r) use ($text) {
+            $user = $r['messages'][1]['content'];
+
+            return $r['model'] === 'openai/gpt-oss-120b'
+                && $r['reasoning_effort'] === 'low'
+                && $r['max_completion_tokens'] === 16384
+                && is_string($user) && str_ends_with($user, "INVOICE TEXT:\n".$text)
+                && $r['response_format']['json_schema']['strict'] === true;
         });
     }
 
