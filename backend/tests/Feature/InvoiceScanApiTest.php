@@ -548,21 +548,25 @@ class InvoiceScanApiTest extends TestCase
         $this->assertTrue($scan->toApiArray()['can_retry']);
     }
 
-    // Groq's free tier refuses any request expecting over 1,000 output tokens
-    // a minute with a 429; that was retried as "busy" though it never passes.
-    public function test_a_request_over_the_ai_plan_limit_fails_at_once(): void
+    // Groq refuses a request bigger than what is left of the minute's token
+    // allowance (413 or 429 "Request too large"). It was reported as "file too
+    // large" or retried as busy; the same bill usually passes a little later.
+    public function test_a_request_over_the_ai_limits_is_retried_then_explained(): void
     {
-        Http::fake([self::GROQ => Http::response(['error' => ['type' => 'tokens',
-            'message' => 'Request too large for model `qwen/qwen3.8-27b` in organization `org_x` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1081.']], 429)]);
+        $tooLarge = fn (int $status) => Http::response(['error' => ['type' => 'tokens',
+            'message' => 'Request too large for model `openai/gpt-oss-120b` in organization `org_x` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 8040.']], $status);
+        Http::fake([self::GROQ => Http::sequence()->pushResponse($tooLarge(413))->whenEmpty($tooLarge(429))]);
         $scan = $this->scanFor($this->user());
 
-        $this->runJob($scan)->assertNotReleased();
+        $this->runJob($scan, attempt: 1)->assertReleased(15);
+        $this->assertSame('queued', $scan->refresh()->status);
 
+        $this->runJob($scan, attempt: 10)->assertNotReleased();
         $scan->refresh();
         $this->assertSame(['failed', 'ai_limit'], [$scan->status, $scan->error_code]);
-        $this->assertStringContainsString('contact Medikabiz support', $scan->error);
-        $this->assertFalse($scan->toApiArray()['can_retry']);
-        Http::assertSentCount(1);
+        $this->assertSame('This invoice is too long for the AI service\'s current limits. Please try again later; '
+            .'if it keeps happening, contact Medikabiz support.', $scan->error);
+        $this->assertTrue($scan->toApiArray()['can_retry']);
     }
 
     public function test_a_failed_scan_is_read_again_from_the_same_file(): void

@@ -86,7 +86,8 @@ class ProcessInvoiceScan implements ShouldQueue
 
                 return;
             }
-            $message = $e->retryable ? $e->getMessage().' Please try again in a few minutes.' : $e->getMessage();
+            $message = in_array($e->errorCode, ['busy', 'network'], true)
+                ? $e->getMessage().' Please try again in a few minutes.' : $e->getMessage();
             $scan->markFailed($e->errorCode, $message, $e->raw);
 
             return;

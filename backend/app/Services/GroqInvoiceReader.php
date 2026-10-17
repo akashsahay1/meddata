@@ -250,17 +250,18 @@ class GroqInvoiceReader
 
     private function isTransient(Throwable $e): bool
     {
-        return $e instanceof RequestException && in_array($e->response->status(), self::TRANSIENT, true)
-            && ! $this->overPlanLimit($e->response);
+        return $e instanceof RequestException && in_array($e->response->status(), self::TRANSIENT, true);
     }
 
     /**
-     * A 429 for one request bigger than the account's per-minute allowance
-     * (e.g. the free tier's 1,000 output tokens a minute): waiting never helps.
+     * A 413/429 "Request too large" for the account's per-minute allowance
+     * (the free tier allows 8,000 tokens and 1,000 reply tokens a minute).
+     * Groq's estimate depends on what the minute has already used, so the
+     * same bill often passes a little later: it is retried like "busy".
      */
     private function overPlanLimit(Response $response): bool
     {
-        return $response->status() === 429
+        return in_array($response->status(), [413, 429], true)
             && str_contains((string) $response->json('error.message'), 'Request too large');
     }
 
@@ -283,7 +284,8 @@ class GroqInvoiceReader
 
         return match (true) {
             $this->overPlanLimit($response) => new InvoiceReadException(
-                'ai_limit', 'This invoice is too long for the AI service\'s current plan. Please contact Medikabiz support.'),
+                'ai_limit', 'This invoice is too long for the AI service\'s current limits. Please try again later; '
+                    .'if it keeps happening, contact Medikabiz support.', retryable: true),
             in_array($status, self::TRANSIENT, true) => new InvoiceReadException(
                 'busy', 'The AI service is busy right now.', retryable: true),
             in_array($status, [401, 403], true) => new InvoiceReadException(

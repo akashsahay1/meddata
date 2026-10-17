@@ -40,9 +40,9 @@ class InvoiceScan extends Model
     /**
      * Failures that may well work on another try of the same file (POST
      * /invoices/scan/{id}/retry). Not: a file the server can't open, a PDF
-     * with too many pages, a refused or over-limit file, a missing API key.
+     * with too many pages, a refused or oversized file, a missing API key.
      */
-    public const RETRYABLE = ['busy', 'network', 'timeout', 'error', 'stalled', 'no_items', 'unreadable_output', 'bad_request'];
+    public const RETRYABLE = ['busy', 'network', 'timeout', 'error', 'stalled', 'no_items', 'unreadable_output', 'bad_request', 'ai_limit'];
 
     protected $guarded = [];
 
