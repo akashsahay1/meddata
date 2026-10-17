@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../services/auth_service.dart';
 import '../../../theme/app_theme.dart';
-import '../../widgets/adaptive_layout.dart';
 import '../../widgets/ui_kit.dart';
 import 'auth_widgets.dart';
 
@@ -60,106 +59,101 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AdaptiveLayout.formMaxWidth,
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    const AuthHeader(
-                      title: 'Create your account',
-                      subtitle: 'Start your 7-day free trial',
-                    ),
-                    const SizedBox(height: 28),
-                    LabeledField(
-                      label: 'Full name',
-                      hint: 'Your name',
-                      controller: _name,
-                      validator: AuthValidators.required,
-                    ),
-                    const SizedBox(height: 16),
-                    LabeledField(
-                      label: 'Email',
-                      hint: 'you@example.com',
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: AuthValidators.email,
-                    ),
-                    const SizedBox(height: 16),
-                    LabeledField(
-                      label: 'Phone (optional)',
-                      hint: 'Mobile number',
-                      controller: _phone,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 16),
-                    _PasswordField(
-                      controller: _password,
-                      obscure: _obscure,
-                      onToggle: () => setState(() => _obscure = !_obscure),
-                      onSubmitted: (_) => _signup(),
-                    ),
-                    const SizedBox(height: 24),
-                    if (_busy)
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: null,
-                          child: const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
+    return AuthScaffold(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const AuthHeader(
+              title: 'Create your account',
+              subtitle: 'Start your 7-day free trial',
+            ),
+            const SizedBox(height: 28),
+            AuthCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  LabeledField(
+                    label: 'Full name',
+                    hint: 'Your name',
+                    controller: _name,
+                    validator: AuthValidators.required,
+                  ),
+                  const SizedBox(height: 16),
+                  LabeledField(
+                    label: 'Email',
+                    hint: 'you@example.com',
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: AuthValidators.email,
+                  ),
+                  const SizedBox(height: 16),
+                  LabeledField(
+                    label: 'Phone (optional)',
+                    hint: 'Mobile number',
+                    controller: _phone,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  _PasswordField(
+                    controller: _password,
+                    obscure: _obscure,
+                    onToggle: () => setState(() => _obscure = !_obscure),
+                    onSubmitted: (_) => _signup(),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_busy)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: null,
+                        child: const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                      )
-                    else
-                      PrimaryButton(
-                        label: 'Create account',
-                        onPressed: _signup,
                       ),
-                    const SizedBox(height: 18),
-                    // Wraps "Log in" onto a second line with large text.
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: <Widget>[
-                        const Text(
-                          'Already have an account? ',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).pop(),
-                            child: const Text(
-                              'Log in',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                    )
+                  else
+                    PrimaryButton(
+                      label: 'Create account',
+                      onPressed: _signup,
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: 18),
+            // Wraps "Log in" onto a second line with large text.
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                const Text(
+                  'Already have an account? ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Text(
+                      'Log in',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

@@ -94,13 +94,13 @@ void main() {
     });
   }
 
-  testWidgets('login screen: the "Sign up" link shows the hand',
+  testWidgets('login screen: the "Start free trial" link shows the hand',
       (WidgetTester tester) async {
     final TestApp app = await TestApp.create();
     addTearDown(app.dispose);
     await tester.pumpWidget(app.wrap(const LoginScreen()));
     await tester.pumpAndSettle();
-    expect(await _cursorOver(tester, find.text('Sign up')),
+    expect(await _cursorOver(tester, find.text('Start free trial')),
         SystemMouseCursors.click);
   });
 }

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../services/auth_service.dart';
 import '../../../theme/app_theme.dart';
-import '../../widgets/adaptive_layout.dart';
 import '../../widgets/ui_kit.dart';
 import 'forgot_password_screen.dart';
 import 'signup_screen.dart';
@@ -79,135 +78,109 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: AdaptiveLayout.formMaxWidth,
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    AuthHeader(
-                      title: 'Welcome back',
-                      subtitle: _subtitle(context),
-                    ),
-                    const SizedBox(height: 30),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(AppRadii.cardLg),
-                        border: Border.all(color: theme.dividerColor),
-                        boxShadow: const <BoxShadow>[
-                          BoxShadow(
-                            color: Color(0x14071D3B),
-                            blurRadius: 24,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          LabeledField(
-                            label: 'Email',
-                            hint: 'you@example.com',
-                            controller: _email,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: AuthValidators.email,
-                          ),
-                          const SizedBox(height: 16),
-                          _PasswordField(
-                            controller: _password,
-                            obscure: _obscure,
-                            onToggle: () =>
-                                setState(() => _obscure = !_obscure),
-                            onSubmitted: (_) => _login(),
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 8,
-                                ),
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const ForgotPasswordScreen(),
-                                ),
-                              ),
-                              child: const Text('Forgot password?'),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: _busy ? null : _login,
-                            child: _busy
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    // Dark on the disabled (light grey)
-                                    // button; white would not show.
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.ink,
-                                    ),
-                                  )
-                                : const Text('Log in'),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Wraps "Sign up" onto a second line with large text.
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: <Widget>[
-                        const Text(
-                          "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.muted,
-                          ),
+    return AuthScaffold(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            AuthHeader(
+              title: 'Welcome back',
+              subtitle: _subtitle(context),
+            ),
+            const SizedBox(height: 30),
+            AuthCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  LabeledField(
+                    label: 'Email',
+                    hint: 'you@example.com',
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: AuthValidators.email,
+                  ),
+                  const SizedBox(height: 16),
+                  _PasswordField(
+                    controller: _password,
+                    obscure: _obscure,
+                    onToggle: () =>
+                        setState(() => _obscure = !_obscure),
+                    onSubmitted: (_) => _login(),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 8,
                         ),
-                        MouseRegion(
-                          cursor: SystemMouseCursors.click,
-                          child: GestureDetector(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const SignupScreen(),
-                              ),
-                            ),
-                            child: const Text(
-                              'Sign up',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ForgotPasswordScreen(),
                         ),
-                      ],
+                      ),
+                      child: const Text('Forgot password?'),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _busy ? null : _login,
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            // Dark on the disabled (light grey)
+                            // button; white would not show.
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.ink,
+                            ),
+                          )
+                        : const Text('Log in'),
+                  ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(height: 20),
+            // Wraps "Start free trial" onto a second line with large text.
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                const Text(
+                  'New to Medikabiz? ',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.muted,
+                  ),
+                ),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SignupScreen(),
+                      ),
+                    ),
+                    child: const Text(
+                      'Start free trial',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

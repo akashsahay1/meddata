@@ -86,115 +86,94 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
-            child: Form(
-              key: _formKey,
+    return AuthScaffold(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            AuthHeader(
+              title: 'Forgot password',
+              subtitle: _codeSent
+                  ? 'Enter the code we emailed you and pick a new password'
+                  : 'We will email you a 6-digit reset code',
+            ),
+            const SizedBox(height: 30),
+            AuthCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  AuthHeader(
-                    title: 'Forgot password',
-                    subtitle: _codeSent
-                        ? 'Enter the code we emailed you and pick a new password'
-                        : 'We will email you a 6-digit reset code',
+                  LabeledField(
+                    label: 'Email',
+                    hint: 'you@example.com',
+                    controller: _email,
+                    enabled: !_codeSent,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: AuthValidators.email,
                   ),
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(AppRadii.cardLg),
-                      border: Border.all(color: theme.dividerColor),
-                      boxShadow: const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x14071D3B),
-                          blurRadius: 24,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
+                  if (_codeSent) ...<Widget>[
+                    const SizedBox(height: 16),
+                    _LabeledCodeField(controller: _code),
+                    const SizedBox(height: 16),
+                    _PasswordField(
+                      controller: _password,
+                      obscure: _obscure,
+                      onToggle: () =>
+                          setState(() => _obscure = !_obscure),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        LabeledField(
-                          label: 'Email',
-                          hint: 'you@example.com',
-                          controller: _email,
-                          enabled: !_codeSent,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: AuthValidators.email,
-                        ),
-                        if (_codeSent) ...<Widget>[
-                          const SizedBox(height: 16),
-                          _LabeledCodeField(controller: _code),
-                          const SizedBox(height: 16),
-                          _PasswordField(
-                            controller: _password,
-                            obscure: _obscure,
-                            onToggle: () =>
-                                setState(() => _obscure = !_obscure),
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: _busy
-                              ? null
-                              : (_codeSent ? _reset : _sendCode),
-                          child: _busy
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  // Dark on the disabled (light grey)
-                                  // button; white would not show.
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.ink,
-                                  ),
-                                )
-                              : Text(
-                                  _codeSent
-                                      ? 'Reset password'
-                                      : 'Send reset code',
-                                ),
-                        ),
-                        if (_codeSent) ...<Widget>[
-                          const SizedBox(height: 4),
-                          Center(
-                            child: TextButton(
-                              onPressed: _busy ? null : _sendCode,
-                              child: const Text('Resend code'),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+                  ],
                   const SizedBox(height: 20),
-                  Center(
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          'Back to log in',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
+                  ElevatedButton(
+                    onPressed: _busy
+                        ? null
+                        : (_codeSent ? _reset : _sendCode),
+                    child: _busy
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            // Dark on the disabled (light grey)
+                            // button; white would not show.
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.ink,
+                            ),
+                          )
+                        : Text(
+                            _codeSent
+                                ? 'Reset password'
+                                : 'Send reset code',
                           ),
-                        ),
+                  ),
+                  if (_codeSent) ...<Widget>[
+                    const SizedBox(height: 4),
+                    Center(
+                      child: TextButton(
+                        onPressed: _busy ? null : _sendCode,
+                        child: const Text('Resend code'),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
-          ),
+            const SizedBox(height: 20),
+            Center(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Back to log in',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
