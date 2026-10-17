@@ -124,5 +124,6 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         // controller), then poll until it is read.
         Route::post('invoices/scan', [InvoiceScanController::class, 'store']);
         Route::get('invoices/scan/{id}', [InvoiceScanController::class, 'show'])->whereNumber('id');
+        Route::post('invoices/scan/{id}/retry', [InvoiceScanController::class, 'retry'])->whereNumber('id');
     });
 });

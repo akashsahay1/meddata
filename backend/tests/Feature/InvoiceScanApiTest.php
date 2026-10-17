@@ -402,36 +402,53 @@ class InvoiceScanApiTest extends TestCase
         $this->assertSame('Alembic Pharmaceuticals Ltd', $items[1]['match']['master_manufacturer']);
     }
 
-    public function test_malformed_model_output_fails_and_keeps_the_raw_text(): void
+    // The model sometimes slips on a page it reads fine the next time
+    // (seen on a clear PDF: no lines, a note claiming the rows were cut off).
+    public function test_a_reply_with_no_lines_or_broken_json_is_read_again_before_failing(): void
     {
+        $empty = ['supplier_name' => 'X', 'supplier_gstin' => '', 'invoice_no' => '', 'invoice_date' => '', 'items' => [], 'notes' => 'Rows are cut off.'];
         $garbage = 'Sorry, the photo is too blurry to read.';
-        Http::fake([self::GROQ => Http::sequence()
-            ->push($this->reply($garbage))
-            ->push($this->reply('{"supplier_name": "ABC", "items": [{"product_name": "DOL'))]);
         $user = $this->user();
+        $cases = [['no_items', json_encode($empty)], ['unreadable_output', $garbage],
+            ['unreadable_output', '{"supplier_name": "ABC", "items": [{"product_name": "DOL']];
+        $replies = Http::sequence();
+        foreach ($cases as [, $raw]) {
+            $replies->push($this->reply($raw))->push($this->reply($raw));   // first and last read
+        }
+        Http::fake([self::GROQ => $replies]);
 
-        foreach ([$garbage, '{"supplier_name": "ABC", "items": [{"product_name": "DOL'] as $raw) {
-            $id = $this->upload($user)->assertStatus(202)->json('scan.id');
-            $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$id}")
+        foreach ($cases as [$code, $raw]) {
+            $scan = $this->scanFor($user);
+
+            $this->runJob($scan, attempt: 1)->assertReleased(5);
+            $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$scan->id}")
+                ->assertJsonPath('scan.status', 'queued')
+                ->assertJsonPath('scan.retrying', true);
+
+            $this->runJob($scan, attempt: ProcessInvoiceScan::SLIP_TRIES)->assertNotReleased();
+            $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$scan->id}")
                 ->assertJsonPath('scan.status', 'failed')
-                ->assertJsonPath('scan.error_code', 'unreadable_output')
+                ->assertJsonPath('scan.error_code', $code)
+                ->assertJsonPath('scan.can_retry', true)
                 ->assertJsonPath('scan.result', null)
                 ->assertJsonMissingPath('scan.raw_output');
-            $this->assertSame($raw, InvoiceScan::findOrFail($id)->raw_output);
+            $this->assertSame($raw, $scan->refresh()->raw_output);
         }
     }
 
-    public function test_reply_without_any_medicine_line_fails_clearly(): void
+    public function test_a_second_read_that_finds_the_lines_completes_the_scan(): void
     {
-        $empty = ['supplier_name' => 'X', 'supplier_gstin' => '', 'invoice_no' => '', 'invoice_date' => '', 'items' => [], 'notes' => 'Not an invoice.'];
-        Http::fake([self::GROQ => Http::response($this->reply($empty))]);
-
+        $empty = ['supplier_name' => 'X', 'supplier_gstin' => '', 'invoice_no' => '', 'invoice_date' => '', 'items' => [], 'notes' => ''];
+        Http::fake([self::GROQ => Http::sequence()
+            ->push($this->reply($empty))
+            ->push($this->reply($this->invoice()))]);
         $scan = $this->scanFor($this->user());
-        $this->runJob($scan);
 
-        $scan->refresh();
-        $this->assertSame(['failed', 'no_items'], [$scan->status, $scan->error_code]);
-        $this->assertNotNull($scan->raw_output);
+        $this->runJob($scan, attempt: 1)->assertReleased(5);
+        $this->runJob($scan, attempt: 2)->assertNotReleased();
+
+        $this->assertSame('done', $scan->refresh()->status);
+        $this->assertCount(2, $scan->extracted['items']);
     }
 
     public function test_missing_api_key_fails_with_a_clear_status_without_calling_the_api(): void
@@ -484,13 +501,61 @@ class InvoiceScanApiTest extends TestCase
         Http::fake([self::GROQ => Http::response(['error' => ['type' => 'internal_server_error', 'message' => 'Service unavailable']], 503)]);
         $scan = $this->scanFor($this->user());
 
-        $this->runJob($scan, attempt: 1)->assertReleased(30);
+        // A busy AI service is waited out for about ten minutes, not two.
+        $this->runJob($scan, attempt: 1)->assertReleased(15);
         $this->assertSame('queued', $scan->refresh()->status);
+        $this->runJob($scan, attempt: 3)->assertReleased(45);
+        $this->assertSame(630, array_sum((new ProcessInvoiceScan($scan))->backoff()));
 
-        $this->runJob($scan, attempt: 3)->assertNotReleased();
+        $this->runJob($scan, attempt: 10)->assertNotReleased();
         $scan->refresh();
         $this->assertSame(['failed', 'busy'], [$scan->status, $scan->error_code]);
-        $this->assertSame(3, $scan->attempts);
+        $this->assertSame(10, $scan->attempts);
+        $this->assertTrue($scan->toApiArray()['can_retry']);
+    }
+
+    // Groq's free tier refuses any request expecting over 1,000 output tokens
+    // a minute with a 429; that was retried as "busy" though it never passes.
+    public function test_a_request_over_the_ai_plan_limit_fails_at_once(): void
+    {
+        Http::fake([self::GROQ => Http::response(['error' => ['type' => 'tokens',
+            'message' => 'Request too large for model `qwen/qwen3.8-27b` in organization `org_x` service tier `on_demand` on output tokens per minute (OTPM): Limit 1000, Requested 1081.']], 429)]);
+        $scan = $this->scanFor($this->user());
+
+        $this->runJob($scan)->assertNotReleased();
+
+        $scan->refresh();
+        $this->assertSame(['failed', 'ai_limit'], [$scan->status, $scan->error_code]);
+        $this->assertStringContainsString('contact Medikabiz support', $scan->error);
+        $this->assertFalse($scan->toApiArray()['can_retry']);
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_failed_scan_is_read_again_from_the_same_file(): void
+    {
+        Queue::fake();
+        $user = $this->user();
+        $scan = $this->scanFor($user);
+        $scan->markFailed('busy', 'The AI service is busy right now. Please try again in a few minutes.');
+        $scan->forceFill(['attempts' => 10])->save();
+
+        $this->withToken($user->issueToken('p'))->postJson("/api/v1/invoices/scan/{$scan->id}/retry")
+            ->assertStatus(202)
+            ->assertJsonPath('scan.status', 'queued')
+            ->assertJsonPath('scan.error', null)
+            ->assertJsonPath('scan.retrying', false);
+        Queue::assertPushed(ProcessInvoiceScan::class, fn ($job) => $job->scan->is($scan));
+        $this->assertSame(1, InvoiceScan::count(), 'no new upload');
+
+        // Another shop can't, and a failure another try won't fix is refused.
+        $this->withToken($this->user()->issueToken('p'))->postJson("/api/v1/invoices/scan/{$scan->id}/retry")
+            ->assertStatus(404);
+        $pdf = $this->scanFor($user);
+        $pdf->markFailed('too_many_pages', 'This PDF has 5 pages. Scan up to 3 pages at a time.');
+        $this->withToken($user->issueToken('p'))->postJson("/api/v1/invoices/scan/{$pdf->id}/retry")
+            ->assertStatus(409)
+            ->assertJsonPath('scan.can_retry', false);
+        Queue::assertPushed(ProcessInvoiceScan::class, 1);
     }
 
     public function test_bad_api_key_fails_without_retrying(): void

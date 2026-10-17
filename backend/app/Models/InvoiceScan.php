@@ -37,6 +37,13 @@ class InvoiceScan extends Model
      */
     public const STALL_MINUTES = 15;
 
+    /**
+     * Failures that may well work on another try of the same file (POST
+     * /invoices/scan/{id}/retry). Not: a file the server can't open, a PDF
+     * with too many pages, a refused or over-limit file, a missing API key.
+     */
+    public const RETRYABLE = ['busy', 'network', 'timeout', 'error', 'stalled', 'no_items', 'unreadable_output', 'bad_request'];
+
     protected $guarded = [];
 
     protected $hidden = ['file_path', 'raw_output'];
@@ -91,6 +98,9 @@ class InvoiceScan extends Model
             'status' => $this->status,
             'error_code' => $this->error_code,
             'error' => $this->error,
+            // Waiting for another try after a busy AI service or a bad reply.
+            'retrying' => $this->status === self::STATUS_QUEUED && $this->attempts > 0,
+            'can_retry' => $this->status === self::STATUS_FAILED && in_array($this->error_code, self::RETRYABLE, true),
             'result' => $this->status === self::STATUS_DONE ? $this->extracted : null,
             'created_at' => $this->created_at?->toIso8601String(),
             'finished_at' => $this->finished_at?->toIso8601String(),

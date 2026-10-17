@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProcessInvoiceScan;
 use App\Models\InvoiceScan;
+use App\Models\User;
 use App\Services\EntitlementService;
 use App\Services\ShopService;
 use Illuminate\Http\JsonResponse;
@@ -55,13 +56,8 @@ class InvoiceScanController extends Controller
     public function store(Request $request): JsonResponse
     {
         $user = $request->user();
-        $ent = $this->entitlements->forUser($user);
-        $ent->refreshStatus();
-        if (! $ent->isActivePaid() && ! $ent->isTrialActive()) {
-            return response()->json([
-                'error' => 'premium_required',
-                'message' => 'Reading invoices needs an active trial or subscription.',
-            ], 403);
+        if ($refused = $this->premiumRequired($user)) {
+            return $refused;
         }
 
         $request->validate([
@@ -108,6 +104,57 @@ class InvoiceScanController extends Controller
         ProcessInvoiceScan::dispatch($scan);
 
         return response()->json(['scan' => $scan->fresh()->toApiArray()], 202);
+    }
+
+    /**
+     * POST /invoices/scan/{id}/retry -> 202 {scan}
+     * Reads a failed scan's file again (no new upload), when its failure may
+     * pass (see InvoiceScan::RETRYABLE). Counts as an upload for the limits.
+     */
+    public function retry(Request $request, int $id): JsonResponse
+    {
+        $user = $request->user();
+        if ($refused = $this->premiumRequired($user)) {
+            return $refused;
+        }
+        $shop = $this->shops->forUser($user);
+        $scan = InvoiceScan::where('shop_id', $shop->id)->whereKey($id)->first();
+        if (! $scan) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        $scan->failIfStalled();
+        if (! $scan->toApiArray()['can_retry']) {
+            return response()->json([
+                'message' => 'This invoice can\'t be read again. Please choose the file again.',
+                'scan' => $scan->toApiArray(),
+            ], 409);
+        }
+
+        if (($wait = $this->throttle($user->id)) !== null) {
+            return response()->json([
+                'message' => 'Too many invoices scanned. Please try again later.',
+                'retry_after' => $wait,
+            ], 429, ['Retry-After' => (string) $wait]);
+        }
+
+        $scan->forceFill([
+            'status' => InvoiceScan::STATUS_QUEUED, 'attempts' => 0, 'error_code' => null, 'error' => null,
+            'raw_output' => null, 'started_at' => null, 'finished_at' => null,
+        ])->save();
+        ProcessInvoiceScan::dispatch($scan);
+
+        return response()->json(['scan' => $scan->fresh()->toApiArray()], 202);
+    }
+
+    private function premiumRequired(User $user): ?JsonResponse
+    {
+        $ent = $this->entitlements->forUser($user);
+        $ent->refreshStatus();
+
+        return $ent->isActivePaid() || $ent->isTrialActive() ? null : response()->json([
+            'error' => 'premium_required',
+            'message' => 'Reading invoices needs an active trial or subscription.',
+        ], 403);
     }
 
     /** Counts one upload; returns the seconds to wait instead when over a limit. */

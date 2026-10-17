@@ -221,7 +221,18 @@ class GroqInvoiceReader
 
     private function isTransient(Throwable $e): bool
     {
-        return $e instanceof RequestException && in_array($e->response->status(), self::TRANSIENT, true);
+        return $e instanceof RequestException && in_array($e->response->status(), self::TRANSIENT, true)
+            && ! $this->overPlanLimit($e->response);
+    }
+
+    /**
+     * A 429 for one request bigger than the account's per-minute allowance
+     * (e.g. the free tier's 1,000 output tokens a minute): waiting never helps.
+     */
+    private function overPlanLimit(Response $response): bool
+    {
+        return $response->status() === 429
+            && str_contains((string) $response->json('error.message'), 'Request too large');
     }
 
     /** Milliseconds before the next try: the server's retry-after in seconds (capped), else 2 s, 6 s. */
@@ -242,6 +253,8 @@ class GroqInvoiceReader
         ]);
 
         return match (true) {
+            $this->overPlanLimit($response) => new InvoiceReadException(
+                'ai_limit', 'This invoice is too long for the AI service\'s current plan. Please contact Medikabiz support.'),
             in_array($status, self::TRANSIENT, true) => new InvoiceReadException(
                 'busy', 'The AI service is busy right now.', retryable: true),
             in_array($status, [401, 403], true) => new InvoiceReadException(
@@ -274,13 +287,13 @@ class GroqInvoiceReader
         $decoded = $this->decode($text);
         if ($decoded === null) {
             throw new InvoiceReadException('unreadable_output',
-                'The AI reply could not be understood. Please try again.', raw: $raw);
+                'The AI reply could not be understood. Please try again.', raw: $raw, slip: true);
         }
 
         $data = $this->normalizer->normalize($decoded);
         if ($data['items'] === []) {
             throw new InvoiceReadException('no_items',
-                'No medicines were found on this invoice. Try a clear, flat photo of the whole page.', raw: $raw);
+                'No medicines were found on this invoice. Try a clear, flat photo of the whole page.', raw: $raw, slip: true);
         }
 
         return [

@@ -17,14 +17,20 @@ use Throwable;
  * lines (with product / catalog matches) on the scan. Needs a queue worker
  * (`php artisan queue:work`, under supervisor in production).
  *
- * A busy or unreachable AI service is retried (see backoff); everything else
- * fails the scan at once with a message the app shows as-is.
+ * A busy or unreachable AI service is retried for about ten minutes (see
+ * backoff), a reply with no lines or broken JSON is read again up to
+ * SLIP_TRIES times; everything else fails the scan at once with a message the
+ * app shows as-is. While a retry waits the scan is back to `queued` with
+ * attempts > 0, which the app shows as "trying again".
  */
 class ProcessInvoiceScan implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
+    public int $tries = 10;
+
+    /** Attempts for a model slip (no lines found, broken JSON) before giving up. */
+    public const SLIP_TRIES = 3;
 
     /** Seconds; above the API call timeout (services.groq.timeout) plus PDF conversion. */
     public int $timeout = 300;
@@ -36,10 +42,10 @@ class ProcessInvoiceScan implements ShouldQueue
 
     public function __construct(public InvoiceScan $scan) {}
 
-    /** Seconds to wait before the 2nd and 3rd attempt. */
+    /** Seconds to wait before the 2nd, 3rd, ... attempt when the AI service is busy (~10 min in all). */
     public function backoff(): array
     {
-        return [30, 120];
+        return [15, 30, 45, 60, 60, 90, 90, 120, 120];
     }
 
     public function handle(GroqInvoiceReader $reader, InvoiceProductMatcher $matcher): void
@@ -72,9 +78,11 @@ class ProcessInvoiceScan implements ShouldQueue
         try {
             $result = $reader->read((string) $disk->get($scan->file_path), $scan->mime);
         } catch (InvoiceReadException $e) {
-            if ($e->retryable && $this->attempts() < $this->tries) {
+            $busy = $e->retryable && $this->attempts() < $this->tries;
+            $slip = $e->slip && $this->attempts() < self::SLIP_TRIES;
+            if ($busy || $slip) {
                 $scan->forceFill(['status' => InvoiceScan::STATUS_QUEUED])->save();
-                $this->release($this->backoff()[$this->attempts() - 1] ?? 120);
+                $this->release($slip ? 5 : $this->backoff()[$this->attempts() - 1] ?? 120);
 
                 return;
             }
