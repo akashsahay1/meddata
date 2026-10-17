@@ -18,7 +18,7 @@ import '../../theme/app_theme.dart';
 import '../widgets/expiry_picker.dart';
 import '../widgets/ui_kit.dart';
 import 'barcode_scan_screen.dart';
-import 'invoice_scan_screen.dart';
+import 'supplier_bills_screen.dart';
 import 'upgrade_screen.dart';
 import '../widgets/adaptive_layout.dart';
 
@@ -855,11 +855,11 @@ builder: (_) =>
     );
   }
 
-  /// A whole supplier bill at once: read with AI, checked, then added.
+  /// Whole supplier bills at once: read with AI, checked, then added.
   void _scanInvoice() {
-    Navigator.of(context).pushReplacement(AdaptiveLayout.route<void>(context, 
+    Navigator.of(context).pushReplacement(AdaptiveLayout.route<void>(context,
       maxWidth: AdaptiveLayout.contentMaxWidth,
-builder: (_) => const InvoiceScanScreen(),
+      builder: (_) => const SupplierBillsScreen(),
     ));
   }
 

@@ -9,6 +9,7 @@ import 'package:medikabiz/data/repositories/medicine_repository.dart';
 import 'package:medikabiz/domain/product_stock.dart';
 import 'package:medikabiz/presentation/screens/invoice_scan_screen.dart';
 import 'package:medikabiz/presentation/widgets/ui_kit.dart';
+import 'package:medikabiz/services/auth_service.dart';
 import 'package:medikabiz/services/invoice_scan_service.dart';
 import 'package:medikabiz/state/medicine_provider.dart';
 import 'package:medikabiz/sync/sync_engine.dart';
@@ -188,6 +189,16 @@ Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
     tokenProvider: () => null,
     userKeyProvider: () => null,
   );
+  final TestApp app = await TestApp.create(signedIn: true);
+  addTearDown(app.dispose);
+  final List<String> calls = <String>[];
+  final InvoiceScanService service = InvoiceScanService(
+    baseUrl: 'http://api.test',
+    client: MockClient((http.Request r) async {
+      calls.add('${r.method} ${r.url.path}');
+      return http.Response('', 204);
+    }),
+  );
 
   const InvoiceScan scan = InvoiceScan(
     id: 1,
@@ -227,6 +238,7 @@ Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
       providers: <ChangeNotifierProvider<ChangeNotifier>>[
         ChangeNotifierProvider<MedicineProvider>.value(value: mp),
         ChangeNotifierProvider<SyncEngine>.value(value: sync),
+        ChangeNotifierProvider<AuthService>.value(value: app.auth),
       ],
       child: MaterialApp(
         home: Builder(
@@ -235,7 +247,7 @@ Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => const InvoiceScanScreen(initialScan: scan),
+                    builder: (_) => InvoiceScanScreen(initialScan: scan, service: service),
                   ),
                 ),
                 child: const Text('open'),
@@ -293,6 +305,8 @@ Future<void> _reviewFixAndAdd(WidgetTester tester, Size size) async {
   // Back where we came from; one new batch, one new medicine.
   expect(find.text('open'), findsOneWidget);
   expect(find.text('Added 2 items from invoice SG/1'), findsOneWidget);
+  // In stock now: off the shop's list of bills being read.
+  expect(calls, <String>['POST /invoices/scan/1/close']);
   expect(mp.productCount, 2);
   final ProductStock dolo = mp.products.firstWhere(
     (ProductStock p) => p.name == 'Dolo 650',

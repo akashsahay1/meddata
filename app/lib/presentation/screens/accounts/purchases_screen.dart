@@ -12,6 +12,7 @@ import '../../../services/billing_api.dart';
 import '../../../theme/app_theme.dart';
 import '../../widgets/ui_kit.dart';
 import '../invoice_scan_screen.dart';
+import '../supplier_bills_screen.dart';
 import 'accounts_widgets.dart';
 import 'purchase_detail_screen.dart';
 import '../../widgets/adaptive_layout.dart';
@@ -100,7 +101,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
 
   Future<void> _open(Widget screen) async {
     await Navigator.of(context).push(AdaptiveLayout.route<Object?>(context,
-      maxWidth: screen is InvoiceScanScreen
+      maxWidth: screen is InvoiceScanScreen || screen is SupplierBillsScreen
           ? AdaptiveLayout.contentMaxWidth
           : AdaptiveLayout.desktopPageMaxWidth,
       builder: (_) => screen,
@@ -125,8 +126,8 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.document_scanner_outlined),
-              title: const Text('Scan a photo or PDF'),
-              subtitle: const Text('Medikabiz reads it; you check every item'),
+              title: const Text('Scan photos or PDFs'),
+              subtitle: const Text('Add many at once; Medikabiz reads them, you check every item'),
               onTap: () => Navigator.of(ctx).pop(false),
             ),
           ],
@@ -134,7 +135,7 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
       ),
     );
     if (manual == null || !mounted) return;
-    await _open(manual ? const InvoiceScanScreen.manual() : const InvoiceScanScreen());
+    await _open(manual ? const InvoiceScanScreen.manual() : const SupplierBillsScreen());
   }
 
   @override

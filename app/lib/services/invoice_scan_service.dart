@@ -15,6 +15,11 @@ class InvoiceScan {
     this.result,
     this.retrying = false,
     this.canRetry = false,
+    this.fileName,
+    this.supplierName,
+    this.invoiceNo,
+    this.itemsCount,
+    this.createdAt,
   });
 
   factory InvoiceScan.fromJson(Map<String, dynamic> j) {
@@ -27,6 +32,11 @@ class InvoiceScan {
       result: result is Map<String, dynamic> ? result : null,
       retrying: j['retrying'] == true,
       canRetry: j['can_retry'] == true,
+      fileName: j['file_name'] as String?,
+      supplierName: j['supplier_name'] as String?,
+      invoiceNo: j['invoice_no'] as String?,
+      itemsCount: (j['items_count'] as num?)?.toInt(),
+      createdAt: DateTime.tryParse((j['created_at'] as String?) ?? '')?.toLocal(),
     );
   }
 
@@ -47,6 +57,13 @@ class InvoiceScan {
 
   /// Failed, but reading the same file again may work ([InvoiceScanService.retry]).
   final bool canRetry;
+
+  // In the shop's list of bills ([InvoiceScanService.list]).
+  final String? fileName;
+  final String? supplierName;
+  final String? invoiceNo;
+  final int? itemsCount;
+  final DateTime? createdAt;
 
   bool get isDone => status == 'done';
   bool get isFailed => status == 'failed';
@@ -69,8 +86,9 @@ class InvoiceScanResponse {
 }
 
 /// Uploads purchase invoices for AI reading and polls the result
-/// (`POST /invoices/scan`, `GET /invoices/scan/{id}`,
-/// `POST /invoices/scan/{id}/retry`). Online only.
+/// (`POST /invoices/scan`, `GET /invoices/scan/{id}`, `GET /invoices/scans`,
+/// `POST /invoices/scan/{id}/retry`, `POST /invoices/scan/{id}/close`).
+/// Online only.
 class InvoiceScanService {
   InvoiceScanService({http.Client? client, String? baseUrl, this.onUnauthorized})
     : _http = client ?? http.Client(),
@@ -149,6 +167,56 @@ class InvoiceScanService {
       return const InvoiceScanResponse.error(offlineMessage, offline: true);
     }
     return _parse(res, token);
+  }
+
+  /// The shop's bills still to deal with, newest first (no lines); null
+  /// with [onError] called when the server can't be reached or refuses.
+  Future<List<InvoiceScan>?> list({
+    required String token,
+    void Function(String message)? onError,
+  }) async {
+    final http.Response res;
+    try {
+      res = await _http
+          .get(Uri.parse('$_baseUrl/invoices/scans'), headers: _headers(token))
+          .timeout(const Duration(seconds: 20));
+    } catch (e) {
+      debugPrint('[InvoiceScan] list failed: $e');
+      onError?.call(offlineMessage);
+      return null;
+    }
+    if (res.statusCode == 401) onUnauthorized?.call(token);
+    Map<String, dynamic>? body;
+    try {
+      final Object? decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) body = decoded;
+    } catch (_) {}
+    final Object? scans = body?['scans'];
+    if (res.statusCode != 200 || scans is! List) {
+      onError?.call(messageFor(res.statusCode, body));
+      return null;
+    }
+    return <InvoiceScan>[
+      for (final Object? s in scans)
+        if (s is Map<String, dynamic>) InvoiceScan.fromJson(s),
+    ];
+  }
+
+  /// Takes a bill off the shop's list (added to stock, or removed).
+  Future<bool> close({required String token, required int id}) async {
+    try {
+      final http.Response res = await _http
+          .post(
+            Uri.parse('$_baseUrl/invoices/scan/$id/close'),
+            headers: _headers(token),
+          )
+          .timeout(const Duration(seconds: 20));
+      if (res.statusCode == 401) onUnauthorized?.call(token);
+      return res.statusCode == 204;
+    } catch (e) {
+      debugPrint('[InvoiceScan] close failed: $e');
+      return false;
+    }
   }
 
   static Map<String, String> _headers(String token) => <String, String>{

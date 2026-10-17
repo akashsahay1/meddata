@@ -462,7 +462,7 @@ void main() {
       await app.open(tester, PurchasesScreen(api: app.server.api));
       await tester.tap(find.text('Add supplier bill'));
       await tester.pumpAndSettle();
-      expect(find.text('Scan a photo or PDF'), findsOneWidget);
+      expect(find.text('Scan photos or PDFs'), findsOneWidget);
       await tester.tap(find.text('Type the bill'));
       await tester.pumpAndSettle();
       expect(find.text('Enter supplier bill'), findsOneWidget);

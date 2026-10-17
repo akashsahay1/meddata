@@ -6,6 +6,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:medikabiz/data/models/bill.dart';
 import 'package:medikabiz/data/models/medicine.dart';
 import 'package:medikabiz/data/repositories/billing_repository.dart';
@@ -31,6 +33,7 @@ import 'package:medikabiz/presentation/screens/medicine_detail_screen.dart';
 import 'package:medikabiz/presentation/screens/onboarding_screen.dart';
 import 'package:medikabiz/presentation/screens/product_detail_screen.dart';
 import 'package:medikabiz/presentation/screens/reports_screen.dart';
+import 'package:medikabiz/presentation/screens/supplier_bills_screen.dart';
 import 'package:medikabiz/presentation/screens/sync_issues_screen.dart';
 import 'package:medikabiz/presentation/screens/upgrade_screen.dart';
 import 'package:medikabiz/services/billing_api.dart';
@@ -271,7 +274,25 @@ _Screen _wizard(String name, int step) => _Screen(
 
 /// Screens added after the accessibility audit: billing, invoice reading,
 /// the import wizard and the signed-in Profile.
+/// Supplier bills in every state the list shows.
+InvoiceScanService _billsService() => InvoiceScanService(
+      baseUrl: 'http://api.test',
+      client: MockClient((http.Request r) async => http.Response(
+          jsonEncode(<String, Object?>{
+            'scans': <Map<String, Object?>>[
+              <String, Object?>{'id': 4, 'status': 'queued', 'file_name': 'gupta.jpg'},
+              <String, Object?>{'id': 3, 'status': 'queued', 'retrying': true, 'file_name': 'balaji.pdf'},
+              <String, Object?>{'id': 2, 'status': 'failed', 'can_retry': true, 'file_name': 'photo.jpg', 'error': 'The AI service is busy right now.'},
+              <String, Object?>{'id': 1, 'status': 'done', 'supplier_name': 'Om Sai Medical', 'items_count': 10, 'created_at': '2026-10-17T09:30:00+05:30'},
+            ],
+          }),
+          200)),
+    );
+
 final List<_Screen> _newScreens = <_Screen>[
+  _Screen('Supplier bills',
+      (_) => SupplierBillsScreen(service: _billsService()),
+      signedIn: true),
   _Screen('Profile signed in', (_) => const MainShell(),
       tab: 'Profile', byTooltip: true, signedIn: true),
   _Screen('Bills', (TestApp app) => BillsScreen(api: _billing(app)),

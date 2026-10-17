@@ -17,8 +17,8 @@ import '../../domain/product_stock.dart';
 import '../../services/accounting_api.dart';
 import '../../services/auth_service.dart';
 import '../../services/billing_api.dart' show ApiOutcome;
-import '../../services/image_downscale.dart';
 import '../../services/invoice_scan_service.dart';
+import '../../services/invoice_upload.dart';
 import '../../state/medicine_provider.dart';
 import '../../sync/sync_engine.dart';
 import '../../theme/app_theme.dart';
@@ -56,8 +56,8 @@ class InvoiceScanScreen extends StatefulWidget {
   /// Supplier accounts and purchase entries (replaced in tests).
   final AccountingApi? accountingApi;
 
-  /// Start from a scan that was already uploaded (tests).
-  @visibleForTesting
+  /// Start from a scan that was already uploaded (a bill picked from the
+  /// shop's list of bills).
   final InvoiceScan? initialScan;
 
   @override
@@ -114,43 +114,6 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
   Set<String> _duplicates = <String>{};
   int _duplicateCheck = 0;
 
-  // The server's limits; checked here too so a big file fails fast.
-  static const int _maxImageBytes = 7 * 1024 * 1024;
-  static const int _maxPdfBytes = 10 * 1024 * 1024;
-
-  /// The AI's own image limit (long edge): sharp enough for small print,
-  /// quick to upload.
-  static const int _maxImageSide = 2576;
-  static const Set<String> _extensions = <String>{
-    'jpg',
-    'jpeg',
-    'png',
-    'webp',
-    'pdf',
-  };
-  static const XTypeGroup _pdfFiles = XTypeGroup(
-    label: 'PDF',
-    extensions: <String>['pdf'],
-    mimeTypes: <String>['application/pdf'],
-    uniformTypeIdentifiers: <String>['com.adobe.pdf'],
-  );
-  static const XTypeGroup _invoiceFiles = XTypeGroup(
-    label: 'Invoice photo or PDF',
-    extensions: <String>['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-    mimeTypes: <String>[
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'application/pdf',
-    ],
-    uniformTypeIdentifiers: <String>[
-      'public.jpeg',
-      'public.png',
-      'org.webmproject.webp',
-      'com.adobe.pdf',
-    ],
-  );
-
   @override
   void initState() {
     super.initState();
@@ -189,7 +152,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
         case _Source.file:
           file = await openFile(
             acceptedTypeGroups: <XTypeGroup>[
-              AppPlatform.supportsCamera ? _pdfFiles : _invoiceFiles,
+              AppPlatform.supportsCamera ? InvoiceUpload.pdfFiles : InvoiceUpload.invoiceFiles,
             ],
           );
       }
@@ -208,26 +171,15 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     await _upload(file, source);
   }
 
-  /// Downscaled to [_maxImageSide].
+  /// Downscaled to [InvoiceUpload.maxImageSide].
   Future<XFile?> _pickImage(ImageSource source) => ImagePicker().pickImage(
     source: source,
-    maxWidth: _maxImageSide.toDouble(),
-    maxHeight: _maxImageSide.toDouble(),
+    maxWidth: InvoiceUpload.maxImageSide.toDouble(),
+    maxHeight: InvoiceUpload.maxImageSide.toDouble(),
     imageQuality: 90,
   );
 
   Future<void> _upload(XFile file, _Source source) async {
-    String name = file.name.trim();
-    if (!name.contains('.')) {
-      name =
-          '${name.isEmpty ? 'invoice' : name}.'
-          '${source == _Source.file ? 'pdf' : 'jpg'}';
-    }
-    final String ext = name.split('.').last.toLowerCase();
-    if (!_extensions.contains(ext)) {
-      setState(() => _error = 'Choose a JPG, PNG or WebP photo, or a PDF.');
-      return;
-    }
     final String? token = context.read<AuthService>().token;
     if (token == null) {
       setState(() => _error = 'Please log in again to scan invoices.');
@@ -240,42 +192,22 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       _offline = false;
       _canRetry = false;
     });
-    final bool pdf = ext == 'pdf';
-    Uint8List bytes = await file.readAsBytes();
-    // A photo chosen as a file (the desktop) is the camera original, often
-    // several MB: shrink it like the phone picker does before uploading.
-    if (!pdf && source == _Source.file) {
-      final Uint8List? small = await downscaleToJpeg(
-        bytes,
-        maxSide: _maxImageSide,
-        quality: 90,
-      );
-      if (!mounted) return;
-      if (small == null) {
-        setState(() {
-          _stage = _Stage.pick;
-          _error = 'Could not open this photo. Choose a JPG, PNG or WebP '
-              'photo, or a PDF.';
-        });
-        return;
-      }
-      bytes = small;
-      name = '${name.substring(0, name.lastIndexOf('.'))}.jpg';
-    }
+    final (InvoiceUpload? upload, String? problem) = await InvoiceUpload.prepare(
+      file,
+      fromFiles: source == _Source.file,
+    );
     if (!mounted) return;
-    if (bytes.length > (pdf ? _maxPdfBytes : _maxImageBytes)) {
+    if (upload == null) {
       setState(() {
         _stage = _Stage.pick;
-        _error = pdf
-            ? 'This PDF is too large (10 MB at most).'
-            : 'This photo is too large (7 MB at most).';
+        _error = problem;
       });
       return;
     }
     final InvoiceScanResponse r = await _service.upload(
       token: token,
-      bytes: bytes,
-      filename: name,
+      bytes: upload.bytes,
+      filename: upload.name,
     );
     if (!mounted) return;
     final InvoiceScan? scan = r.scan;
@@ -406,6 +338,14 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
       return;
     }
     _show(scan);
+  }
+
+  /// The bill is in stock: take it off the shop's list of bills. Best
+  /// effort: if this fails it stays listed and can be removed by hand.
+  void _closeScan() {
+    final int? id = _scanId;
+    final String? token = context.read<AuthService>().token;
+    if (id != null && token != null) _service.close(token: token, id: id);
   }
 
   void _startOver() {
@@ -602,6 +542,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     final String from = draft.invoiceNo.isEmpty
         ? ''
         : ' from invoice ${draft.invoiceNo}';
+    _closeScan();
     Navigator.of(context).pop();
     messenger
       ..hideCurrentSnackBar()
@@ -796,6 +737,7 @@ class _InvoiceScanScreenState extends State<InvoiceScanScreen> {
     if (!mounted) return;
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final int n = draft.lines.length;
+    _closeScan();
     Navigator.of(context).pop();
     messenger
       ..hideCurrentSnackBar()
