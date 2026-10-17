@@ -867,37 +867,46 @@ class _BusinessSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Four one-tap shortcuts in a row (icon over label).
+    // The border sits outside the tappable box, so the button reads as its
+    // icon and label (contrast checks sample the button's box).
     Widget tile(IconData icon, String label, Widget screen) => Expanded(
-          child: Material(
-            color: AppColors.card,
-            shape: RoundedRectangleBorder(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: AppColors.card,
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppColors.border),
+              border: Border.all(color: AppColors.border),
             ),
-            child: InkWell(
-              mouseCursor: WidgetStateMouseCursor.clickable,
-              onTap: () => onOpen(screen),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 76),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(icon, size: 24, color: AppColors.primary),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                        height: 1.2,
-                      ),
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: Material(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(15),
+                child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
+                  onTap: () => onOpen(screen),
+                  borderRadius: BorderRadius.circular(15),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 74),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Icon(icon, size: 24, color: AppColors.primary),
+                        const SizedBox(height: 6),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            height: 1.2,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
