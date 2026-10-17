@@ -145,6 +145,11 @@ class AdminPanelSmokeTest extends TestCase
                 ->assertSee('href="/privacy-policy"', false);
         }
         $this->get('/cookie-policy')->assertSee(config('session.cookie'));
+        // The company's real details, no placeholders left.
+        $this->get('/contact')->assertSee('Village Ganeshi Kheda')->assertSee('Alok Singh');
+        foreach (array_keys($pages) as $path) {
+            $this->get($path)->assertDontSee('[', false);
+        }
     }
 
     public function test_dashboard_renders_with_shop_data(): void
