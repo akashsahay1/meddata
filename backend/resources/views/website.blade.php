@@ -41,14 +41,14 @@
           <a class="btn btn-ghost" href="#features">See what it does</a>
         </div>
         <div class="get" aria-label="Download the app">
-          <a class="store" href="/downloads/Medikabiz.apk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5h10V17a1 1 0 0 1-1 1h-1v2.5a1 1 0 0 1-2 0V18h-2v2.5a1 1 0 0 1-2 0V18H8a1 1 0 0 1-1-1zM5 10a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zm12 0a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zM7.2 8.5a4.8 4.8 0 0 1 2.3-3.6L8.6 3.4a.4.4 0 0 1 .7-.4l.9 1.5a5 5 0 0 1 3.6 0l.9-1.5a.4.4 0 0 1 .7.4l-.9 1.5a4.8 4.8 0 0 1 2.3 3.6zM10 6.6a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4zm4 0a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4z"/></svg><span><small>Download for</small>Android</span></a>
+          <span class="store soon" aria-disabled="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5h10V17a1 1 0 0 1-1 1h-1v2.5a1 1 0 0 1-2 0V18h-2v2.5a1 1 0 0 1-2 0V18H8a1 1 0 0 1-1-1zM5 10a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zm12 0a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zM7.2 8.5a4.8 4.8 0 0 1 2.3-3.6L8.6 3.4a.4.4 0 0 1 .7-.4l.9 1.5a5 5 0 0 1 3.6 0l.9-1.5a.4.4 0 0 1 .7.4l-.9 1.5a4.8 4.8 0 0 1 2.3 3.6zM10 6.6a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4zm4 0a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4z"/></svg><span><small>Coming soon on</small>Google Play</span></span>
           <a class="store" href="/downloads/Medikabiz-Setup.exe"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.3l7.4-1v7.2H3zm8.4-1.2L21 2.8v8.7h-9.6zM3 12.5h7.4v7.2L3 18.7zm8.4 0H21v8.7l-9.6-1.3z"/></svg><span><small>Download for</small>Windows</span></a>
           <a class="store" href="/downloads/Medikabiz.dmg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7a4.5 4.5 0 0 0-3.5-1.9c-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8A4.7 4.7 0 0 0 4.2 9.5c-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.2-.8s1.9.8 3.2.8c1.3 0 2.2-1.2 3-2.4a10 10 0 0 0 1.3-2.8 4.3 4.3 0 0 1-2.7-3.8zM14 5.5a4.3 4.3 0 0 0 1-3.1 4.4 4.4 0 0 0-2.9 1.5 4.1 4.1 0 0 0-1 3 3.7 3.7 0 0 0 2.9-1.4z"/></svg><span><small>Download for</small>Mac</span></a>
         </div>
       </div>
       <figure class="shots">
-        <div class="window desk"><div class="bar"><span class="bar-title"><img src="/images/favicon.svg" alt="" width="14" height="14">Medikabiz</span><span class="bar-ctl" aria-hidden="true"><i>–</i><i>▢</i><i>✕</i></span></div><img src="/images/screens/desktop-home.webp" width="1600" height="1000" alt="Medikabiz on a computer: stock value, medicines that need attention and quick actions"></div>
-        <div class="device hand"><div class="frame"><div class="screen"><div class="status light"><span>9:41</span><span class="sicons"><svg viewBox="0 0 18 12"><path d="M1 11h2V8H1zm4 0h2V6H5zm4 0h2V4H9zm4 0h2V1h-2z"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.3a10 10 0 0 1 14 0zm0-2.8 3.4-3.5a5 5 0 0 0-6.8 0z" fill-opacity=".35"/><path d="M8 11.5 4.6 8.1a4.8 4.8 0 0 1 6.8 0z"/></svg><svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.8"/><rect x="23" y="4" width="2" height="4" rx="1" fill-opacity=".5"/></svg></span></div><span class="camera"></span><img src="/images/screens/phone-home.webp" width="780" height="1688" alt="Medikabiz on an Android phone: home screen with stock value and alerts"></div></div></div>
+        @include('partials.window', ['src' => '/images/screens/desktop-home.webp', 'alt' => 'Medikabiz on a computer: stock value, medicines that need attention and quick actions', 'class' => 'desk', 'eager' => true])
+        @include('partials.phone', ['src' => '/images/screens/phone-home.webp', 'alt' => 'Medikabiz on an Android phone: home screen with stock value and alerts', 'tone' => 'light', 'class' => 'hand', 'eager' => true])
       </figure>
     </div>
     <div class="promise">
@@ -74,99 +74,115 @@
   </div>
 </section>
 
-<section class="band" aria-labelledby="shotsh" style="padding-top: 0">
-  <div class="wrap">
-    <div class="head">
-      <span class="eyebrow">See it at work</span>
-      <h2 id="shotsh">The real app, on the counter and in your pocket</h2>
-    </div>
-    <div class="gallery">
-      <figure class="wide">
-        <div class="window"><div class="bar"><span class="bar-title"><img src="/images/favicon.svg" alt="" width="14" height="14">Medikabiz</span><span class="bar-ctl" aria-hidden="true"><i>–</i><i>▢</i><i>✕</i></span></div><img src="/images/screens/desktop-inventory.webp" width="1600" height="1000" loading="lazy" alt="Inventory table on a computer with stock, batches, MRP, nearest expiry and status for each medicine"></div>
-        <figcaption><b>Every medicine, every batch</b>Stock in strips and loose tablets, MRP, the nearest expiry and a clear status. Filter to low stock, expiring soon or expired in one tap.</figcaption>
-      </figure>
-      <figure class="tall">
-        <div class="device "><div class="frame"><div class="screen"><div class="status dark"><span>9:41</span><span class="sicons"><svg viewBox="0 0 18 12"><path d="M1 11h2V8H1zm4 0h2V6H5zm4 0h2V4H9zm4 0h2V1h-2z"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.3a10 10 0 0 1 14 0zm0-2.8 3.4-3.5a5 5 0 0 0-6.8 0z" fill-opacity=".35"/><path d="M8 11.5 4.6 8.1a4.8 4.8 0 0 1 6.8 0z"/></svg><svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.8"/><rect x="23" y="4" width="2" height="4" rx="1" fill-opacity=".5"/></svg></span></div><span class="camera"></span><img src="/images/screens/phone-new-bill.webp" width="780" height="1688" loading="lazy" alt="New bill on a phone with Dolo 650, Allegra 120 and Pan 40, total 437 rupees"></div></div></div>
-        <figcaption><b>Bill at the counter</b>Search or scan, pick the batch, add strips or loose tablets. GST is worked out for you.</figcaption>
-      </figure>
-      <figure class="tall">
-        <div class="device "><div class="frame"><div class="screen"><div class="status dark"><span>9:41</span><span class="sicons"><svg viewBox="0 0 18 12"><path d="M1 11h2V8H1zm4 0h2V6H5zm4 0h2V4H9zm4 0h2V1h-2z"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.3a10 10 0 0 1 14 0zm0-2.8 3.4-3.5a5 5 0 0 0-6.8 0z" fill-opacity=".35"/><path d="M8 11.5 4.6 8.1a4.8 4.8 0 0 1 6.8 0z"/></svg><svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.8"/><rect x="23" y="4" width="2" height="4" rx="1" fill-opacity=".5"/></svg></span></div><span class="camera"></span><img src="/images/screens/phone-alerts.webp" width="780" height="1688" loading="lazy" alt="Alerts on a phone listing expired, expiring and low-stock medicines"></div></div></div>
-        <figcaption><b>Alerts before it's too late</b>Expired, expiring soon and low-stock medicines in one list.</figcaption>
-      </figure>
-      <figure class="tall">
-        <div class="device "><div class="frame"><div class="screen"><div class="status dark"><span>9:41</span><span class="sicons"><svg viewBox="0 0 18 12"><path d="M1 11h2V8H1zm4 0h2V6H5zm4 0h2V4H9zm4 0h2V1h-2z"/></svg><svg viewBox="0 0 16 12"><path d="M8 11.5 1 4.3a10 10 0 0 1 14 0zm0-2.8 3.4-3.5a5 5 0 0 0-6.8 0z" fill-opacity=".35"/><path d="M8 11.5 4.6 8.1a4.8 4.8 0 0 1 6.8 0z"/></svg><svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="21" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.8"/><rect x="23" y="4" width="2" height="4" rx="1" fill-opacity=".5"/></svg></span></div><span class="camera"></span><img src="/images/screens/phone-supplier-bills.webp" width="780" height="1688" loading="lazy" alt="Supplier bills on a phone: two being read, three ready to check"></div></div></div>
-        <figcaption><b>Supplier bills, read for you</b>Add a pile of bills at once. Each one is ready to check in moments.</figcaption>
-      </figure>
-    </div>
-  </div>
-</section>
-
-<section class="band dark" id="features" aria-labelledby="feat">
+<section class="band" id="features" aria-labelledby="feat">
   <div class="wrap">
     <div class="head">
       <span class="eyebrow">Features</span>
       <h2 id="feat">Everything a medical shop does in a day</h2>
-      <p class="lede">From opening the shop to closing the books, each task has its own place in the app.</p>
+      <p class="lede">These are real screens from the app, shown with a sample shop.</p>
     </div>
-    <div class="features">
-      <article class="feature">
-        <div class="icon" style="background: var(--teal)"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
-        <h3>Your shop at a glance</h3>
-        <p>Home shows stock value, low-stock and expiring medicines, a "Needs attention" list and quick actions for new bills, stock and reports.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--amber)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg></div>
-        <h3>Inventory you can trust</h3>
-        <p>Filter by low stock, expiring soon and expired. Strips and loose tablets are counted properly, batch by batch.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--coral)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
-        <h3>Low-stock and expiry alerts</h3>
-        <p>Choose your own low-stock level, such as 5, 10 or 15, and an expiry warning of up to 90 days. A daily reminder at the time you pick.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--blue)"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></div>
+    <div class="frows">
+    <div class="frow wide-media">
+      <div class="ftext">
+        <span class="eyebrow">Inventory</span>
+        <h3>Every medicine, every batch</h3>
+        <p>Know exactly what is on your shelves. Stock is counted in strips and loose tablets, batch by batch, with the MRP and the nearest expiry beside it.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Filter to low stock, expiring soon or expired in one tap</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Search by name or scan the barcode</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Import your stock from Excel or CSV, export it any time</li>
+        </ul>
+      </div>
+      <div class="fmedia">
+        @include('partials.window', ['src' => '/images/screens/desktop-inventory.webp', 'alt' => 'Inventory table on a computer with stock, batches, MRP, nearest expiry and status for each medicine'])
+      </div>
+    </div>
+    <div class="frow flip">
+      <div class="ftext">
+        <span class="eyebrow">Alerts</span>
+        <h3>Alerts before it is too late</h3>
+        <p>Expired, expiring soon and low-stock medicines come to you, so nothing sits on the shelf past its date and nothing runs out unnoticed.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Choose your own low-stock level for each medicine</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Expiry warning of up to 90 days</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>A daily reminder at the time you pick</li>
+        </ul>
+      </div>
+      <div class="fmedia">
+        @include('partials.phone', ['src' => '/images/screens/phone-alerts.webp', 'alt' => 'Alerts on a phone listing expired, expiring and low-stock medicines', 'tone' => 'dark'])
+      </div>
+    </div>
+    <div class="frow">
+      <div class="ftext">
+        <span class="eyebrow">Billing</span>
         <h3>GST bills in seconds</h3>
-        <p>Make a bill, take full or part payment, and print it on A4 or an 80 mm receipt printer. Find any bill by date, customer name or phone number.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--green)"><svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg></div>
-        <h3>Payment follow-up</h3>
-        <p>See unpaid bills and the balance on each, record money received, and send the bill or balance on WhatsApp or email.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--violet)"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
-        <h3>Reports and GST data</h3>
-        <p>Stock value, purchases, profit and loss, and GST-ready summaries for your returns. Check figures with your accountant before filing.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--teal)"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/></svg></div>
-        <h3>Bring your stock in</h3>
-        <p>Import your existing stock from Excel or CSV, export it to Excel, and keep a backup you can restore.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--amber)"><svg viewBox="0 0 24 24"><path d="M9 3h6l1 4H8z"/><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M12 11v6M9 14h6"/></svg></div>
-        <h3>Edit, cancel or return</h3>
-        <p>Correct a bill and keep its invoice number, cancel it, or take back a returned item with a credit note.</p>
-      </article>
-      <article class="feature">
-        <div class="icon" style="background: var(--blue)"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="13" height="10" rx="1.5"/><rect x="14" y="9" width="7" height="12" rx="1.5"/><path d="M7 18h5"/></svg></div>
-        <h3>Phone and computer together</h3>
-        <p>Use it on an Android phone at the shelf and a Windows computer at the counter. Every device of the shop stays in sync.</p>
-      </article>
-      <article class="feature wide">
-        <div class="icon" style="background: var(--teal)"><svg viewBox="0 0 24 24"><path d="M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3"/><path d="M8 9h8M8 12h8M8 15h5"/></svg></div>
-        <div style="display: grid; gap: 8px; min-width: 0">
-          <span class="new">New</span>
-          <h3>Add stock from supplier bills</h3>
-          <p>Photograph your supplier's bills or pick their PDFs, as many as you have. Medikabiz reads the medicines, batches, expiry dates and rates. You check each item, and only then is it added to stock.</p>
-        </div>
-      </article>
+        <p>Search or scan a medicine, and the right batch is picked first-expiry-first. Add strips or loose tablets and the GST is worked out for you.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>CGST, SGST or IGST from the customer’s state</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Discounts per line, part payment at the counter</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Works offline and syncs when the internet is back</li>
+        </ul>
+      </div>
+      <div class="fmedia">
+        @include('partials.phone', ['src' => '/images/screens/phone-new-bill.webp', 'alt' => 'New bill on a phone with Dolo 650, Allegra 120 and Pan 40, total 437 rupees', 'tone' => 'dark'])
+      </div>
+    </div>
+    <div class="frow flip">
+      <div class="ftext">
+        <span class="eyebrow">Print, share and collect</span>
+        <h3>From the counter to WhatsApp</h3>
+        <p>Print the bill on A4 or an 80 mm receipt printer, send the PDF on WhatsApp, and keep track of what each customer still owes.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Part-paid bills show the balance due</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Mark as paid when the money comes in</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Edit a bill and keep its number, cancel it, or take back returns</li>
+        </ul>
+      </div>
+      <div class="fmedia">
+        @include('partials.phone', ['src' => '/images/screens/phone-bill.webp', 'alt' => 'A part-paid bill on a phone with Print, Share PDF, WhatsApp customer and Mark as paid', 'tone' => 'dark'])
+      </div>
+    </div>
+    <div class="frow wide-media">
+      <div class="ftext">
+        <span class="eyebrow">Reports</span>
+        <h3>Your business in numbers</h3>
+        <p>See what your stock is worth, which medicines make money, and what is about to expire, on any day you choose.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Stock value at cost and at MRP, by category</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Profit by day, medicine and category</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>GST-ready summaries for your returns</li>
+        </ul>
+      </div>
+      <div class="fmedia">
+        @include('partials.window', ['src' => '/images/screens/desktop-reports.webp', 'alt' => 'Stock value report on a computer with stock at cost and MRP and value by category'])
+      </div>
+    </div>
+    <div class="frow flip duo-row">
+      <div class="ftext">
+        <span class="new">New</span>
+        <h3>Supplier bills, read for you</h3>
+        <p>Photograph your supplier’s bills or pick their PDFs, as many as you have. Medikabiz reads the medicines, batches, expiry dates and rates while you keep working.</p>
+        <ul class="includes">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>PDFs from billing software are read exactly</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Each line is matched to your medicines</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Nothing is added until you check it</li>
+        </ul>
+      </div>
+      <div class="fmedia duo">
+        @include('partials.phone', ['src' => '/images/screens/phone-supplier-bills.webp', 'alt' => 'Supplier bills on a phone: two being read, three ready to check', 'tone' => 'dark'])
+        @include('partials.phone', ['src' => '/images/screens/phone-invoice-check.webp', 'alt' => 'A read supplier bill on a phone with its lines matched to the shop’s medicines', 'tone' => 'dark'])
+      </div>
+    </div>
+    </div>
+    <div class="also">
+      <div><h3>Bring your stock in</h3><p>Import from Excel or CSV, or add supplier bills. Keep a backup you can restore.</p></div>
+      <div><h3>Phone and computer together</h3><p>Bill at the counter computer, check stock on your phone. Every device stays in sync.</p></div>
+      <div><h3>Your shop’s details on every bill</h3><p>GSTIN, drug licences, pharmacist and FSSAI details, printed when you fill them in.</p></div>
     </div>
   </div>
 </section>
 
-<section class="band" aria-labelledby="dayh">
+<section class="band dark" aria-labelledby="dayh">
   <div class="wrap">
     <div class="head">
       <span class="eyebrow">A day with Medikabiz</span>
@@ -262,9 +278,9 @@
       <article class="dl">
         <div class="dl-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9.5h10V17a1 1 0 0 1-1 1h-1v2.5a1 1 0 0 1-2 0V18h-2v2.5a1 1 0 0 1-2 0V18H8a1 1 0 0 1-1-1zM5 10a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zm12 0a1 1 0 0 1 2 0v5a1 1 0 0 1-2 0zM7.2 8.5a4.8 4.8 0 0 1 2.3-3.6L8.6 3.4a.4.4 0 0 1 .7-.4l.9 1.5a5 5 0 0 1 3.6 0l.9-1.5a.4.4 0 0 1 .7.4l-.9 1.5a4.8 4.8 0 0 1 2.3 3.6zM10 6.6a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4zm4 0a.7.7 0 1 0 0 1.4.7.7 0 0 0 0-1.4z"/></svg></div>
         <h3>Android phone or tablet</h3>
-        <p class="req">Android 7.0 or newer · 101 MB</p>
-        <a class="btn btn-navy" href="/downloads/Medikabiz.apk">Download for Android</a>
-        <p class="tip">Open the downloaded file and tap <b>Install</b>. If your phone asks, allow installing apps from your browser.</p>
+        <p class="req">Android 7.0 or newer</p>
+        <span class="btn btn-soon" aria-disabled="true">Coming soon on Google Play</span>
+        <p class="tip">Medikabiz for Android is on its way to the Google Play Store. Message us on WhatsApp and we’ll tell you as soon as it’s live.</p>
       </article>
       <article class="dl">
         <div class="dl-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.3l7.4-1v7.2H3zm8.4-1.2L21 2.8v8.7h-9.6zM3 12.5h7.4v7.2L3 18.7zm8.4 0H21v8.7l-9.6-1.3z"/></svg></div>

@@ -21,7 +21,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:medikabiz/data/models/bill.dart';
 import 'package:medikabiz/data/repositories/billing_repository.dart';
+import 'package:medikabiz/presentation/screens/billing/bill_detail_screen.dart';
+import 'package:medikabiz/presentation/screens/invoice_scan_screen.dart';
+import 'package:medikabiz/presentation/screens/reports_screen.dart';
 import 'package:medikabiz/presentation/screens/billing/new_bill_screen.dart';
 import 'package:medikabiz/presentation/screens/main_shell.dart';
 import 'package:medikabiz/presentation/screens/supplier_bills_screen.dart';
@@ -92,7 +96,17 @@ Future<TestApp> _app(WidgetTester tester, Size size, double dpr,
 }
 
 Future<void> _show(WidgetTester tester, TestApp app, Widget screen) async {
-  await tester.pumpWidget(RepaintBoundary(key: _frame, child: app.wrap(screen)));
+  await tester.pumpWidget(RepaintBoundary(
+    key: _frame,
+    child: app.wrap(Builder(
+      builder: (BuildContext context) => Theme(
+        data: Theme.of(context).copyWith(
+          textTheme: Theme.of(context).textTheme.apply(fontFamilyFallback: <String>['SystemFallback']),
+        ),
+        child: screen,
+      ),
+    )),
+  ));
   await tester.pumpAndSettle();
   // Let asset images (the logo) decode, then paint them.
   await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
@@ -143,6 +157,13 @@ void main() {
     final FontLoader icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
+    // A phone fills in characters its app font lacks (such as "→") from a
+    // system font; stand in for that with one of the Mac's fonts (see _show).
+    final FontLoader fallback = FontLoader('SystemFallback')
+      ..addFont(File('/System/Library/Fonts/Supplemental/Arial Unicode.ttf')
+          .readAsBytes()
+          .then((List<int> b) => ByteData.sublistView(Uint8List.fromList(b))));
+    await fallback.load();
   });
 
   const Size desktop = Size(1440, 900);
@@ -198,5 +219,77 @@ void main() {
     await _show(tester, app, SupplierBillsScreen(service: service));
     await _save(tester, 'phone-supplier-bills');
     await tester.pumpWidget(const SizedBox()); // stops the list's refresh timer
+  });
+
+  testWidgets('phone: a customer bill, part paid', (WidgetTester tester) async {
+    final TestApp app = await _app(tester, phone, 3, backend: _billing());
+    // GST-inclusive MRPs at 12%, split CGST/SGST inside Uttar Pradesh.
+    Map<String, Object?> line(int no, String name, int pack, int strips, int mrp, int taxable, int batch) =>
+        <String, Object?>{
+          'line_no': no, 'product_id': 'p$no', 'batch_id': 'b$no', 'name': name, 'hsn': '3004',
+          'unit': 'Tablets', 'pack_size': pack, 'batch_no': 'B$batch', 'expiry_date': '2027-12-31',
+          'qty_units': pack * strips, 'mrp_paise': mrp, 'rate_paise': (mrp / 1.12).round(),
+          'discount_bp': 0, 'discount_paise': 0, 'gst_rate_bp': 1200, 'taxable_paise': taxable,
+          'cgst_paise': (mrp * strips - taxable) ~/ 2, 'sgst_paise': (mrp * strips - taxable) ~/ 2,
+          'igst_paise': 0, 'total_paise': mrp * strips,
+        };
+    final Bill bill = Bill.fromJson(<String, dynamic>{
+      ...sampleBill(),
+      'invoice_no': 'CCM/26-27/000318', 'seq': 318, 'bill_date': '2026-10-17',
+      'created_at': '2026-10-17T11:42:00+05:30',
+      'payment_mode': 'credit', 'party_id': 'p-1', 'paid_paise': 20000, 'balance_paise': 27020,
+      'customer_name': 'Ramesh Kumar', 'customer_phone': '98390 12345', 'customer_gstin': null,
+      'customer_state_code': '09', 'customer_address': 'Aminabad, Lucknow',
+      'place_of_supply': '09', 'place_of_supply_name': 'Uttar Pradesh', 'is_inter_state': false,
+      'seller': <String, dynamic>{
+        'name': 'City Care Medical Store', 'address': '12 Station Road, Aminabad, Lucknow',
+        'phone': '0522 4012233', 'gstin': '09AQKPS4821M1Z6', 'state_code': '09',
+        'drug_license_no': 'UP3220B000412',
+      },
+      'subtotal_paise': 47020, 'discount_paise': 0, 'taxable_paise': 41982,
+      'cgst_paise': 2519, 'sgst_paise': 2519, 'igst_paise': 0, 'round_off_paise': 0, 'total_paise': 47020,
+      'items': <Map<String, Object?>>[
+        line(1, 'Dolo 650', 15, 2, 3360, 6000, 3975),
+        line(2, 'Allegra 120', 10, 1, 23800, 21250, 1607),
+        line(3, 'Pan 40', 15, 1, 16500, 14732, 2211),
+      ],
+    });
+    await _show(tester, app, BillDetailScreen(bill: bill, justCreated: true, api: BillingApi(app.backend.api)));
+    await _save(tester, 'phone-bill');
+  });
+
+  testWidgets('desktop: stock value report', (WidgetTester tester) async {
+    final TestApp app = await _app(tester, desktop, 2);
+    await _show(tester, app, const ReportsScreen(initialTab: 1));
+    await _save(tester, 'desktop-reports');
+  });
+
+  testWidgets('phone: checking a supplier bill', (WidgetTester tester) async {
+    final TestApp app = await _app(tester, phone, 3);
+    Map<String, Object?> item(String name, String maker, String pack, String batch, String exp, int qty, int free, double mrp, double rate) =>
+        <String, Object?>{
+          'product_name': name, 'manufacturer': maker, 'pack': pack, 'batch_no': batch,
+          'expiry_date': exp, 'quantity': qty, 'free_quantity': free, 'mrp': mrp,
+          'purchase_rate': rate, 'discount_percent': 5, 'gst_percent': 12, 'hsn': '3004',
+        };
+    final InvoiceScan scan = InvoiceScan(
+      id: 2,
+      status: 'done',
+      result: <String, dynamic>{
+        'supplier_name': 'Om Sai Medical Agencies',
+        'supplier_gstin': '09AAOPV3391R1ZF',
+        'invoice_no': 'OSMA-26-11873',
+        'invoice_date': '2026-10-09',
+        'notes': '',
+        'items': <Object>[
+          item('Dolo 650 Tab', 'Micro Labs', '15 TAB', 'DOBS4102', '2028-03-31', 20, 2, 33.60, 22.40),
+          item('Montair LC Tab', 'Cipla', '10 TAB', 'MLC7741', '2027-11-30', 30, 3, 210.00, 136.76),
+          item('Azithral 500 Tab', 'Alembic', '5 TAB', 'AX82118', '2028-05-31', 25, 2, 119.50, 79.19),
+          item('Cyclopam Tab', 'Indoco', '10 TAB', 'M85752', '2028-11-30', 10, 0, 53.00, 36.84),
+        ],
+      },
+    );
+    await _show(tester, app, InvoiceScanScreen(initialScan: scan));
+    await _save(tester, 'phone-invoice-check');
   });
 }

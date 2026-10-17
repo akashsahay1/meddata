@@ -14,7 +14,7 @@
 .legal-hero { padding-block: 48px 40px; }
 .legal-hero h1 { font-size: clamp(2rem, 4.4vw, 3rem); }
 .legal-hero p { color: var(--mist); margin-top: 12px; }
-.legal { max-width: 760px; margin: 0 auto; }
+.legal { max-width: var(--wrap); margin: 0 auto; }
 .legal h2 { font-size: 1.35rem; margin: 40px 0 12px; }
 .legal h3 { font-size: 1.05rem; margin: 24px 0 8px; }
 .legal p, .legal li { color: #2C3B52; }
