@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/formatters.dart';
+import '../../core/inr.dart';
 import '../../data/models/medicine.dart';
 import '../../domain/medicine_status.dart';
 import '../../domain/product_stock.dart';
@@ -330,16 +331,6 @@ class _DashboardBody extends StatelessWidget {
     required this.onOpenMedicine,
   });
 
-  static String _grouped(int n) {
-    final String s = n.abs().toString();
-    final StringBuffer b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      if (i != 0 && (s.length - i) % 3 == 0) b.write(',');
-      b.write(s[i]);
-    }
-    return b.toString();
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<Medicine> all = mp.visibleAllForAlerts;
@@ -366,8 +357,8 @@ class _DashboardBody extends StatelessWidget {
       children: <Widget>[
         _DashboardSummary(
           desktop: AdaptiveLayout.isDesktop(context),
-          stockValue: '$currency${_grouped(mp.totalStockValue.round())}',
-          totalUnits: '${_grouped(totalUnits)} units',
+          stockValue: '$currency${Inr.group(mp.totalStockValue.round())}',
+          totalUnits: '${Inr.group(totalUnits)} units',
           medicineCount: '${mp.productCount}',
           categoryLabel: catCount == 1 ? '1 category' : '$catCount categories',
           lowStockCount: mp.lowStockCount,
@@ -738,8 +729,8 @@ class _DesktopHome extends StatelessWidget {
           _DashboardSummary(
             desktop: true,
             stockValue:
-                '${settings.currency}${_DashboardBody._grouped(mp.totalStockValue.round())}',
-            totalUnits: '${_DashboardBody._grouped(totalUnits)} units',
+                '${settings.currency}${Inr.group(mp.totalStockValue.round())}',
+            totalUnits: '${Inr.group(totalUnits)} units',
             medicineCount: '${mp.productCount}',
             categoryLabel: catCount == 1 ? '1 category' : '$catCount categories',
             lowStockCount: mp.lowStockCount,

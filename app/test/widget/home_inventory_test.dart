@@ -47,6 +47,19 @@ void main() {
       expect(find.byType(ReportsScreen), findsOneWidget);
     });
 
+    // Home grouped the stock value by thousands (₹127,751); bills and
+    // reports use lakhs (₹1,27,751).
+    testWidgets('stock value uses Indian digit grouping',
+        (WidgetTester tester) async {
+      final TestApp app = await start(tester, seeded: false);
+      await app.addBatch('Telma 40', qty: 4258, mrp: 30);
+      await tester.pumpWidget(app.wrap(const HomeScreen()));
+      await tester.pumpAndSettle();
+
+      expect(cardValue(StatCard, 'Stock value', '₹1,27,740'), findsOneWidget);
+      expect(find.text('4,258 units'), findsOneWidget);
+    });
+
     testWidgets('needs attention lists each problem medicine, worst first',
         (WidgetTester tester) async {
       final TestApp app = await start(tester);
