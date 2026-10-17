@@ -109,7 +109,12 @@ class AdminPanelSmokeTest extends TestCase
             ->assertOk()
             ->assertSee('The smarter way')
             ->assertSee('₹99')
+            ->assertSee('medikabiz_logo_dark.png')
+            // A shared link shows the logo card (WhatsApp, Facebook, LinkedIn).
+            ->assertSee('<meta property="og:image" content="http', false)
+            ->assertSee('/images/og-medikabiz.png">', false)
             ->assertDontSee('Sign in');
+        $this->assertFileExists(public_path('images/og-medikabiz.png'));
 
         $this->get('/admin')->assertRedirect('/admin/login');
         $this->get('/admin/login')

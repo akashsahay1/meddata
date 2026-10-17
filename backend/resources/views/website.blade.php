@@ -3,10 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>MedikaBiz</title>
+<title>Medikabiz</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="Pharmacy inventory, expiry alerts, GST billing and reports for Indian medical shops. 7-day free trial, then ₹99 a month or ₹999 a year.">
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Medikabiz">
+<meta property="og:title" content="Medikabiz: the smarter way to manage your pharmacy">
+<meta property="og:description" content="Stock, expiry alerts, GST billing and reports for medical shops. 7-day free trial, then ₹99 a month or ₹999 a year.">
+<meta property="og:url" content="{{ url('/') }}">
+<meta property="og:image" content="{{ asset('images/og-medikabiz.png') }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Medikabiz logo: Stock, Billing, Invoicing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{{ asset('images/og-medikabiz.png') }}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@600;700;800&family=Figtree:wght@400;500;600;700&display=swap">
@@ -14,11 +26,11 @@
 /* Layout: the brochure's rhythm, alternating navy and paper bands, each a centred 1120px column;
    the hero pairs the promise with a phone showing the real Home screen numbers. */
 :root {
-  --navy: #0B1730;
-  --navy-2: #14244A;
-  --navy-line: #24365F;
-  --teal: #19BFAE;
-  --teal-ink: #0A7D72;
+  --navy: #071D3B;
+  --navy-2: #0E2A52;
+  --navy-line: #1E3B66;
+  --teal: #00B88D;
+  --teal-ink: #00785C;
   --paper: #F3F7FA;
   --card: #FFFFFF;
   --ink: #0B1730;
@@ -60,46 +72,36 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 14px; font: 700 1rem/1 var(--display); text-decoration: none; transition: transform .15s ease, background .15s ease; }
 .btn:hover { transform: translateY(-1px); }
 .btn-teal { background: var(--teal); color: var(--navy); }
-.btn-teal:hover { background: #2AD0BF; }
+.btn-teal:hover { background: #1FCB9F; }
 .btn-ghost { border: 1.5px solid var(--navy-line); color: #fff; }
 .btn-ghost:hover { border-color: var(--teal); }
 @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
 
 /* Header + hero */
 .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: clamp(40px, 7vw, 72px); }
-.brand { font: 800 1.3rem/1 var(--display); letter-spacing: 0.08em; color: var(--teal); text-decoration: none; }
+.brand { display: block; line-height: 0; }
+.brand img { height: 44px; width: auto; }
 .nav { display: flex; gap: 6px 22px; flex-wrap: wrap; }
 .nav a { color: var(--mist); text-decoration: none; font-weight: 600; font-size: 0.95rem; padding: 10px 0; }
 .nav a:hover { color: #fff; }
 .hero { position: relative; overflow: hidden; }
 .hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; pointer-events: none; }
-.hero::before { width: 520px; height: 520px; right: -150px; top: -170px; background: var(--navy-2); box-shadow: 0 0 0 80px #0F1E3E; }
+.hero::before { width: 520px; height: 520px; right: -150px; top: -170px; background: var(--navy-2); box-shadow: 0 0 0 80px #0A2347; }
 .hero::after { width: 170px; height: 170px; right: 70px; top: 40px; background: var(--teal); opacity: .9; }
 .hero .wrap { position: relative; z-index: 1; }
-.hero-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center; }
+.hero-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 56px; align-items: center; }
 .hero-copy { display: grid; gap: 22px; min-width: 0; }
 .hero-copy .lede { font-size: 1.2rem; color: #DCE6F3; }
-.trial { justify-self: start; background: rgba(25, 191, 174, .16); color: var(--teal); border: 1px solid rgba(25, 191, 174, .45); font: 700 .78rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; padding: 9px 14px; border-radius: 999px; }
+.trial { justify-self: start; background: rgba(0, 184, 141, .16); color: var(--teal); border: 1px solid rgba(0, 184, 141, .45); font: 700 .78rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; padding: 9px 14px; border-radius: 999px; }
 .price-line { font: 700 1.45rem/1.2 var(--display); }
 .price-line span { color: var(--mist); font-weight: 600; font-size: 1rem; }
 .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
 .platforms { color: var(--mist); font-size: .95rem; }
 
-.phone { justify-self: center; width: min(300px, 100%); background: #0E1A33; border: 2px solid #2B3D63; border-radius: 40px; padding: 12px; box-shadow: 0 30px 60px rgba(0,0,0,.45); }
-.screen { background: #F6F8FB; border-radius: 30px; overflow: hidden; color: var(--ink); }
-.screen-bar { background: var(--navy-2); color: #fff; font: 700 1rem/1 var(--display); padding: 22px 18px 16px; }
-.screen-body { padding: 16px; display: grid; gap: 12px; }
-.screen-body small { color: var(--slate); font-weight: 600; font-size: .78rem; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tile { background: #fff; border-radius: 14px; padding: 12px; box-shadow: 0 2px 6px rgba(11,23,48,.08); display: grid; gap: 4px; }
-.tile b { font: 800 1.35rem/1 var(--display); font-variant-numeric: tabular-nums; }
-.tile .v-teal { color: var(--teal-ink); }
-.tile .v-amber { color: #B86A00; }
-.watch { background: #DDF6F2; border-radius: 14px; padding: 12px; font-weight: 700; font-size: .85rem; }
-.quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.quick div { background: #fff; border-radius: 12px; padding: 10px 4px; text-align: center; font-size: .72rem; font-weight: 700; box-shadow: 0 2px 6px rgba(11,23,48,.08); display: grid; gap: 4px; justify-items: center; }
-.quick svg { width: 18px; height: 18px; stroke: var(--teal-ink); }
-.preview-note { text-align: center; color: var(--slate); font-size: .7rem; font-weight: 600; padding-bottom: 6px; }
+.shots { position: relative; margin: 0 0 0 4%; min-width: 0; }
+.shots img { display: block; height: auto; }
+.shots .desk { width: 100%; border-radius: 14px; border: 1px solid var(--navy-line); box-shadow: 0 30px 70px rgba(0, 0, 0, .45); }
+.shots .hand { position: absolute; width: 27%; left: -9%; bottom: -12%; border-radius: 22px; border: 5px solid #0B1426; box-shadow: 0 24px 50px rgba(0, 0, 0, .5); }
 
 .promise { margin-top: clamp(48px, 7vw, 80px); background: var(--navy-2); border: 1px solid var(--navy-line); border-radius: var(--radius); padding: 26px 28px; display: grid; grid-template-columns: auto 1fr; gap: 10px 28px; align-items: baseline; }
 .promise p { font: 700 clamp(1.15rem, 2.4vw, 1.5rem)/1.35 var(--display); }
@@ -112,13 +114,22 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
 .answer { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; }
 .answer strong { font: 800 clamp(1.1rem, 2.4vw, 1.45rem)/1.3 var(--display); }
 
+/* Screens */
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
+.gallery figure { margin: 0; display: grid; gap: 12px; min-width: 0; }
+.gallery img { display: block; width: 100%; height: auto; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(7, 29, 59, .12); }
+.gallery .tall img { border-radius: 26px; border: 5px solid var(--navy); }
+.gallery figcaption { color: var(--slate); font-size: .95rem; }
+.gallery figcaption b { color: var(--ink); font-family: var(--display); display: block; font-size: 1.05rem; }
+.gallery .wide { grid-column: 1 / -1; display: grid; grid-template-columns: 1.6fr 1fr; gap: 24px; align-items: center; }
+
 /* Features */
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .feature { background: var(--navy-2); border: 1px solid var(--navy-line); border-radius: var(--radius); padding: 24px; display: grid; gap: 10px; align-content: start; min-width: 0; }
 .feature p { color: var(--mist); font-size: .98rem; }
 .feature .icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; }
 .feature .icon svg { width: 22px; height: 22px; stroke: var(--navy); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.feature.wide { grid-column: span 3; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px 22px; background: linear-gradient(120deg, #123B4A, var(--navy-2) 60%); border-color: #1F5C66; }
+.feature.wide { grid-column: span 3; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px 22px; background: linear-gradient(120deg, #0B3F4C, var(--navy-2) 60%); border-color: #17606A; }
 .feature.wide p { max-width: 70ch; }
 .new { justify-self: start; font: 700 .72rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--navy); background: var(--teal); padding: 7px 10px; border-radius: 999px; }
 .fine { color: var(--mist); font-size: .85rem; margin-top: 18px; }
@@ -148,7 +159,7 @@ a:focus-visible, button:focus-visible, summary:focus-visible { outline: 3px soli
 
 /* Mission */
 .mission { display: grid; grid-template-columns: auto 1fr 1fr; gap: 28px 40px; align-items: center; }
-.heart { width: 132px; height: 132px; border-radius: 50%; background: #D8F5F0; display: grid; place-items: center; }
+.heart { width: 132px; height: 132px; border-radius: 50%; background: #D5F5EC; display: grid; place-items: center; }
 .heart svg { width: 60px; height: 60px; fill: var(--teal); }
 .mission h3 { font-size: 1.35rem; }
 .mission .who { font: 700 .78rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--teal-ink); margin-bottom: 10px; }
@@ -176,6 +187,9 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
   .feature.wide .btn { grid-column: 1 / -1; justify-self: start; }
   .day { grid-template-columns: 1fr 1fr; }
   .mission { grid-template-columns: 1fr; }
+  .gallery { grid-template-columns: 1fr 1fr; }
+  .gallery .wide { grid-template-columns: 1fr; }
+  .shots { margin: 24px 0 40px 9%; }
   .faq { grid-template-columns: 1fr; }
   .hero::after { right: -40px; top: -40px; }
 }
@@ -183,7 +197,9 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
   .features, .trio, .plans, .day { grid-template-columns: 1fr; }
   .feature.wide { grid-column: auto; grid-template-columns: 1fr; }
   .promise { grid-template-columns: 1fr; }
-  .hero::before { width: 360px; height: 360px; right: -200px; top: -200px; box-shadow: 0 0 0 50px #0F1E3E; }
+  .gallery { grid-template-columns: 1fr; }
+  .gallery .tall { max-width: 300px; justify-self: center; }
+  .hero::before { width: 360px; height: 360px; right: -200px; top: -200px; box-shadow: 0 0 0 50px #0A2347; }
   .hero::after { width: 110px; height: 110px; right: -30px; top: -30px; }
 }
 </style>
@@ -193,7 +209,7 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
 <section class="band dark hero">
   <div class="wrap">
     <header class="top">
-      <a class="brand" href="#">MEDIKABIZ</a>
+      <a class="brand" href="#"><img src="/images/medikabiz_logo_dark.png" alt="Medikabiz" width="168" height="44"></a>
       <nav class="nav" aria-label="Sections">
         <a href="#features">Features</a>
         <a href="#pricing">Pricing</a>
@@ -213,26 +229,10 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
         </div>
         <p class="platforms">Android phone · Windows computer · Mac</p>
       </div>
-      <div class="phone" role="img" aria-label="MedikaBiz home screen: stock value ₹2.4 lakh, 8 medicines low on stock, 12 expiring soon, and quick actions">
-        <div class="screen">
-          <div class="screen-bar">MedikaBiz</div>
-          <div class="screen-body">
-            <small>Pharmacy overview</small>
-            <div class="tiles">
-              <div class="tile"><small>Stock value</small><b class="v-teal">₹2.4L</b></div>
-              <div class="tile"><small>Low stock</small><b class="v-amber">08</b></div>
-            </div>
-            <div class="watch">Expiry watch · 12 items</div>
-            <small>QUICK ACTIONS</small>
-            <div class="quick">
-              <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New bill</div>
-              <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Stock</div>
-              <div><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18l6-6 4 4 6-7"/><path d="M15 9h5v5"/></svg>Reports</div>
-            </div>
-            <p class="preview-note">Illustrative preview</p>
-          </div>
-        </div>
-      </div>
+      <figure class="shots">
+        <img class="desk" src="/images/screens/desktop-home.webp" width="1600" height="1000" alt="Medikabiz on a computer: stock value, medicines that need attention and quick actions">
+        <img class="hand" src="/images/screens/phone-home.webp" width="780" height="1688" alt="Medikabiz on an Android phone: home screen with stock value and alerts">
+      </figure>
     </div>
     <div class="promise">
       <span class="eyebrow">The promise</span>
@@ -246,14 +246,41 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
     <div class="head">
       <span class="eyebrow">Why it matters</span>
       <h2 id="why">Everyday pharmacy work deserves better visibility.</h2>
-      <p class="lede">MedikaBiz helps owners run routine work the same way every day, instead of relying on memory, registers and scattered slips.</p>
+      <p class="lede">Medikabiz helps owners run routine work the same way every day, instead of relying on memory, registers and scattered slips.</p>
     </div>
     <div class="trio">
       <div class="problem"><span class="dot" style="background: var(--amber)"></span><h3>When stock is hard to track</h3><p>Manual checks make it hard to know what is on the shelf and what needs to be ordered again.</p></div>
       <div class="problem"><span class="dot" style="background: var(--coral)"></span><h3>When expiry is easy to miss</h3><p>A warning window you set brings medicines that are expiring soon, or already expired, to your attention.</p></div>
       <div class="problem"><span class="dot" style="background: var(--blue)"></span><h3>When balances are unclear</h3><p>Bill history and unpaid balances show who owes what, so payment follow-up doesn't depend on a notebook.</p></div>
     </div>
-    <p class="answer"><span class="eyebrow">MedikaBiz answer</span><strong>A dashboard, filters, alerts, billing and reports in one place.</strong></p>
+    <p class="answer"><span class="eyebrow">Medikabiz answer</span><strong>A dashboard, filters, alerts, billing and reports in one place.</strong></p>
+  </div>
+</section>
+
+<section class="band" aria-labelledby="shotsh" style="padding-top: 0">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">See it at work</span>
+      <h2 id="shotsh">The real app, on the counter and in your pocket</h2>
+    </div>
+    <div class="gallery">
+      <figure class="wide">
+        <img src="/images/screens/desktop-inventory.webp" width="1600" height="1000" loading="lazy" alt="Inventory table on a computer with stock, batches, MRP, nearest expiry and status for each medicine">
+        <figcaption><b>Every medicine, every batch</b>Stock in strips and loose tablets, MRP, the nearest expiry and a clear status. Filter to low stock, expiring soon or expired in one tap.</figcaption>
+      </figure>
+      <figure class="tall">
+        <img src="/images/screens/phone-new-bill.webp" width="780" height="1688" loading="lazy" alt="New bill on a phone with Dolo 650, Allegra 120 and Pan 40, total 437 rupees">
+        <figcaption><b>Bill at the counter</b>Search or scan, pick the batch, add strips or loose tablets. GST is worked out for you.</figcaption>
+      </figure>
+      <figure class="tall">
+        <img src="/images/screens/phone-alerts.webp" width="780" height="1688" loading="lazy" alt="Alerts on a phone listing expired, expiring and low-stock medicines">
+        <figcaption><b>Alerts before it's too late</b>Expired, expiring soon and low-stock medicines in one list.</figcaption>
+      </figure>
+      <figure class="tall">
+        <img src="/images/screens/phone-supplier-bills.webp" width="780" height="1688" loading="lazy" alt="Supplier bills on a phone: two being read, three ready to check">
+        <figcaption><b>Supplier bills, read for you</b>Add a pile of bills at once. Each one is ready to check in moments.</figcaption>
+      </figure>
+    </div>
   </div>
 </section>
 
@@ -315,7 +342,7 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
         <div style="display: grid; gap: 8px; min-width: 0">
           <span class="new">New</span>
           <h3>Add stock from supplier bills</h3>
-          <p>Photograph your supplier's bills or pick their PDFs, as many as you have. MedikaBiz reads the medicines, batches, expiry dates and rates. You check each item, and only then is it added to stock.</p>
+          <p>Photograph your supplier's bills or pick their PDFs, as many as you have. Medikabiz reads the medicines, batches, expiry dates and rates. You check each item, and only then is it added to stock.</p>
         </div>
       </article>
     </div>
@@ -325,7 +352,7 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
 <section class="band" aria-labelledby="dayh">
   <div class="wrap">
     <div class="head">
-      <span class="eyebrow">A day with MedikaBiz</span>
+      <span class="eyebrow">A day with Medikabiz</span>
       <h2 id="dayh">From opening to closing</h2>
     </div>
     <div class="day">
@@ -342,7 +369,7 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
   <div class="wrap">
     <div class="head">
       <span class="eyebrow">Pricing</span>
-      <h2 id="price">Try MedikaBiz free for 7 days</h2>
+      <h2 id="price">Try Medikabiz free for 7 days</h2>
       <p class="lede">Use the whole app first, then choose monthly or yearly.</p>
     </div>
     <div class="plans">
@@ -374,11 +401,11 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
     <div class="head">
       <span class="eyebrow">Purpose-led</span>
       <h2 id="missionh">Useful technology with a social mission</h2>
-      <p class="lede">MedikaBiz operates under Yatharthvadi Foundation, a Section 8 company.</p>
+      <p class="lede">Medikabiz operates under Yatharthvadi Foundation, a Section 8 company.</p>
     </div>
     <div class="mission">
       <div class="heart" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.5 2.9 4.5 6.6 4.5c2.1 0 3.6 1.1 5.4 3 1.8-1.9 3.3-3 5.4-3 3.7 0 5.7 4 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg></div>
-      <div><p class="who">MedikaBiz</p><h3>Practical tools for pharmacy owners.</h3></div>
+      <div><p class="who">Medikabiz</p><h3>Practical tools for pharmacy owners.</h3></div>
       <div><p class="who">Yatharthvadi Foundation</p><h3>A portion of subscription profits is intended to support social work.</h3></div>
     </div>
     <p class="motto">Subscribe for the software. Support a wider purpose.</p>
@@ -411,13 +438,13 @@ footer { border-top: 1px solid var(--navy-line); margin-top: 56px; padding-top: 
         <p class="lede">Message us on WhatsApp. We'll send the app for your phone or computer and help you set up your shop.</p>
       </div>
       <div class="contact">
-        <a class="btn btn-teal" href="https://wa.me/917053792466?text=Hello%2C%20I%20want%20to%20try%20MedikaBiz">Message us on WhatsApp</a>
+        <a class="btn btn-teal" href="https://wa.me/917053792466?text=Hello%2C%20I%20want%20to%20try%20Medikabiz">Message us on WhatsApp</a>
         <span>or call or WhatsApp</span>
         <span class="num">+91 70537 92466</span>
       </div>
     </div>
     <footer>
-      <span>MedikaBiz · Pharmacy management, made simpler</span>
+      <span>Medikabiz · Pharmacy management, made simpler</span>
       <span>A Yatharthvadi Foundation initiative</span>
     </footer>
   </div>
