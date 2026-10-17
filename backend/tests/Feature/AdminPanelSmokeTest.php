@@ -122,6 +122,31 @@ class AdminPanelSmokeTest extends TestCase
             ->assertSee('Sign in');
     }
 
+    // Razorpay and Indian data-protection rules expect these pages; each is
+    // linked from the footer of every page.
+    public function test_the_legal_pages_open_from_the_footer(): void
+    {
+        $pages = [
+            '/privacy-policy' => 'Privacy Policy',
+            '/terms' => 'Terms of Service',
+            '/refund-policy' => 'Refund &amp; Cancellation Policy',
+            '/delivery-policy' => 'Delivery Policy',
+            '/cookie-policy' => 'Cookie Policy',
+            '/disclaimer' => 'Disclaimer',
+            '/contact' => 'Contact Us',
+        ];
+        $home = $this->get('/')->assertOk();
+        foreach ($pages as $path => $title) {
+            $home->assertSee('href="'.$path.'"', false);
+            $this->get($path)
+                ->assertOk()
+                ->assertSee("<h1>{$title}</h1>", false)
+                ->assertSee('Yatharthvadi Foundation')
+                ->assertSee('href="/privacy-policy"', false);
+        }
+        $this->get('/cookie-policy')->assertSee(config('session.cookie'));
+    }
+
     public function test_dashboard_renders_with_shop_data(): void
     {
         $this->seedShop();
