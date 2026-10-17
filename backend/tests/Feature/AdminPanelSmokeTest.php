@@ -109,7 +109,7 @@ class AdminPanelSmokeTest extends TestCase
             ->assertOk()
             ->assertSee('The smarter way')
             ->assertSee('₹99')
-            ->assertSee('medikabiz_logo_dark.png')
+            ->assertSee('medikabiz_logo_web.png')
             // A shared link shows the logo card (WhatsApp, Facebook, LinkedIn).
             ->assertSee('<meta property="og:image" content="http', false)
             ->assertSee('/images/og-medikabiz.png">', false)

@@ -76,6 +76,13 @@ Future<TestApp> _app(WidgetTester tester, Size size, double dpr,
     {FakeBackend? backend}) async {
   tester.view.physicalSize = size * dpr;
   tester.view.devicePixelRatio = dpr;
+  // A phone's status bar and gesture bar, so the app lays out as on a real
+  // phone; the website draws the status icons into that band.
+  if (size.width < 600) {
+    final FakeViewPadding bars = FakeViewPadding(top: 36 * dpr, bottom: 20 * dpr);
+    tester.view.padding = bars;
+    tester.view.viewPadding = bars;
+  }
   addTearDown(tester.view.reset);
   final TestApp app = await TestApp.create(signedIn: true, backend: backend);
   addTearDown(app.dispose);
