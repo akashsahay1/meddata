@@ -29,6 +29,7 @@ import 'bill_detail_screen.dart';
 import 'billing_widgets.dart';
 import 'shop_settings_screen.dart';
 import '../../widgets/adaptive_layout.dart';
+import '../../widgets/ui_kit.dart' show TapTarget;
 
 enum _Gate { checking, ready, offline, failed }
 
@@ -727,35 +728,16 @@ builder: (_) => ShopSettingsScreen(api: _api)));
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: _CartItemCard(
+            key: ObjectKey(item),
             cart: _cart,
             item: item,
             lines: lines.where((CartLine l) => identical(l.item, item)).toList(),
-            onEditQty: () => _editQty(item),
             onEditDiscount: () => _editDiscount(item),
             onChangeBatch: () => _changeBatch(item),
           ),
         ),
     ];
   }
-
-  Future<void> _editQty(CartItem item) async {
-    final int? qty = PackSize.applies(item.unit, item.packSize)
-        ? await _packQtyDialog(item)
-        : await _numberDialog(
-            title: 'Quantity (${item.unit})',
-            initial: '${item.qty}',
-            decimal: false,
-            validate: (String v) => (int.tryParse(v) ?? 0) >= 1 ? null : 'Enter 1 or more',
-          ).then((String? v) => v == null ? null : int.tryParse(v));
-    if (qty != null) _cart.setQty(item, qty);
-  }
-
-  /// Quantity as packs + loose pieces ("2 strips + 3 tablets"); returns
-  /// the total in pieces.
-  Future<int?> _packQtyDialog(CartItem item) => showDialog<int>(
-        context: context,
-        builder: (_) => _PackQtyDialog(item: item),
-      );
 
   Future<void> _editDiscount(CartItem item) async {
     final String? v = await _numberDialog(
@@ -1003,29 +985,33 @@ builder: (_) => ShopSettingsScreen(api: _api)));
     );
   }
 
+  void _setPayment(PaymentMode m) => _cart.update(() {
+        _cart.paymentMode = m;
+        if (m == PaymentMode.credit) _showCustomer = true;
+      });
+
   Widget _paymentSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const BillingSectionLabel('Payment'),
-        Wrap(
-          spacing: 8,
-          // The pills' 48dp touch boxes already leave 8dp between rows.
-          children: <Widget>[
-            for (final PaymentMode m in PaymentMode.values)
-              PillChoice(
-                label: m.label,
-                icon: paymentIcon(m),
-                selected: _cart.paymentMode == m,
-                onTap: () => _cart.update(() {
-                  _cart.paymentMode = m;
-                  if (m == PaymentMode.credit) _showCustomer = true;
-                }),
-              ),
-          ],
-        ),
+        if (_wide || _cart.paymentMode != PaymentMode.credit) const BillingSectionLabel('Payment'),
+        // On a phone the payment choice sits in the bottom bar.
+        if (_wide)
+          Wrap(
+            spacing: 8,
+            // The pills' 48dp touch boxes already leave 8dp between rows.
+            children: <Widget>[
+              for (final PaymentMode m in PaymentMode.values)
+                PillChoice(
+                  label: m.label,
+                  icon: paymentIcon(m),
+                  selected: _cart.paymentMode == m,
+                  onTap: () => _setPayment(m),
+                ),
+            ],
+          ),
         if (_cart.paymentMode != PaymentMode.credit) ...<Widget>[
-          const SizedBox(height: 12),
+          if (_wide) const SizedBox(height: 12),
           TextField(
             controller: _received,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -1101,31 +1087,104 @@ builder: (_) => ShopSettingsScreen(api: _api)));
     );
   }
 
+  /// Phone: payment choice, the total with its GST, and Create bill, each
+  /// on its own row so a lakh-rupee total never pushes the button off.
   Widget _bottomBar() {
     final GstTotals t = _cart.totals;
+    final int n = _cart.items.length;
+    const TextStyle small = TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.card,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.paddingOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          _PaySwitch(mode: _cart.paymentMode, onChanged: _setPayment),
+          const SizedBox(height: 8),
+          Row(
+            children: <Widget>[
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Total', style: AppTheme.display(size: 15, weight: FontWeight.w700, color: AppColors.ink)),
+                  Text('$n ${n == 1 ? 'medicine' : 'medicines'}', style: small),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(Inr.format(t.totalPaise),
+                          style: AppTheme.display(size: 24, weight: FontWeight.w800, color: AppColors.ink)
+                              .copyWith(fontFeatures: const <FontFeature>[FontFeature.tabularFigures()])),
+                    ),
+                    if (_cart.shop?.gstin != null)
+                      Text('incl. GST ${Inr.format(t.cgstPaise + t.sgstPaise + t.igstPaise)}',
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: small),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _createButton(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cash | UPI | Card | Credit as one full-width switch (phone bottom bar).
+class _PaySwitch extends StatelessWidget {
+  const _PaySwitch({required this.mode, required this.onChanged});
+
+  final PaymentMode mode;
+  final ValueChanged<PaymentMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        color: AppColors.canvas,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
         children: <Widget>[
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text('${_cart.items.length} ${_cart.items.length == 1 ? 'medicine' : 'medicines'}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.muted)),
-                Text(Inr.format(t.totalPaise),
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.4, color: AppColors.ink)),
-              ],
+          for (final PaymentMode m in PaymentMode.values)
+            Expanded(
+              child: TapTarget(
+                label: m.label,
+                tooltip: false,
+                selected: m == mode,
+                onTap: () => onChanged(m),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: m == mode ? AppColors.navy : null,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Text(m.label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: m == mode ? Colors.white : AppColors.muted,
+                      )),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(width: 190, child: _createButton()),
         ],
       ),
     );
@@ -1134,12 +1193,12 @@ builder: (_) => ShopSettingsScreen(api: _api)));
 
 /// One medicine on the bill: quantity, discount, and the batches it sells
 /// from (FEFO) with their expiry and MRP.
-class _CartItemCard extends StatelessWidget {
+class _CartItemCard extends StatefulWidget {
   const _CartItemCard({
+    super.key,
     required this.cart,
     required this.item,
     required this.lines,
-    required this.onEditQty,
     required this.onEditDiscount,
     required this.onChangeBatch,
   });
@@ -1147,9 +1206,49 @@ class _CartItemCard extends StatelessWidget {
   final BillCart cart;
   final CartItem item;
   final List<CartLine> lines;
-  final VoidCallback onEditQty;
   final VoidCallback onEditDiscount;
   final VoidCallback onChangeBatch;
+
+  @override
+  State<_CartItemCard> createState() => _CartItemCardState();
+}
+
+class _CartItemCardState extends State<_CartItemCard> {
+  late final TextEditingController _qty = TextEditingController(text: '${item.qty}');
+  final FocusNode _qtyFocus = FocusNode();
+
+  BillCart get cart => widget.cart;
+  CartItem get item => widget.item;
+  List<CartLine> get lines => widget.lines;
+
+  @override
+  void initState() {
+    super.initState();
+    // Leaving the box empty (or 0) puts the bill's quantity back.
+    _qtyFocus.addListener(() {
+      if (!_qtyFocus.hasFocus) _showQty();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_CartItemCard old) {
+    super.didUpdateWidget(old);
+    if (int.tryParse(_qty.text) != item.qty && !_qtyFocus.hasFocus) _showQty();
+  }
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    _qtyFocus.dispose();
+    super.dispose();
+  }
+
+  void _showQty() => _qty.text = '${item.qty}';
+
+  void _setQty(int qty) {
+    _qty.text = '$qty';
+    cart.setQty(item, qty);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1158,6 +1257,15 @@ class _CartItemCard extends StatelessWidget {
     final int available = cart.available(item);
     final DateFormat exp = DateFormat('MM/yy');
     final int? rate = lines.isEmpty ? null : lines.first.gstRateBp;
+    // The box takes tablets; − and + move a whole strip (to the next full
+    // strip from a part strip). Without a pack size they move one.
+    final bool packs = PackSize.applies(item.unit, item.packSize);
+    final int step = PackSize.pricePack(item.unit, item.packSize);
+    final int less = ((item.qty + step - 1) ~/ step - 1) * step;
+    final int more = (item.qty ~/ step + 1) * step;
+    final VoidCallback? onLess = less >= 1 ? () => _setQty(less) : null;
+    final VoidCallback? onMore = more <= available ? () => _setQty(more) : null;
+    final String noun = packs ? ' ${PackSize.packNoun(item.unit)}' : '';
     return BillingCard(
       padding: const EdgeInsets.fromLTRB(14, 12, 8, 10),
       child: Column(
@@ -1196,35 +1304,50 @@ class _CartItemCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: <Widget>[
-              _StepButton(
-                icon: Icons.remove,
-                tooltip: 'One less',
-                onPressed: item.qty > 1 ? () => cart.setQty(item, item.qty - 1) : null,
-              ),
-              InkWell(
-                mouseCursor: WidgetStateMouseCursor.clickable,
-                onTap: onEditQty,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 52, minHeight: 40),
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('${item.qty}',
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.ink)),
+              _StepButton(icon: Icons.remove, tooltip: 'One$noun less', onPressed: onLess),
+              const SizedBox(width: 6),
+              SizedBox(
+                width: 72,
+                child: CallbackShortcuts(
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    const SingleActivator(LogicalKeyboardKey.arrowUp): () => onMore?.call(),
+                    const SingleActivator(LogicalKeyboardKey.arrowDown): () => onLess?.call(),
+                  },
+                  child: Semantics(
+                    label: 'Quantity in ${item.unit.toLowerCase()}',
+                    child: TextField(
+                      controller: _qty,
+                      focusNode: _qtyFocus,
+                      textAlign: TextAlign.center,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(5),
+                      ],
+                      style: AppTheme.display(size: 17, weight: FontWeight.w800, color: AppColors.ink),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        counterText: '',
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onTap: () => _qty.selection = TextSelection(baseOffset: 0, extentOffset: _qty.text.length),
+                      onChanged: (String v) {
+                        final int? n = int.tryParse(v);
+                        if (n != null && n >= 1) cart.setQty(item, n);
+                      },
+                    ),
+                  ),
                 ),
               ),
-              _StepButton(
-                icon: Icons.add,
-                tooltip: 'One more',
-                onPressed: item.qty < available ? () => cart.setQty(item, item.qty + 1) : null,
-              ),
+              const SizedBox(width: 6),
+              _StepButton(icon: Icons.add, tooltip: 'One$noun more', onPressed: onMore),
               // On the right; shrinks (the label ellipsised) rather than
               // overflow a narrow phone or large text.
               Expanded(
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
-                    onPressed: onEditDiscount,
+                    onPressed: widget.onEditDiscount,
                     icon: const Icon(Icons.percent, size: 16),
                     label: Text(item.discountBp > 0 ? Inr.percent(item.discountBp) : 'Discount',
                         maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1233,32 +1356,13 @@ class _CartItemCard extends StatelessWidget {
               ),
             ],
           ),
-          // Whole strips at a time, and the quantity read as strips + loose.
-          if (PackSize.applies(item.unit, item.packSize))
-            Row(
-              children: <Widget>[
-                TextButton(
-                  onPressed: item.qty > item.packSize
-                      ? () => cart.setQty(item, item.qty - item.packSize)
-                      : null,
-                  child: Text('− 1 ${PackSize.packNoun(item.unit)}'),
-                ),
-                TextButton(
-                  onPressed: item.qty + item.packSize <= available
-                      ? () => cart.setQty(item, item.qty + item.packSize)
-                      : null,
-                  child: Text('+ 1 ${PackSize.packNoun(item.unit)}'),
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    '= ${PackSize.breakdown(item.qty, item.unit, item.packSize)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.muted),
-                  ),
-                ),
-              ],
+          if (packs)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '= ${PackSize.breakdown(item.qty, item.unit, item.packSize)}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary),
+              ),
             ),
           const SizedBox(height: 4),
           for (final CartLine l in lines)
@@ -1294,7 +1398,7 @@ class _CartItemCard extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: onChangeBatch,
+              onPressed: widget.onChangeBatch,
               child: Text(item.pinnedBatchId == null ? 'Change batch' : 'Batch chosen · change'),
             ),
           ),
@@ -1326,103 +1430,9 @@ class _StepButton extends StatelessWidget {
   }
 }
 
-/// The strips + loose quantity dialog. A StatefulWidget so its controllers
-/// are disposed with the route, after the exit animation: disposing them
-/// from `whenComplete` (which fires at pop) left the fading dialog
-/// rebuilding fields on dead controllers.
-class _PackQtyDialog extends StatefulWidget {
-  const _PackQtyDialog({required this.item});
-
-  final CartItem item;
-
-  @override
-  State<_PackQtyDialog> createState() => _PackQtyDialogState();
-}
-
-class _PackQtyDialogState extends State<_PackQtyDialog> {
-  late final TextEditingController _packs;
-  late final TextEditingController _loose;
-  String? _error;
-
-  CartItem get item => widget.item;
-
-  @override
-  void initState() {
-    super.initState();
-    final (int packs, int loose) = PackSize.split(item.qty, item.packSize);
-    _packs = TextEditingController(text: packs == 0 ? '' : '$packs');
-    _loose = TextEditingController(text: loose == 0 ? '' : '$loose');
-  }
-
-  @override
-  void dispose() {
-    _packs.dispose();
-    _loose.dispose();
-    super.dispose();
-  }
-
-  int get _total =>
-      (int.tryParse(_packs.text.trim()) ?? 0) * item.packSize +
-      (int.tryParse(_loose.text.trim()) ?? 0);
-
-  void _done() {
-    if (_total < 1) {
-      setState(() => _error = 'Enter 1 or more');
-      return;
-    }
-    Navigator.of(context).pop(_total);
-  }
-
-  Widget _field(TextEditingController c, String label, {bool autofocus = false}) => TextField(
-        controller: c,
-        autofocus: autofocus,
-        keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
-        onChanged: (_) => setState(() => _error = null),
-        onSubmitted: (_) => _done(),
-        decoration: InputDecoration(labelText: label),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final String pack = PackSize.packNoun(item.unit);
-    final String piece = PackSize.pieceNoun(item.unit);
-    final String pieces = piece == 'ml' ? 'ml' : '${piece}s';
-    return AlertDialog(
-      title: Text('Quantity · 1 $pack = ${item.packSize} $pieces'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(child: _field(_packs, '${pack[0].toUpperCase()}${pack.substring(1)}s', autofocus: true)),
-              const SizedBox(width: 12),
-              Expanded(child: _field(_loose, 'Loose $pieces')),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _error ?? '= $_total ${item.unit.toLowerCase()}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _error == null ? AppColors.muted : AppColors.statusRed,
-            ),
-          ),
-        ],
-      ),
-      actions: <Widget>[
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        TextButton(onPressed: _done, child: const Text('OK')),
-      ],
-    );
-  }
-}
-
-/// One-number dialog (plain quantity, discount %). A StatefulWidget for the
-/// same reason as [_PackQtyDialog]: the controller must outlive the exit
-/// animation.
+/// One-number dialog (discount %). A StatefulWidget so its controller is
+/// disposed with the route, after the exit animation: disposing it at pop
+/// left the fading dialog rebuilding its field on a dead controller.
 class _NumberDialog extends StatefulWidget {
   const _NumberDialog({
     required this.title,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:medikabiz/data/models/medicine.dart';
 import 'package:medikabiz/data/repositories/billing_repository.dart';
@@ -209,17 +210,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('open'), findsOneWidget);
   });
-  testWidgets('strips + loose quantity: + 1 strip, the dialog, and closing it cleanly', (WidgetTester tester) async {
+  testWidgets('quantity in tablets: − and + move a strip, a lakh total fits a phone', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues(<String, Object>{'auth_token': 'tok', 'auth_email': 'a@b.c'});
     final AuthService auth =
         AuthService(SettingsService(), 'phone-1', null, _MemoryTokenStore());
     await auth.init();
     // Dolo 650 counted in tablets, a strip of 15, priced ₹30 a strip.
-    final MedicineProvider meds = MedicineProvider(_Meds(unit: 'Tablets', packSize: 15, qty: 100));
+    final MedicineProvider meds = MedicineProvider(_Meds(unit: 'Tablets', packSize: 15, qty: 99999));
     await meds.load();
     final SyncEngine sync = SyncEngine(tokenProvider: () => null, userKeyProvider: () => null);
     final _Server server = _Server()..online = true;
-    final _Batches batches = _Batches(unit: 'Tablets', packSize: 15, qty: 100);
+    final _Batches batches = _Batches(unit: 'Tablets', packSize: 15, qty: 99999);
 
     await tester.pumpWidget(MultiProvider(
       providers: <ChangeNotifierProvider<ChangeNotifier>>[
@@ -242,44 +246,67 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, 'dolo');
     await tester.pumpAndSettle();
-    expect(find.textContaining('100 Tablets (6 strips + 10 tablets) · MRP ₹30.00/strip'), findsOneWidget);
+    expect(find.textContaining('99999 Tablets (6666 strips + 9 tablets) · MRP ₹30.00/strip'), findsOneWidget);
     await tester.tap(find.text('Dolo 650'));
     await tester.pumpAndSettle();
     expect(find.text('= 1 strip'), findsOneWidget, reason: 'a strip medicine starts at a strip');
     expect(find.textContaining('MRP ₹30.00/strip × 15'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('One more'));
-    await tester.pumpAndSettle();
-    expect(find.text('= 1 strip + 1 tablet'), findsOneWidget);
-    expect(find.text('₹32.00'), findsWidgets, reason: '16 tablets at ₹30 a strip of 15, rounded once');
+    final Finder qtyBox = find.descendant(
+        of: find.byWidgetPredicate((Widget w) => w is Semantics && w.properties.label == 'Quantity in tablets'),
+        matching: find.byType(TextField));
+    String qty() => tester.widget<TextField>(qtyBox).controller!.text;
 
-    // The quantity box opens the strips + loose dialog.
-    await tester.tap(find.text('16'));
+    // + moves a whole strip.
+    await tester.tap(find.byTooltip('One strip more'));
     await tester.pumpAndSettle();
-    expect(find.text('Quantity · 1 strip = 15 tablets'), findsOneWidget);
-    await tester.enterText(find.widgetWithText(TextField, 'Strips'), '2');
-    await tester.enterText(find.widgetWithText(TextField, 'Loose tablets'), '3');
-    await tester.pump();
-    expect(find.text('= 33 tablets'), findsOneWidget);
-    await tester.tap(find.text('OK'));
-    // Runs the dialog's exit animation: its fields must not touch disposed
-    // controllers (they did, when disposal happened at pop).
-    await tester.pumpAndSettle();
-    expect(find.text('= 2 strips + 3 tablets'), findsOneWidget);
-    expect(find.textContaining('× 33'), findsOneWidget);
-    expect(find.text('₹66.00'), findsWidgets, reason: '33 x 30 / 15');
+    expect(qty(), '30');
+    expect(find.text('= 2 strips'), findsOneWidget);
+    expect(find.text('₹60.00'), findsWidgets);
 
-    // Cancel leaves the quantity alone; an empty dialog refuses OK.
-    await tester.tap(find.text('33'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Strips'), '');
-    await tester.enterText(find.widgetWithText(TextField, 'Loose tablets'), '');
-    await tester.tap(find.text('OK'));
+    // Typing tablets: 24 reads as a strip and 9 loose.
+    await tester.enterText(qtyBox, '24');
     await tester.pump();
-    expect(find.text('Enter 1 or more'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(find.text('= 2 strips + 3 tablets'), findsOneWidget);
+    expect(find.text('= 1 strip + 9 tablets'), findsOneWidget);
+    expect(find.textContaining('× 24'), findsOneWidget);
+    expect(find.text('₹48.00'), findsWidgets, reason: '24 x 30 / 15');
+
+    // From a part strip, − and + land on the full strips either side.
+    await tester.tap(find.byTooltip('One strip more'));
+    await tester.pump();
+    expect(qty(), '30');
+    await tester.enterText(qtyBox, '24');
+    await tester.tap(find.byTooltip('One strip less'));
+    await tester.pump();
+    expect(qty(), '15');
+    expect(tester.widget<IconButton>(find.widgetWithIcon(IconButton, Icons.remove)).onPressed, isNull,
+        reason: 'one strip is the least − goes to');
+
+    // An emptied box puts the quantity back when it loses focus.
+    await tester.enterText(qtyBox, '');
+    await tester.pump();
+    expect(find.text('= 1 strip'), findsOneWidget);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(qty(), '15');
+
+    // On the computer, ↑ and ↓ in the box move a strip.
+    await tester.tap(qtyBox);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(qty(), '30');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(qty(), '15');
+
+    // A huge bill: the bottom bar keeps the total whole and on screen (an
+    // overflow fails the test).
+    await tester.enterText(qtyBox, '99999');
+    await tester.pump();
+    expect(find.text('₹1,99,998.00'), findsWidgets);
+    expect(tester.getRect(find.text('Create bill')).right, lessThanOrEqualTo(360));
+    await tester.enterText(qtyBox, '15');
+    await tester.pump();
 
     // The one-number dialog (discount) closes cleanly too.
     await tester.tap(find.text('Discount'));
