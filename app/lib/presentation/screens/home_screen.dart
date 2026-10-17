@@ -866,37 +866,35 @@ class _BusinessSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Four one-tap shortcuts in a row (icon over label).
     Widget tile(IconData icon, String label, Widget screen) => Expanded(
           child: Material(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(AppRadii.card),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppColors.border),
+            ),
             child: InkWell(
               mouseCursor: WidgetStateMouseCursor.clickable,
               onTap: () => onOpen(screen),
-              borderRadius: BorderRadius.circular(AppRadii.card),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
-                constraints: const BoxConstraints(minHeight: 56),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
+                constraints: const BoxConstraints(minHeight: 76),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.statusGreenBg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(icon, size: 20, color: AppColors.navy),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.ink,
-                        ),
+                    Icon(icon, size: 24, color: AppColors.primary),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.ink,
+                        height: 1.2,
                       ),
                     ),
                   ],
@@ -914,15 +912,11 @@ class _BusinessSection extends StatelessWidget {
         Row(
           children: <Widget>[
             tile(Icons.people_outline, 'Parties', const PartiesScreen()),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             tile(Icons.local_shipping_outlined, 'Purchases', const PurchasesScreen()),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: <Widget>[
+            const SizedBox(width: 8),
             tile(Icons.insights_outlined, 'Reports', const ReportsScreen()),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             tile(Icons.account_balance_outlined, 'GST returns', const GstReportsScreen()),
           ],
         ),

@@ -153,6 +153,8 @@ builder: (_) => const AddEditMedicineScreen()),
   /// the cursor themselves.
   static NavigationRailDestination _railItem(Widget icon, String label) =>
       NavigationRailDestination(
+        // Keeps each tab at least 48dp tall (touch target) in any font.
+        padding: const EdgeInsets.symmetric(vertical: 3),
         icon: MouseRegion(cursor: SystemMouseCursors.click, child: icon),
         label: MouseRegion(cursor: SystemMouseCursors.click, child: Text(label)),
       );
@@ -173,7 +175,15 @@ builder: (_) => const AddEditMedicineScreen()),
         body: Row(
           children: <Widget>[
             NavigationRail(
-              backgroundColor: AppColors.card,
+              // Navy, as the website and the logo.
+              backgroundColor: AppColors.navy,
+              indicatorColor: AppColors.navyLight,
+              selectedIconTheme: const IconThemeData(color: Colors.white),
+              unselectedIconTheme: const IconThemeData(color: AppColors.onDarkMuted),
+              selectedLabelTextStyle: const TextStyle(
+                  fontFamily: AppTheme.fontFamily, color: Colors.white, fontWeight: FontWeight.w700),
+              unselectedLabelTextStyle: const TextStyle(
+                  fontFamily: AppTheme.fontFamily, color: AppColors.onDarkMuted, fontWeight: FontWeight.w600),
               extended: extendedRail,
               minExtendedWidth: 228,
               labelType: extendedRail
@@ -197,11 +207,20 @@ builder: (_) => const AddEditMedicineScreen()),
                             children: <Widget>[
                               BrandMark(size: 32),
                               SizedBox(width: 9),
-                              Text(
-                                'Medikabiz',
+                              Text.rich(
+                                TextSpan(
+                                  text: 'Medika',
+                                  children: <InlineSpan>[
+                                    TextSpan(
+                                      text: 'biz',
+                                      style: TextStyle(color: AppColors.primaryBright),
+                                    ),
+                                  ],
+                                ),
                                 style: TextStyle(
-                                  color: AppColors.navyDeep,
-                                  fontSize: 20,
+                                  fontFamily: AppTheme.displayFamily,
+                                  color: Colors.white,
+                                  fontSize: 21,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: -0.4,
                                 ),

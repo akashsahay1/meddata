@@ -40,6 +40,11 @@ class AppColors {
   static const Color statusAmber = Color(0xFFEA8C1F); // low stock
   static const Color statusRed = Color(0xFFE5484D); // expiring / expired
 
+  // Status text on its own tint (count and labels on tinted tiles): above
+  // 5:1 on the tint, where the bright status hues reach only ~2.5:1.
+  static const Color statusAmberInk = Color(0xFF9A5400);
+  static const Color statusRedInk = Color(0xFFC0262D);
+
   // Status tint backgrounds (~12-14% of the hue)
   static const Color statusGreenBg = Color(0x1F12A47C);
   static const Color statusAmberBg = Color(0x24EA8C1F);

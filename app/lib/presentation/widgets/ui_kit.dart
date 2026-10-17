@@ -163,8 +163,8 @@ class InitialsAvatar extends StatelessWidget {
     super.key,
     required this.text,
     this.size = 44,
-    this.color = AppColors.navy,
-    this.bg = AppColors.canvas,
+    this.color = AppColors.primary,
+    this.bg = AppColors.primarySoft,
   });
 
   @override
@@ -176,15 +176,11 @@ class InitialsAvatar extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(size * 0.28),
         ),
         child: Text(
           text,
-          style: TextStyle(
-            fontSize: size * 0.36,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
+          style: AppTheme.display(size: size * 0.34, color: color),
         ),
       ),
     );
@@ -232,8 +228,8 @@ class MedicineTile extends StatelessWidget {
     this.qtyLabel,
     this.priceLabel,
     this.expLabel,
-    this.avatarColor = AppColors.navy,
-    this.avatarBg = AppColors.canvas,
+    this.avatarColor = AppColors.primary,
+    this.avatarBg = AppColors.primarySoft,
     this.borderColor = AppColors.border,
     this.onTap,
   });
@@ -274,11 +270,7 @@ class MedicineTile extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ink,
-                      ),
+                      style: AppTheme.display(size: 15, weight: FontWeight.w700, color: AppColors.ink),
                     ),
                     if (subtitle != null && subtitle!.isNotEmpty)
                       Padding(
@@ -288,8 +280,8 @@ class MedicineTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.muted,
                           ),
                         ),
@@ -330,11 +322,7 @@ class MedicineTile extends StatelessWidget {
                     if (priceLabel != null)
                       Text(
                         priceLabel!,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.ink,
-                        ),
+                        style: AppTheme.display(size: 15, color: AppColors.ink),
                       ),
                     if (expLabel != null)
                       Padding(
@@ -382,15 +370,9 @@ class StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(AppRadii.card),
-        boxShadow: const <BoxShadow>[
-          BoxShadow(
-            color: Color(0x14071D3B),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: AppColors.border),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -398,7 +380,7 @@ class StatCard extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
             ),
@@ -406,19 +388,15 @@ class StatCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.4,
-              color: AppColors.ink,
-            ),
+            style: AppTheme.display(size: 25, color: AppColors.ink, height: 1.1)
+                .copyWith(fontFeatures: const <FontFeature>[FontFeature.tabularFigures()]),
           ),
           if (sub != null) ...<Widget>[
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
             Text(
               sub!,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: subColor,
               ),
@@ -460,12 +438,17 @@ class AlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Soft, accent-tinted border (design: amber #F3D9C6 / red #F4CCCE), i.e. the
-    // status hue blended lightly over the white card. No left stripe.
-    final Color softBorder =
-        Color.alphaBlend(color.withValues(alpha: 0.30), AppColors.card);
+    // The whole tile in the status tint, the count large: it is the thing
+    // to act on. Text uses the deeper ink of the hue (readable on the tint).
+    final Color tint = Color.alphaBlend(bg, AppColors.card);
+    final Color edge = Color.alphaBlend(color.withValues(alpha: 0.28), AppColors.card);
+    final Color ink = color == AppColors.statusAmber
+        ? AppColors.statusAmberInk
+        : color == AppColors.statusRed
+            ? AppColors.statusRedInk
+            : color;
     return Material(
-      color: AppColors.card,
+      color: tint,
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: InkWell(
         mouseCursor: WidgetStateMouseCursor.clickable,
@@ -473,11 +456,10 @@ class AlertCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.card),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppColors.card,
             borderRadius: BorderRadius.circular(AppRadii.card),
-            border: Border.all(color: softBorder),
+            border: Border.all(color: edge),
           ),
-          padding: const EdgeInsets.all(15),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           // Read as "Low on stock: 3" rather than "3, Low on stock".
           child: Semantics(
             label: '$label: $count',
@@ -487,37 +469,21 @@ class AlertCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
-                    Container(
-                      width: 34,
-                      height: 34,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: bg,
-                        borderRadius: BorderRadius.circular(11),
-                      ),
-                      child: Icon(icon, size: 18, color: color),
-                    ),
-                    Text(
-                      '$count',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: color,
+                    Icon(icon, size: 16, color: ink),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: ink),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.ink,
-                  ),
-                ),
+                const SizedBox(height: 6),
+                Text('$count', style: AppTheme.display(size: 25, color: ink, height: 1.1)),
               ],
             ),
           ),
@@ -547,15 +513,7 @@ class SectionHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.2,
-            color: AppColors.ink,
-          ),
-        ),
+        Text(title, style: AppTheme.display(size: 17, color: AppColors.ink)),
         if (actionLabel != null)
           TapTarget(
             label: actionLabel!,
@@ -565,9 +523,9 @@ class SectionHeader extends StatelessWidget {
             child: Text(
               actionLabel!,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w700,
-                color: AppColors.navy,
+                color: AppColors.primary,
               ),
             ),
           ),
