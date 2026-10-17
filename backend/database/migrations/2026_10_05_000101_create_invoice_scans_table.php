@@ -37,6 +37,8 @@ return new class extends Migration
             $table->unsignedInteger('output_tokens')->nullable();
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();
+            // Added to stock, or removed from the shop's list of bills.
+            $table->timestamp('closed_at')->nullable();
             $table->timestamps();
             $table->index(['shop_id', 'created_at']);
             $table->index('status');

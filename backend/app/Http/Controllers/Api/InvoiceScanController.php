@@ -38,11 +38,12 @@ class InvoiceScanController extends Controller
     ];
 
     /**
-     * Uploads per account (each one is a paid AI call). Counted here rather
+     * Uploads per account (each one is a paid AI call; a pile of bills at
+     * once is fine, the queue reads them in turn). Counted here rather
      * than with throttle middleware, which runs before auth.token and so
      * could only count per IP (shared by many users behind mobile CGNAT).
      */
-    private const LIMITS = ['minute' => [6, 60], 'day' => [100, 86400]];
+    private const LIMITS = ['minute' => [30, 60], 'day' => [100, 86400]];
 
     public function __construct(
         private readonly ShopService $shops,
@@ -123,7 +124,7 @@ class InvoiceScanController extends Controller
             return response()->json(['message' => 'Not found'], 404);
         }
         $scan->failIfStalled();
-        if (! $scan->toApiArray()['can_retry']) {
+        if (! $scan->canRetry()) {
             return response()->json([
                 'message' => 'This invoice can\'t be read again. Please choose the file again.',
                 'scan' => $scan->toApiArray(),
@@ -144,6 +145,48 @@ class InvoiceScanController extends Controller
         ProcessInvoiceScan::dispatch($scan);
 
         return response()->json(['scan' => $scan->fresh()->toApiArray()], 202);
+    }
+
+    /**
+     * GET /invoices/scans -> {scans: [...]}: the shop's bills still to deal
+     * with (not added to stock or removed), newest first, from the last
+     * KEEP_DAYS days. Rows carry no lines; open one with show().
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $shop = $this->shops->forUser($request->user());
+        $scans = InvoiceScan::where('shop_id', $shop->id)
+            ->whereNull('closed_at')
+            ->where('created_at', '>=', now()->subDays(InvoiceScan::KEEP_DAYS))
+            ->latest('id')
+            ->limit(200)
+            ->get();
+
+        return response()->json(['scans' => $scans->map(function (InvoiceScan $scan) {
+            $scan->failIfStalled();
+
+            return $scan->toListArray();
+        })->values()]);
+    }
+
+    /**
+     * POST /invoices/scan/{id}/close -> 204: the bill was added to stock, or
+     * the shop removed it from its list. A bill still being read can't be.
+     */
+    public function close(Request $request, int $id): JsonResponse
+    {
+        $shop = $this->shops->forUser($request->user());
+        $scan = InvoiceScan::where('shop_id', $shop->id)->whereKey($id)->first();
+        if (! $scan) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+        if (! $scan->isFinished()) {
+            return response()->json(['message' => 'This bill is still being read.'], 409);
+        }
+        $scan->closed_at ??= now();
+        $scan->save();
+
+        return response()->json(null, 204);
     }
 
     private function premiumRequired(User $user): ?JsonResponse

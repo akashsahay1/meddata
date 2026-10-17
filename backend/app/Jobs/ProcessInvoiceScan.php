@@ -17,20 +17,26 @@ use Throwable;
  * lines (with product / catalog matches) on the scan. Needs a queue worker
  * (`php artisan queue:work`, under supervisor in production).
  *
- * A busy or unreachable AI service is retried for about ten minutes (see
- * backoff), a reply with no lines or broken JSON is read again up to
- * SLIP_TRIES times; everything else fails the scan at once with a message the
- * app shows as-is. While a retry waits the scan is back to `queued` with
- * attempts > 0, which the app shows as "trying again".
+ * Bills are read one after another by the queue worker. A busy, limited or
+ * unreachable AI service is waited out (see backoff) for up to WAIT_HOURS,
+ * so a pile of bills uploaded together is read as Groq's limits allow,
+ * overnight if need be. A reply with no lines or broken JSON is read again
+ * at once, up to SLIP_TRIES reads. Everything else fails the scan with a
+ * message the app shows as-is. While a retry waits the scan is back to
+ * `queued` with attempts > 0, which the app shows as "trying again".
  */
 class ProcessInvoiceScan implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 10;
-
-    /** Attempts for a model slip (no lines found, broken JSON) before giving up. */
+    /** Reads of the same file when the model slips (no lines found, broken JSON). */
     public const SLIP_TRIES = 3;
+
+    /** How long a bill keeps waiting for a busy or limited AI service. */
+    public const WAIT_HOURS = 24;
+
+    /** Unix time after which a busy AI service is no longer waited for. */
+    public int $deadline;
 
     /** Seconds; above the API call timeout (services.groq.timeout) plus PDF conversion. */
     public int $timeout = 300;
@@ -40,12 +46,25 @@ class ProcessInvoiceScan implements ShouldQueue
 
     public bool $deleteWhenMissingModels = true;
 
-    public function __construct(public InvoiceScan $scan) {}
+    public function __construct(public InvoiceScan $scan)
+    {
+        $this->deadline = now()->addHours(self::WAIT_HOURS)->getTimestamp();
+    }
 
-    /** Seconds to wait before the 2nd, 3rd, ... attempt when the AI service is busy (~10 min in all). */
+    /** The worker keeps the job while this is ahead (attempts don't count). */
+    public function retryUntil(): int
+    {
+        return $this->deadline;
+    }
+
+    /**
+     * Seconds to wait before the 2nd, 3rd, ... attempt when the AI service is
+     * busy: quick at first (a per-minute limit clears in a minute), then every
+     * 5 minutes (a daily limit, or a long queue of other bills).
+     */
     public function backoff(): array
     {
-        return [15, 30, 45, 60, 60, 90, 90, 120, 120];
+        return [15, 30, 45, 60, 60, 90, 90, 120, 120, 300];
     }
 
     public function handle(GroqInvoiceReader $reader, InvoiceProductMatcher $matcher): void
@@ -76,13 +95,12 @@ class ProcessInvoiceScan implements ShouldQueue
         ])->save();
 
         try {
-            $result = $reader->read((string) $disk->get($scan->file_path), $scan->mime);
+            $result = $this->read($reader, (string) $disk->get($scan->file_path), $scan->mime);
         } catch (InvoiceReadException $e) {
-            $busy = $e->retryable && $this->attempts() < $this->tries;
-            $slip = $e->slip && $this->attempts() < self::SLIP_TRIES;
-            if ($busy || $slip) {
+            if ($e->retryable && now()->getTimestamp() < $this->deadline) {
                 $scan->forceFill(['status' => InvoiceScan::STATUS_QUEUED])->save();
-                $this->release($slip ? 5 : $this->backoff()[$this->attempts() - 1] ?? 120);
+                $backoff = $this->backoff();
+                $this->release($backoff[min($this->attempts(), count($backoff)) - 1]);
 
                 return;
             }
@@ -106,6 +124,20 @@ class ProcessInvoiceScan implements ShouldQueue
             'output_tokens' => $result['output_tokens'],
             'finished_at' => now(),
         ])->save();
+    }
+
+    /** The model sometimes slips on a page it reads fine the next time. */
+    private function read(GroqInvoiceReader $reader, string $bytes, string $mime): array
+    {
+        for ($read = 1; ; $read++) {
+            try {
+                return $reader->read($bytes, $mime);
+            } catch (InvoiceReadException $e) {
+                if (! $e->slip || $read >= self::SLIP_TRIES) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     /** Out of attempts, timed out or crashed: never leave the app polling forever. */

@@ -125,5 +125,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('invoices/scan', [InvoiceScanController::class, 'store']);
         Route::get('invoices/scan/{id}', [InvoiceScanController::class, 'show'])->whereNumber('id');
         Route::post('invoices/scan/{id}/retry', [InvoiceScanController::class, 'retry'])->whereNumber('id');
+        Route::post('invoices/scan/{id}/close', [InvoiceScanController::class, 'close'])->whereNumber('id');
+        Route::get('invoices/scans', [InvoiceScanController::class, 'index']);
     });
 });

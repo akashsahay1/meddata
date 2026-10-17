@@ -31,9 +31,9 @@ class InvoiceScan extends Model
     public const KEEP_DAYS = 30;
 
     /**
-     * A scan with no progress for this long is given up on (no queue worker
-     * running?), so the app stops waiting. Retries and the job's 300 s
-     * timeout fit well inside it.
+     * A scan is given up on (so the app stops waiting) when nothing at all
+     * has happened on the queue for this long: no queue worker running.
+     * A bill waiting behind others, or for a busy AI service, is not stuck.
      */
     public const STALL_MINUTES = 15;
 
@@ -54,6 +54,7 @@ class InvoiceScan extends Model
             'extracted' => 'array',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -83,11 +84,29 @@ class InvoiceScan extends Model
         ])->save();
     }
 
+    /** Waiting for another try after a busy AI service. */
+    public function isRetrying(): bool
+    {
+        return $this->status === self::STATUS_QUEUED && $this->attempts > 0;
+    }
+
+    /** Failed, and reading the same file again may work. */
+    public function canRetry(): bool
+    {
+        return $this->status === self::STATUS_FAILED && in_array($this->error_code, self::RETRYABLE, true);
+    }
+
     public function failIfStalled(): void
     {
-        if (! $this->isFinished() && $this->updated_at?->lt(now()->subMinutes(self::STALL_MINUTES))) {
-            $this->markFailed('stalled', 'The server could not read this invoice in time. Please try again.');
+        $since = now()->subMinutes(self::STALL_MINUTES);
+        if ($this->isFinished() || ! $this->updated_at?->lt($since)) {
+            return;
         }
+        // The worker touches each scan it picks up, retries or finishes.
+        if (self::query()->where('updated_at', '>=', $since)->exists()) {
+            return;
+        }
+        $this->markFailed('stalled', 'The server could not read this invoice in time. Please try again.');
     }
 
     /** The shape the app polls for. */
@@ -98,12 +117,30 @@ class InvoiceScan extends Model
             'status' => $this->status,
             'error_code' => $this->error_code,
             'error' => $this->error,
-            // Waiting for another try after a busy AI service or a bad reply.
-            'retrying' => $this->status === self::STATUS_QUEUED && $this->attempts > 0,
-            'can_retry' => $this->status === self::STATUS_FAILED && in_array($this->error_code, self::RETRYABLE, true),
+            'retrying' => $this->isRetrying(),
+            'can_retry' => $this->canRetry(),
             'result' => $this->status === self::STATUS_DONE ? $this->extracted : null,
             'created_at' => $this->created_at?->toIso8601String(),
             'finished_at' => $this->finished_at?->toIso8601String(),
+        ];
+    }
+
+    /** A row of the shop's list of bills: no lines, just what to show. */
+    public function toListArray(): array
+    {
+        $done = $this->status === self::STATUS_DONE;
+
+        return [
+            'id' => $this->id,
+            'status' => $this->status,
+            'retrying' => $this->isRetrying(),
+            'can_retry' => $this->canRetry(),
+            'error' => $this->error,
+            'file_name' => $this->original_name,
+            'supplier_name' => $done ? ($this->extracted['supplier_name'] ?? null) : null,
+            'invoice_no' => $done ? ($this->extracted['invoice_no'] ?? null) : null,
+            'items_count' => $done ? count($this->extracted['items'] ?? []) : null,
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 

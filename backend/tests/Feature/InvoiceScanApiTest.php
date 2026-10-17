@@ -154,10 +154,13 @@ class InvoiceScanApiTest extends TestCase
         ]);
     }
 
-    private function runJob(InvoiceScan $scan, int $attempt = 1): ProcessInvoiceScan
+    private function runJob(InvoiceScan $scan, int $attempt = 1, bool $pastDeadline = false): ProcessInvoiceScan
     {
         $job = (new ProcessInvoiceScan($scan))->withFakeQueueInteractions();
         $job->job->attempts = $attempt;
+        if ($pastDeadline) {
+            $job->deadline = now()->subMinute()->getTimestamp();
+        }
         $job->handle(app(GroqInvoiceReader::class), app(InvoiceProductMatcher::class));
 
         return $job;
@@ -447,19 +450,17 @@ class InvoiceScanApiTest extends TestCase
             ['unreadable_output', '{"supplier_name": "ABC", "items": [{"product_name": "DOL']];
         $replies = Http::sequence();
         foreach ($cases as [, $raw]) {
-            $replies->push($this->reply($raw))->push($this->reply($raw));   // first and last read
+            for ($i = 0; $i < ProcessInvoiceScan::SLIP_TRIES; $i++) {
+                $replies->push($this->reply($raw));
+            }
         }
         Http::fake([self::GROQ => $replies]);
 
         foreach ($cases as [$code, $raw]) {
             $scan = $this->scanFor($user);
 
-            $this->runJob($scan, attempt: 1)->assertReleased(5);
-            $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$scan->id}")
-                ->assertJsonPath('scan.status', 'queued')
-                ->assertJsonPath('scan.retrying', true);
+            $this->runJob($scan)->assertNotReleased();
 
-            $this->runJob($scan, attempt: ProcessInvoiceScan::SLIP_TRIES)->assertNotReleased();
             $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$scan->id}")
                 ->assertJsonPath('scan.status', 'failed')
                 ->assertJsonPath('scan.error_code', $code)
@@ -468,6 +469,7 @@ class InvoiceScanApiTest extends TestCase
                 ->assertJsonMissingPath('scan.raw_output');
             $this->assertSame($raw, $scan->refresh()->raw_output);
         }
+        Http::assertSentCount(3 * ProcessInvoiceScan::SLIP_TRIES);
     }
 
     public function test_a_second_read_that_finds_the_lines_completes_the_scan(): void
@@ -478,11 +480,11 @@ class InvoiceScanApiTest extends TestCase
             ->push($this->reply($this->invoice()))]);
         $scan = $this->scanFor($this->user());
 
-        $this->runJob($scan, attempt: 1)->assertReleased(5);
-        $this->runJob($scan, attempt: 2)->assertNotReleased();
+        $this->runJob($scan)->assertNotReleased();
 
         $this->assertSame('done', $scan->refresh()->status);
         $this->assertCount(2, $scan->extracted['items']);
+        Http::assertSentCount(2);
     }
 
     public function test_missing_api_key_fails_with_a_clear_status_without_calling_the_api(): void
@@ -535,16 +537,19 @@ class InvoiceScanApiTest extends TestCase
         Http::fake([self::GROQ => Http::response(['error' => ['type' => 'internal_server_error', 'message' => 'Service unavailable']], 503)]);
         $scan = $this->scanFor($this->user());
 
-        // A busy AI service is waited out for about ten minutes, not two.
+        // A busy AI service is waited out: quickly at first, then every 5
+        // minutes, so a pile of bills is read as the limits allow.
         $this->runJob($scan, attempt: 1)->assertReleased(15);
         $this->assertSame('queued', $scan->refresh()->status);
         $this->runJob($scan, attempt: 3)->assertReleased(45);
-        $this->assertSame(630, array_sum((new ProcessInvoiceScan($scan))->backoff()));
+        $this->runJob($scan, attempt: 40)->assertReleased(300);
+        $this->assertSame('queued', $scan->refresh()->status);
+        $this->assertSame(ProcessInvoiceScan::WAIT_HOURS * 3600, (new ProcessInvoiceScan($scan))->retryUntil() - now()->getTimestamp());
 
-        $this->runJob($scan, attempt: 10)->assertNotReleased();
+        $this->runJob($scan, attempt: 41, pastDeadline: true)->assertNotReleased();
         $scan->refresh();
         $this->assertSame(['failed', 'busy'], [$scan->status, $scan->error_code]);
-        $this->assertSame(10, $scan->attempts);
+        $this->assertSame(41, $scan->attempts);
         $this->assertTrue($scan->toApiArray()['can_retry']);
     }
 
@@ -561,7 +566,7 @@ class InvoiceScanApiTest extends TestCase
         $this->runJob($scan, attempt: 1)->assertReleased(15);
         $this->assertSame('queued', $scan->refresh()->status);
 
-        $this->runJob($scan, attempt: 10)->assertNotReleased();
+        $this->runJob($scan, attempt: 10, pastDeadline: true)->assertNotReleased();
         $scan->refresh();
         $this->assertSame(['failed', 'ai_limit'], [$scan->status, $scan->error_code]);
         $this->assertSame('This invoice is too long for the AI service\'s current limits. Please try again later; '
@@ -632,12 +637,62 @@ class InvoiceScanApiTest extends TestCase
         Queue::fake();
         $user = $this->user();
 
-        for ($i = 0; $i < 6; $i++) {
+        // A pile of bills at once is fine (the queue reads them in turn).
+        for ($i = 0; $i < 30; $i++) {
             $this->upload($user)->assertStatus(202);
         }
         $this->upload($user)->assertStatus(429)->assertHeader('Retry-After');
-        $this->assertSame(6, InvoiceScan::count());
+        $this->assertSame(30, InvoiceScan::count());
         // Another account has its own allowance.
         $this->upload($this->user())->assertStatus(202);
+    }
+
+    // With a pile of bills, one waits behind the others for longer than the
+    // 15 minutes after which a scan counted as stuck (no queue worker).
+    public function test_a_bill_waiting_behind_others_is_not_given_up_on(): void
+    {
+        Queue::fake();
+        $user = $this->user();
+        $waiting = $this->scanFor($user);
+
+        $this->travel(20)->minutes();
+        $this->scanFor($this->user())->forceFill(['status' => InvoiceScan::STATUS_PROCESSING])->save(); // the worker is busy
+
+        $this->withToken($user->issueToken('p'))->getJson("/api/v1/invoices/scan/{$waiting->id}")
+            ->assertJsonPath('scan.status', 'queued');
+    }
+
+    public function test_the_shop_lists_its_bills_still_to_deal_with_and_closes_them(): void
+    {
+        Queue::fake();
+        $user = $this->user();
+        $token = $user->issueToken('p');
+        $done = $this->scanFor($user);
+        $done->forceFill(['status' => 'done', 'original_name' => 'om_sai.pdf', 'finished_at' => now(),
+            'extracted' => ['supplier_name' => 'Om Sai Medical', 'invoice_no' => 'OSMA-1', 'items' => [['product_name' => 'A'], ['product_name' => 'B']]]])->save();
+        $failed = $this->scanFor($user);
+        $failed->markFailed('busy', 'The AI service is busy right now.');
+        $waiting = $this->scanFor($user);
+        $this->scanFor($this->user());   // another shop's bill
+
+        $this->withToken($token)->getJson('/api/v1/invoices/scans')
+            ->assertOk()
+            ->assertJsonCount(3, 'scans')
+            ->assertJsonPath('scans.0.id', $waiting->id)
+            ->assertJsonPath('scans.0.status', 'queued')
+            ->assertJsonPath('scans.1.can_retry', true)
+            ->assertJsonPath('scans.2.supplier_name', 'Om Sai Medical')
+            ->assertJsonPath('scans.2.invoice_no', 'OSMA-1')
+            ->assertJsonPath('scans.2.items_count', 2)
+            ->assertJsonPath('scans.2.file_name', 'om_sai.pdf')
+            ->assertJsonMissingPath('scans.2.result');
+
+        // Added to stock: off the list. One still being read can't be closed.
+        $this->withToken($token)->postJson("/api/v1/invoices/scan/{$done->id}/close")->assertNoContent();
+        $this->withToken($token)->postJson("/api/v1/invoices/scan/{$waiting->id}/close")->assertStatus(409);
+        $this->withToken($this->user()->issueToken('p'))->postJson("/api/v1/invoices/scan/{$failed->id}/close")->assertNotFound();
+        $this->withToken($token)->getJson('/api/v1/invoices/scans')
+            ->assertJsonCount(2, 'scans')
+            ->assertJsonMissing(['id' => $done->id]);
     }
 }
